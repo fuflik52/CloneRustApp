@@ -1,0 +1,28 @@
+{
+  "name": "pan-rust-site",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "concurrently \"vite\" \"node server/index.js\"",
+    "prod": "node server/index.js",
+    "dev": "concurrently \"vite\" \"node server/index.js\"",
+    "dev:front": "vite",
+    "dev:api": "node server/index.js",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "install:all": "npm install && cd server && npm install"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.20.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.37",
+    "@types/react-dom": "^18.2.15",
+    "@vitejs/plugin-react": "^4.2.0",
+    "concurrently": "^8.2.2",
+    "typescript": "^5.2.2",
+    "vite": "^5.0.0"
+  }
+}
