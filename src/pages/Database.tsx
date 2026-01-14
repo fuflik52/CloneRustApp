@@ -179,14 +179,6 @@ export default function Database() {
     const mins = Math.floor((seconds % 3600) / 60)
     return `${hours}ч ${mins}м`
   }
-  const timeAgo = (ts: number) => {
-    const diff = Date.now() - ts
-    const mins = Math.floor(diff / 60000)
-    if (mins < 60) return `${mins} мин назад`
-    const hours = Math.floor(mins / 60)
-    if (hours < 24) return `${hours} ч назад`
-    return `${Math.floor(hours / 24)} дн назад`
-  }
 
   const getActivityIcon = (type: string) => {
     switch (type) {

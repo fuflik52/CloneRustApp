@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname, '../dist')));
 const DATA_FILE = './data.json';
 const PLAYERS_DB_FILE = './players_db.json';
 const ACTIVITY_LOG_FILE = './activity_log.json';
+const CHAT_LOG_FILE = './chat_log.json';
 
 // === DATA LOADERS ===
 const loadData = () => {
@@ -45,6 +46,19 @@ const saveActivityLog = (data) => {
     data.logs = data.logs.slice(-10000);
   }
   fs.writeFileSync(ACTIVITY_LOG_FILE, JSON.stringify(data, null, 2));
+};
+
+// Лог чата
+const loadChatLog = () => {
+  try { return JSON.parse(fs.readFileSync(CHAT_LOG_FILE, 'utf8')); }
+  catch { return { messages: [] }; }
+};
+const saveChatLog = (data) => {
+  // Храним только последние 5000 сообщений
+  if (data.messages.length > 5000) {
+    data.messages = data.messages.slice(-5000);
+  }
+  fs.writeFileSync(CHAT_LOG_FILE, JSON.stringify(data, null, 2));
 };
 
 // Добавить запись в лог
@@ -668,6 +682,145 @@ app.get('/api/player/:steamId/steam', async (req, res) => {
     console.error('Steam API error:', err);
     res.status(500).json({ error: 'Steam API error', details: err.message });
   }
+});
+
+// === CHAT API ===
+
+// Plugin sends chat messages
+app.post('/api/chat', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const key = auth.slice(7);
+  const data = loadData();
+  const server = Object.values(data.servers).find(s => s.secretKey === key);
+  if (!server) return res.status(401).json({ error: 'Invalid key' });
+  
+  const { messages, server: serverName } = req.body;
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: 'Messages array required' });
+  }
+  
+  const chatLog = loadChatLog();
+  const db = loadPlayersDB();
+  
+  for (const msg of messages) {
+    const player = db.players[msg.steam_id];
+    chatLog.messages.push({
+      id: crypto.randomUUID(),
+      steam_id: msg.steam_id,
+      name: msg.name,
+      avatar: player?.avatar || '',
+      message: msg.message,
+      is_team: msg.is_team || false,
+      server: serverName || server.name,
+      timestamp: msg.timestamp || Date.now(),
+      date: new Date(msg.timestamp || Date.now()).toISOString()
+    });
+  }
+  
+  saveChatLog(chatLog);
+  res.json({ success: true, count: messages.length });
+});
+
+// Get chat messages
+app.get('/api/chat', (req, res) => {
+  const { limit = 100, offset = 0, steam_id, server, search } = req.query;
+  const chatLog = loadChatLog();
+  const db = loadPlayersDB();
+  
+  let messages = chatLog.messages;
+  
+  // Фильтрация по steam_id
+  if (steam_id) {
+    messages = messages.filter(m => m.steam_id === steam_id);
+  }
+  
+  // Фильтрация по серверу
+  if (server) {
+    messages = messages.filter(m => m.server === server);
+  }
+  
+  // Поиск по тексту
+  if (search) {
+    const q = search.toLowerCase();
+    messages = messages.filter(m => 
+      m.message.toLowerCase().includes(q) || 
+      m.name.toLowerCase().includes(q)
+    );
+  }
+  
+  // Сортируем по времени (новые последние для чата)
+  messages.sort((a, b) => a.timestamp - b.timestamp);
+  
+  const total = messages.length;
+  
+  // Берём последние сообщения
+  const start = Math.max(0, total - Number(limit) - Number(offset));
+  const end = total - Number(offset);
+  messages = messages.slice(start, end);
+  
+  // Добавляем аватары из базы
+  messages = messages.map(m => ({
+    ...m,
+    avatar: m.avatar || db.players[m.steam_id]?.avatar || ''
+  }));
+  
+  res.json({ messages, total });
+});
+
+// Send message to player (admin -> player)
+app.post('/api/chat/send', (req, res) => {
+  const { steam_id, message, is_global } = req.body;
+  
+  if (!message) {
+    return res.status(400).json({ error: 'Message required' });
+  }
+  
+  const chatLog = loadChatLog();
+  
+  // Сохраняем сообщение админа
+  chatLog.messages.push({
+    id: crypto.randomUUID(),
+    steam_id: steam_id || 'admin',
+    name: 'Администратор',
+    avatar: '',
+    message: message,
+    is_team: false,
+    is_admin: true,
+    is_global: is_global || false,
+    target_steam_id: steam_id,
+    server: 'Panel',
+    timestamp: Date.now(),
+    date: new Date().toISOString()
+  });
+  
+  saveChatLog(chatLog);
+  
+  // TODO: Отправить сообщение на сервер через очередь команд
+  // Пока просто сохраняем в лог
+  
+  res.json({ success: true });
+});
+
+// Get chat messages for specific player
+app.get('/api/chat/player/:steamId', (req, res) => {
+  const { steamId } = req.params;
+  const { limit = 50 } = req.query;
+  const chatLog = loadChatLog();
+  const db = loadPlayersDB();
+  
+  let messages = chatLog.messages.filter(m => m.steam_id === steamId);
+  messages.sort((a, b) => b.timestamp - a.timestamp);
+  messages = messages.slice(0, Number(limit));
+  
+  // Добавляем аватары
+  messages = messages.map(m => ({
+    ...m,
+    avatar: m.avatar || db.players[m.steam_id]?.avatar || ''
+  }));
+  
+  res.json(messages.reverse());
 });
 
 // Get statistics

@@ -16,6 +16,9 @@ namespace Oxide.Plugins
 
         private const string API_URL = "http://app.bublickrust.ru/api";
 
+        // Очередь сообщений чата для отправки
+        private List<ChatMessageDto> _chatQueue = new List<ChatMessageDto>();
+
         #region Meta (хранит секретный ключ)
         private class MetaInfo
         {
@@ -42,6 +45,9 @@ namespace Oxide.Plugins
         {
             [JsonProperty("Update Interval (seconds)")]
             public float UpdateInterval = 5f;
+
+            [JsonProperty("Chat Update Interval (seconds)")]
+            public float ChatUpdateInterval = 1f;
         }
 
         protected override void LoadConfig()
@@ -66,6 +72,15 @@ namespace Oxide.Plugins
             public bool online;
             public string position;
             public string server;
+        }
+
+        private class ChatMessageDto
+        {
+            public string steam_id;
+            public string name;
+            public string message;
+            public bool is_team;
+            public long timestamp;
         }
 
         private class StatePayload
@@ -101,6 +116,7 @@ namespace Oxide.Plugins
                 timer.Once(2f, () => SyncAllPlayers());
                 
                 timer.Every(_config.UpdateInterval, () => SendStateUpdate());
+                timer.Every(_config.ChatUpdateInterval, () => SendChatMessages());
             }
         }
 
@@ -159,6 +175,26 @@ namespace Oxide.Plugins
             {
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = $"Bearer {_metaInfo.SecretKey}"
+            });
+        }
+
+        // Хук на сообщения в чате
+        private void OnPlayerChat(BasePlayer player, string message, ConVar.Chat.ChatChannel channel)
+        {
+            if (string.IsNullOrEmpty(_metaInfo.SecretKey)) return;
+            if (string.IsNullOrEmpty(message)) return;
+
+            // Только глобальный и командный чат
+            if (channel != ConVar.Chat.ChatChannel.Team && channel != ConVar.Chat.ChatChannel.Global)
+                return;
+
+            _chatQueue.Add(new ChatMessageDto
+            {
+                steam_id = player.UserIDString,
+                name = player.displayName,
+                message = message,
+                is_team = channel == ConVar.Chat.ChatChannel.Team,
+                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
             });
         }
 
@@ -259,6 +295,32 @@ namespace Oxide.Plugins
             webrequest.Enqueue($"{API_URL}/state", json, (code, response) =>
             {
                 if (code != 200) Puts($"API Error: {code} - {response}");
+            }, this, Oxide.Core.Libraries.RequestMethod.POST, new Dictionary<string, string>
+            {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = $"Bearer {_metaInfo.SecretKey}"
+            });
+        }
+
+        private void SendChatMessages()
+        {
+            if (string.IsNullOrEmpty(_metaInfo.SecretKey)) return;
+            if (_chatQueue.Count == 0) return;
+
+            var messages = new List<ChatMessageDto>(_chatQueue);
+            _chatQueue.Clear();
+
+            var payload = new { messages = messages, server = ConVar.Server.hostname };
+            var json = JsonConvert.SerializeObject(payload);
+
+            webrequest.Enqueue($"{API_URL}/chat", json, (code, response) =>
+            {
+                if (code != 200)
+                {
+                    Puts($"Chat API Error: {code} - {response}");
+                    // Возвращаем сообщения в очередь при ошибке
+                    _chatQueue.AddRange(messages);
+                }
             }, this, Oxide.Core.Libraries.RequestMethod.POST, new Dictionary<string, string>
             {
                 ["Content-Type"] = "application/json",
