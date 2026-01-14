@@ -21,6 +21,7 @@ namespace Oxide.Plugins
         readonly List<KillDto> _killsQueue = new List<KillDto>(16);
         readonly Dictionary<ulong, HitData> _wounds = new Dictionary<ulong, HitData>();
         readonly Dictionary<ulong, float> _sessions = new Dictionary<ulong, float>();
+        readonly Dictionary<ulong, List<HitRecord>> _hitHistory = new Dictionary<ulong, List<HitRecord>>();
 
         #region Data
         
@@ -31,6 +32,13 @@ namespace Oxide.Plugins
             public float Distance;
             public bool Headshot;
             public string Bone;
+        }
+
+        class HitRecord
+        {
+            public float time;
+            public string attackerId, targetId, attacker, target, weapon, ammo, bone, info;
+            public float distance, hpOld, hpNew;
         }
 
         class PlayerStats
@@ -67,15 +75,20 @@ namespace Oxide.Plugins
             public float pi, pt, pm;
             public bool ad;
 
-            public CombatDto(float kt, CombatLog.Event e)
+            public CombatDto(HitRecord r, float killTime)
             {
-                if (e.attacker == "player")
-                    asi = (BaseNetworkable.serverEntities.Find(new NetworkableId(e.attacker_id)) as BasePlayer)?.UserIDString ?? "";
-                if (e.target == "player")
-                    tsi = (BaseNetworkable.serverEntities.Find(new NetworkableId(e.target_id)) as BasePlayer)?.UserIDString ?? "";
-                t = kt - e.time; a = e.attacker; tg = e.target; wp = e.weapon; am = e.ammo; bn = e.bone;
-                ds = (float)Math.Round(e.distance, 2); ho = (float)Math.Round(e.health_old, 2); hn = (float)Math.Round(e.health_new, 2);
-                inf = e.info; ph = e.proj_hits; pt = e.proj_travel; dy = e.desync; pi = e.proj_integrity; pm = e.proj_mismatch; ad = e.attacker_dead;
+                t = (float)Math.Round(killTime - r.time, 2);
+                asi = r.attackerId ?? "";
+                tsi = r.targetId ?? "";
+                a = r.attacker ?? "";
+                tg = r.target ?? "";
+                wp = r.weapon ?? "";
+                am = r.ammo ?? "";
+                bn = r.bone ?? "";
+                ds = (float)Math.Round(r.distance, 2);
+                ho = (float)Math.Round(r.hpOld, 2);
+                hn = (float)Math.Round(r.hpNew, 2);
+                inf = r.info ?? "";
             }
         }
 
@@ -165,8 +178,68 @@ namespace Oxide.Plugins
             };
         }
 
-        void OnPlayerRespawn(BasePlayer p) => _wounds.Remove(p.userID);
-        void OnPlayerRecovered(BasePlayer p) => _wounds.Remove(p.userID);
+        void OnPlayerRespawn(BasePlayer p) { _wounds.Remove(p.userID); _hitHistory.Remove(p.userID); }
+        void OnPlayerRecovered(BasePlayer p) { _wounds.Remove(p.userID); _hitHistory.Remove(p.userID); }
+
+        void OnEntityTakeDamage(BaseCombatEntity entity, HitInfo info)
+        {
+            if (info == null) return;
+            var attacker = info.InitiatorPlayer;
+            if (attacker == null) return;
+
+            ulong targetId = 0;
+            string targetType = "unknown";
+            string targetSteamId = "";
+
+            if (entity is BasePlayer targetPlayer)
+            {
+                targetId = targetPlayer.userID;
+                targetType = "player";
+                targetSteamId = targetPlayer.UserIDString;
+            }
+            else if (entity is BaseNpc || entity is HTNPlayer || entity is ScientistNPC || entity is NPCPlayer)
+            {
+                targetId = entity.net?.ID.Value ?? 0;
+                targetType = entity.ShortPrefabName ?? "npc";
+            }
+            else return;
+
+            if (targetId == 0) return;
+
+            var weapon = info.Weapon?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.ShortPrefabName ?? "unknown";
+            var ammo = info.ProjectilePrefab?.name ?? "";
+            var bone = info.boneName ?? "";
+            var distance = info.ProjectileDistance;
+            var hpOld = entity.Health();
+            var damage = info.damageTypes.Total();
+            var hpNew = Math.Max(0, hpOld - damage);
+
+            if (!_hitHistory.TryGetValue(targetId, out var list))
+            {
+                list = new List<HitRecord>(16);
+                _hitHistory[targetId] = list;
+            }
+
+            // Очищаем старые записи (>30 сек)
+            var now = Time.realtimeSinceStartup;
+            list.RemoveAll(h => now - h.time > 30f);
+
+            list.Add(new HitRecord
+            {
+                time = now,
+                attackerId = attacker.UserIDString,
+                targetId = targetSteamId,
+                attacker = "player",
+                target = targetType,
+                weapon = weapon,
+                ammo = ammo,
+                bone = bone,
+                distance = distance,
+                hpOld = hpOld,
+                hpNew = (float)hpNew,
+                info = hpNew <= 0 ? "killed" : "hit"
+            });
+        }
 
         void OnPlayerDeath(BasePlayer v, HitInfo i)
         {
@@ -184,13 +257,47 @@ namespace Oxide.Plugins
             var bp = GetBodyPart(h.Bone);
             if (bp == 0) ks.hs++; else if (bp == 1) ks.bs++; else ks.ls++;
 
-            NextFrame(() =>
+            var combatLog = GetCombatLog(vid);
+            _hitHistory.Remove(vid);
+
+            _killsQueue.Add(new KillDto
             {
-                _killsQueue.Add(new KillDto
-                {
-                    ki = ksi, vi = vsi, wp = h.Weapon, ds = h.Distance, hs = h.Headshot, bn = h.Bone,
-                    ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), h = GetCombatLog(vid)
-                });
+                ki = ksi, vi = vsi, wp = h.Weapon, ds = h.Distance, hs = h.Headshot, bn = h.Bone,
+                ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), h = combatLog
+            });
+        }
+
+        // Трекинг убийств NPC/ботов
+        void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
+        {
+            if (entity == null || info == null) return;
+            if (entity is BasePlayer) return; // Игроки обрабатываются в OnPlayerDeath
+
+            var attacker = info.InitiatorPlayer;
+            if (attacker == null) return;
+
+            var targetId = entity.net?.ID.Value ?? 0;
+            if (targetId == 0) return;
+
+            var weapon = info.Weapon?.GetItem()?.info?.displayName?.english ?? info.WeaponPrefab?.ShortPrefabName ?? "unknown";
+            var bone = info.boneName ?? "";
+            var distance = info.ProjectileDistance;
+            var isHeadshot = info.isHeadshot;
+            var targetName = entity.ShortPrefabName ?? "npc";
+
+            var ksi = attacker.UserIDString;
+            var ks = GetStats(ksi);
+            ks.k++;
+            var bp = GetBodyPart(bone);
+            if (bp == 0) ks.hs++; else if (bp == 1) ks.bs++; else ks.ls++;
+
+            var combatLog = GetCombatLog(targetId);
+            _hitHistory.Remove(targetId);
+
+            _killsQueue.Add(new KillDto
+            {
+                ki = ksi, vi = targetName, wp = weapon, ds = distance, hs = isHeadshot, bn = bone,
+                ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), h = combatLog
             });
         }
 
@@ -253,19 +360,12 @@ namespace Oxide.Plugins
 
         List<CombatDto> GetCombatLog(ulong id)
         {
-            var queue = CombatLog.Get(id);
-            if (queue == null || queue.Count == 0) return null;
-            var logs = queue.ToArray();
-            var list = new List<CombatDto>(8);
-            var last = logs.Length - 1;
-            var kl = logs[last];
-            list.Add(new CombatDto(kl.time, kl));
-            for (var i = last - 1; i >= 0; i--)
+            if (!_hitHistory.TryGetValue(id, out var records) || records.Count == 0) return null;
+            var killTime = Time.realtimeSinceStartup;
+            var list = new List<CombatDto>(records.Count);
+            for (var i = records.Count - 1; i >= 0; i--)
             {
-                var e = logs[i];
-                if (e.target != "player" && e.target != "you") continue;
-                if (e.info == "killed" || logs[i + 1].time - e.time > 20 || kl.time - e.time > 30) break;
-                list.Add(new CombatDto(kl.time, e));
+                list.Add(new CombatDto(records[i], killTime));
             }
             return list;
         }
