@@ -64,20 +64,18 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     const searchPlayers = async () => {
       setLoading(true)
       try {
-        const res = await fetch('/api/players')
+        // Ищем по всей базе игроков
+        const res = await fetch(`/api/players/search?q=${encodeURIComponent(q)}`)
         if (res.ok) {
-          const players: Player[] = await res.json()
-          const filtered = players.filter(p => 
-            p.name?.toLowerCase().includes(q) ||
-            p.steam_id?.includes(q)
-          ).slice(0, 5).map(p => ({
+          const players = await res.json()
+          const filtered = players.slice(0, 5).map((p: any) => ({
             type: 'player' as const,
             id: p.steam_id,
-            name: p.name,
-            subtitle: `${p.serverName} • ${p.online ? 'Онлайн' : 'Оффлайн'}`,
+            name: p.steam_name || p.name,
+            subtitle: p.country ? `${p.country}` : 'Игрок',
             avatar: p.avatar,
-            online: p.online,
-            url: `/players?search=${p.steam_id}`
+            online: false,
+            url: `/players?player=${p.steam_id}`
           }))
           setResults(prev => [...prev.filter(r => r.type === 'page'), ...filtered].slice(0, 10))
         }
