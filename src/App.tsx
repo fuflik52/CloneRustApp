@@ -17,6 +17,7 @@ import Servers from './pages/Servers'
 import Audit from './pages/Audit'
 import Staff from './pages/Staff'
 import Database from './pages/Database'
+import Profile from './pages/Profile'
 import { useState, useEffect } from 'react'
 
 function AppContent() {
@@ -137,6 +138,7 @@ function AppContent() {
           <Route path="/servers" element={<Servers />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/staff" element={<Staff />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="/secret-db-panel" element={<Database />} />
         </Routes>
       </main>

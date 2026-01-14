@@ -61,6 +61,19 @@ export default function Sidebar({ collapsed, onToggle, onSearchClick, mobileOpen
       <MenuSection title="Модерация" items={moderationItems} collapsed={collapsed} onNavClick={handleNavClick} />
       <MenuSection title="Управление" items={managementItems} collapsed={collapsed} onNavClick={handleNavClick} />
       <MenuSection title="Проект" items={projectItems} collapsed={collapsed} onNavClick={handleNavClick} />
+
+      <div className="sidebar-footer">
+        <NavLink 
+          to="/profile" 
+          className={`profile-link ${location.pathname === '/profile' ? 'active' : ''}`}
+          onClick={handleNavClick}
+        >
+          <div className="profile-avatar-small">
+            <img src="https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg" alt="" />
+          </div>
+          <span className="profile-link-text">Профиль</span>
+        </NavLink>
+      </div>
     </aside>
   )
 }
