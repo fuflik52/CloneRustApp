@@ -769,8 +769,10 @@ app.get('/api/player/:steamId/kills', (req, res) => {
         timestamp: l.timestamp,
         killer_steam_id: l.data.killer_steam_id,
         killer_name: killerPlayer?.steam_name || 'Unknown',
+        killer_avatar: killerPlayer?.avatar || '',
         victim_steam_id: l.data.victim_steam_id,
         victim_name: victimPlayer?.steam_name || 'Unknown',
+        victim_avatar: victimPlayer?.avatar || '',
         weapon: l.data.weapon || 'unknown',
         ammo: l.data.ammo || 'unknown',
         bone: l.data.bone || 'body',
@@ -778,7 +780,8 @@ app.get('/api/player/:steamId/kills', (req, res) => {
         old_hp: l.data.old_hp || 100,
         new_hp: l.data.new_hp || 0,
         is_headshot: l.data.is_headshot || false,
-        server: l.data.server || ''
+        server: l.data.server || '',
+        hit_history: l.data.hit_history || []
       };
     });
   
@@ -842,7 +845,7 @@ app.post('/api/kills', (req, res) => {
         : victim.stats.kills;
     }
     
-    // Логируем убийство
+    // Логируем убийство с hit_history
     addActivityLog('player_kill', {
       killer_steam_id: kill.killer_steam_id,
       victim_steam_id: kill.victim_steam_id,
@@ -850,7 +853,8 @@ app.post('/api/kills', (req, res) => {
       distance: kill.distance,
       is_headshot: kill.is_headshot,
       bone: kill.bone,
-      server: serverName || server.name
+      server: serverName || server.name,
+      hit_history: kill.hit_history || []
     });
   }
   

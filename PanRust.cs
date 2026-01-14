@@ -100,6 +100,62 @@ namespace Oxide.Plugins
             public bool is_headshot;
             public string bone;
             public long timestamp;
+            public List<CombatLogEventDto> hit_history;
+        }
+
+        // DTO для комбатлога (как в RustApp.cs)
+        public class CombatLogEventDto
+        {
+            public float time;
+            public string attacker_steam_id;
+            public string target_steam_id;
+            public string attacker;
+            public string target;
+            public string weapon;
+            public string ammo;
+            public string bone;
+            public float distance;
+            public float hp_old;
+            public float hp_new;
+            public string info;
+            public int proj_hits;
+            public float proj_integrity;
+            public float proj_travel;
+            public float proj_mismatch;
+            public int desync;
+            public bool attacker_dead;
+
+            public CombatLogEventDto(float killTime, CombatLog.Event ev)
+            {
+                if (ev.attacker == "player")
+                {
+                    var attackerEntity = BaseNetworkable.serverEntities.Find(new NetworkableId(ev.attacker_id)) as BasePlayer;
+                    this.attacker_steam_id = attackerEntity?.UserIDString ?? "";
+                }
+
+                if (ev.target == "player")
+                {
+                    var targetEntity = BaseNetworkable.serverEntities.Find(new NetworkableId(ev.target_id)) as BasePlayer;
+                    this.target_steam_id = targetEntity?.UserIDString ?? "";
+                }
+
+                this.time = killTime - ev.time;
+                this.attacker = ev.attacker;
+                this.target = ev.target;
+                this.weapon = ev.weapon;
+                this.ammo = ev.ammo;
+                this.bone = ev.bone;
+                this.distance = (float)Math.Round(ev.distance, 2);
+                this.hp_old = (float)Math.Round(ev.health_old, 2);
+                this.hp_new = (float)Math.Round(ev.health_new, 2);
+                this.info = ev.info;
+                this.proj_hits = ev.proj_hits;
+                this.proj_travel = ev.proj_travel;
+                this.desync = ev.desync;
+                this.proj_integrity = ev.proj_integrity;
+                this.proj_mismatch = ev.proj_mismatch;
+                this.attacker_dead = ev.attacker_dead;
+            }
         }
 
         #endregion
@@ -324,15 +380,18 @@ namespace Oxide.Plugins
             if (victim == null) return;
 
             var hitRecord = GetRealHitInfo(victim, info);
+            var victimUserId = victim.userID;
+            var victimSteamId = victim.UserIDString;
             
             // Обновляем статистику жертвы
-            var victimStats = GetOrCreateStats(victim.UserIDString);
+            var victimStats = GetOrCreateStats(victimSteamId);
             victimStats.deaths++;
 
             // Если убийца - игрок
             if (hitRecord.InitiatorPlayer != null && hitRecord.InitiatorPlayer != victim)
             {
-                var killerStats = GetOrCreateStats(hitRecord.InitiatorPlayer.UserIDString);
+                var killerSteamId = hitRecord.InitiatorPlayer.UserIDString;
+                var killerStats = GetOrCreateStats(killerSteamId);
                 killerStats.kills++;
 
                 // Определяем часть тела
@@ -350,20 +409,74 @@ namespace Oxide.Plugins
                         break;
                 }
 
-                // Добавляем в очередь для отправки
-                _killsQueue.Add(new KillEventDto
+                // Используем NextFrame для получения комбатлога (как в RustApp.cs)
+                NextFrame(() =>
                 {
-                    killer_steam_id = hitRecord.InitiatorPlayer.UserIDString,
-                    victim_steam_id = victim.UserIDString,
-                    weapon = hitRecord.Weapon,
-                    distance = hitRecord.Distance,
-                    is_headshot = hitRecord.IsHeadshot,
-                    bone = hitRecord.Bone,
-                    timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    var combatLog = GetCorrectCombatlog(victimUserId);
+                    
+                    _killsQueue.Add(new KillEventDto
+                    {
+                        killer_steam_id = killerSteamId,
+                        victim_steam_id = victimSteamId,
+                        weapon = hitRecord.Weapon,
+                        distance = hitRecord.Distance,
+                        is_headshot = hitRecord.IsHeadshot,
+                        bone = hitRecord.Bone,
+                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
+                        hit_history = combatLog
+                    });
                 });
             }
 
-            _woundedHits.Remove(victim.UserIDString);
+            _woundedHits.Remove(victimSteamId);
+        }
+
+        // Получение комбатлога для игрока (как в RustApp.cs)
+        private List<CombatLogEventDto> GetCorrectCombatlog(ulong targetUserId)
+        {
+            const int THRESHOLD_STREAK = 20;
+            const int THRESHOLD_MAX_LIMIT = 30;
+
+            var allCombatlogs = CombatLog.Get(targetUserId);
+
+            if (allCombatlogs == null || allCombatlogs.Count == 0)
+            {
+                return null;
+            }
+
+            var logsList = new List<CombatLog.Event>(allCombatlogs);
+            var logsLastIndex = logsList.Count - 1;
+            var killLog = logsList[logsLastIndex];
+
+            var container = new List<CombatLogEventDto>(8)
+            {
+                new CombatLogEventDto(killLog.time, killLog)
+            };
+
+            for (var i = logsLastIndex - 1; i >= 0; i--)
+            {
+                var ev = logsList[i];
+
+                if (ev.target != "player" && ev.target != "you")
+                {
+                    continue;
+                }
+
+                if (ev.info == "killed")
+                    break;
+
+                var timeSincePreviousEvent = ev.time - logsList[i + 1].time;
+                if (timeSincePreviousEvent > THRESHOLD_STREAK)
+                    break;
+
+                var timeSinceEvent = killLog.time - ev.time;
+                if (timeSinceEvent > THRESHOLD_MAX_LIMIT)
+                    break;
+
+                container.Add(new CombatLogEventDto(killLog.time, ev));
+            }
+
+            return container;
         }
 
         private HitRecord GetRealHitInfo(BasePlayer victim, HitInfo info)

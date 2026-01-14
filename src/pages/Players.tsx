@@ -52,8 +52,10 @@ interface KillEvent {
   timestamp: number
   killer_steam_id: string
   killer_name: string
+  killer_avatar?: string
   victim_steam_id: string
   victim_name: string
+  victim_avatar?: string
   weapon: string
   ammo?: string
   bone: string
@@ -62,21 +64,28 @@ interface KillEvent {
   new_hp?: number
   is_headshot: boolean
   server: string
+  hit_history?: CombatLogEntry[]
 }
 
 interface CombatLogEntry {
-  time: string
+  time: number
   attacker: string
-  attacker_id: string
+  attacker_steam_id?: string
   target: string
-  target_id: string
+  target_steam_id?: string
   weapon: string
   ammo: string
   bone: string
   distance: number
-  old_hp: number
-  new_hp: number
+  hp_old: number
+  hp_new: number
   info: string
+  proj_hits?: number
+  proj_integrity?: number
+  proj_travel?: number
+  proj_mismatch?: number
+  desync?: number
+  attacker_dead?: boolean
 }
 
 export default function Players() {
@@ -191,17 +200,24 @@ export default function Players() {
 
   // Демо данные для убийств
   const demoKills: KillEvent[] = [
-    { id: '1', timestamp: Date.now() - 3600000, killer_steam_id: selectedPlayer?.steam_id || '', killer_name: selectedPlayer?.name || 'Player', victim_steam_id: '76561198012345678', victim_name: 'дед бом-бом', weapon: 'ak47u', ammo: 'riflebullet', bone: 'head', distance: 23, old_hp: 59.32, new_hp: 0, is_headshot: true, server: 'Main' },
-    { id: '2', timestamp: Date.now() - 7200000, killer_steam_id: '76561198087654321', killer_name: 'RustKing', victim_steam_id: selectedPlayer?.steam_id || '', victim_name: selectedPlayer?.name || 'Player', weapon: 'lr300', ammo: 'riflebullet', bone: 'chest', distance: 45, old_hp: 100, new_hp: 0, is_headshot: false, server: 'Main' },
-    { id: '3', timestamp: Date.now() - 10800000, killer_steam_id: selectedPlayer?.steam_id || '', killer_name: selectedPlayer?.name || 'Player', victim_steam_id: '76561198111222333', victim_name: 'ShadowHunter', weapon: 'bolt', ammo: 'riflebullet', bone: 'head', distance: 156, old_hp: 80, new_hp: 0, is_headshot: true, server: 'Main' },
-    { id: '4', timestamp: Date.now() - 14400000, killer_steam_id: selectedPlayer?.steam_id || '', killer_name: selectedPlayer?.name || 'Player', victim_steam_id: '76561198444555666', victim_name: 'NightWolf', weapon: 'mp5', ammo: 'pistolbullet', bone: 'stomach', distance: 12, old_hp: 45, new_hp: 0, is_headshot: false, server: 'Main' },
-  ]
-
-  // Демо данные для комбатлога
-  const demoCombatLog: CombatLogEntry[] = [
-    { time: '1.01', attacker: selectedPlayer?.name || 'Player', attacker_id: selectedPlayer?.steam_id || '', target: 'дед бом-бом', target_id: '76561198012345678', weapon: 'ak47u', ammo: 'riflebullet', bone: 'head', distance: 23, old_hp: 59.32, new_hp: 0, info: 'killed' },
-    { time: '0.85', attacker: selectedPlayer?.name || 'Player', attacker_id: selectedPlayer?.steam_id || '', target: 'дед бом-бом', target_id: '76561198012345678', weapon: 'ak47u', ammo: 'riflebullet', bone: 'chest', distance: 24, old_hp: 78.50, new_hp: 59.32, info: 'hit' },
-    { time: '0.62', attacker: selectedPlayer?.name || 'Player', attacker_id: selectedPlayer?.steam_id || '', target: 'дед бом-бом', target_id: '76561198012345678', weapon: 'ak47u', ammo: 'riflebullet', bone: 'stomach', distance: 25, old_hp: 100, new_hp: 78.50, info: 'hit' },
+    { id: '1', timestamp: Date.now() - 3600000, killer_steam_id: selectedPlayer?.steam_id || '', killer_name: selectedPlayer?.name || 'Player', killer_avatar: selectedPlayer?.avatar, victim_steam_id: '76561198012345678', victim_name: 'дед бом-бом', victim_avatar: '', weapon: 'ak47u', ammo: 'riflebullet', bone: 'head', distance: 23, old_hp: 59.32, new_hp: 0, is_headshot: true, server: 'Main', hit_history: [
+      { time: 0, attacker: 'player', attacker_steam_id: selectedPlayer?.steam_id || '', target: 'player', target_steam_id: '76561198012345678', weapon: 'ak47u', ammo: 'riflebullet', bone: 'head', distance: 23, hp_old: 59.32, hp_new: 0, info: 'killed' },
+      { time: 0.16, attacker: 'player', attacker_steam_id: selectedPlayer?.steam_id || '', target: 'player', target_steam_id: '76561198012345678', weapon: 'ak47u', ammo: 'riflebullet', bone: 'chest', distance: 24, hp_old: 78.50, hp_new: 59.32, info: 'hit' },
+      { time: 0.38, attacker: 'player', attacker_steam_id: selectedPlayer?.steam_id || '', target: 'player', target_steam_id: '76561198012345678', weapon: 'ak47u', ammo: 'riflebullet', bone: 'stomach', distance: 25, hp_old: 100, hp_new: 78.50, info: 'hit' },
+    ] },
+    { id: '2', timestamp: Date.now() - 7200000, killer_steam_id: '76561198087654321', killer_name: 'RustKing', killer_avatar: '', victim_steam_id: selectedPlayer?.steam_id || '', victim_name: selectedPlayer?.name || 'Player', victim_avatar: selectedPlayer?.avatar, weapon: 'lr300', ammo: 'riflebullet', bone: 'chest', distance: 45, old_hp: 100, new_hp: 0, is_headshot: false, server: 'Main', hit_history: [
+      { time: 0, attacker: 'player', attacker_steam_id: '76561198087654321', target: 'player', target_steam_id: selectedPlayer?.steam_id || '', weapon: 'lr300', ammo: 'riflebullet', bone: 'chest', distance: 45, hp_old: 35.20, hp_new: 0, info: 'killed' },
+      { time: 0.12, attacker: 'player', attacker_steam_id: '76561198087654321', target: 'player', target_steam_id: selectedPlayer?.steam_id || '', weapon: 'lr300', ammo: 'riflebullet', bone: 'stomach', distance: 44, hp_old: 68.40, hp_new: 35.20, info: 'hit' },
+      { time: 0.24, attacker: 'player', attacker_steam_id: '76561198087654321', target: 'player', target_steam_id: selectedPlayer?.steam_id || '', weapon: 'lr300', ammo: 'riflebullet', bone: 'chest', distance: 46, hp_old: 100, hp_new: 68.40, info: 'hit' },
+    ] },
+    { id: '3', timestamp: Date.now() - 10800000, killer_steam_id: selectedPlayer?.steam_id || '', killer_name: selectedPlayer?.name || 'Player', killer_avatar: selectedPlayer?.avatar, victim_steam_id: '76561198111222333', victim_name: 'ShadowHunter', victim_avatar: '', weapon: 'bolt', ammo: 'riflebullet', bone: 'head', distance: 156, old_hp: 80, new_hp: 0, is_headshot: true, server: 'Main', hit_history: [
+      { time: 0, attacker: 'player', attacker_steam_id: selectedPlayer?.steam_id || '', target: 'player', target_steam_id: '76561198111222333', weapon: 'bolt', ammo: 'riflebullet', bone: 'head', distance: 156, hp_old: 80, hp_new: 0, info: 'killed' },
+    ] },
+    { id: '4', timestamp: Date.now() - 14400000, killer_steam_id: selectedPlayer?.steam_id || '', killer_name: selectedPlayer?.name || 'Player', killer_avatar: selectedPlayer?.avatar, victim_steam_id: '76561198444555666', victim_name: 'NightWolf', victim_avatar: '', weapon: 'mp5', ammo: 'pistolbullet', bone: 'stomach', distance: 12, old_hp: 45, new_hp: 0, is_headshot: false, server: 'Main', hit_history: [
+      { time: 0, attacker: 'player', attacker_steam_id: selectedPlayer?.steam_id || '', target: 'player', target_steam_id: '76561198444555666', weapon: 'mp5', ammo: 'pistolbullet', bone: 'stomach', distance: 12, hp_old: 45, hp_new: 0, info: 'killed' },
+      { time: 0.08, attacker: 'player', attacker_steam_id: selectedPlayer?.steam_id || '', target: 'player', target_steam_id: '76561198444555666', weapon: 'mp5', ammo: 'pistolbullet', bone: 'chest', distance: 11, hp_old: 72, hp_new: 45, info: 'hit' },
+      { time: 0.16, attacker: 'player', attacker_steam_id: selectedPlayer?.steam_id || '', target: 'player', target_steam_id: '76561198444555666', weapon: 'mp5', ammo: 'pistolbullet', bone: 'arm', distance: 13, hp_old: 100, hp_new: 72, info: 'hit' },
+    ] },
   ]
 
   const getDisplayStats = () => {
@@ -715,7 +731,7 @@ export default function Players() {
                 )}
 
                 {/* Combat Log Modal */}
-                {combatLogOpen && (
+                {combatLogOpen && selectedKillForCombat && (
                   <div className="combatlog-modal-overlay" onClick={() => setCombatLogOpen(false)}>
                     <div className="combatlog-modal" onClick={e => e.stopPropagation()}>
                       <div className="combatlog-header">
@@ -742,20 +758,28 @@ export default function Players() {
                               </tr>
                             </thead>
                             <tbody>
-                              {demoCombatLog.map((entry, idx) => (
-                                <tr key={idx}>
-                                  <td>{entry.time}</td>
-                                  <td>{entry.attacker}</td>
-                                  <td className="target-cell">{entry.target}</td>
-                                  <td>{entry.weapon}</td>
-                                  <td>{entry.ammo}</td>
-                                  <td className={entry.bone === 'head' ? 'bone-head' : ''}>{entry.bone}</td>
-                                  <td>{entry.distance.toFixed(2)}</td>
-                                  <td>{entry.old_hp.toFixed(2)}</td>
-                                  <td>{entry.new_hp.toFixed(2)}</td>
-                                  <td>{entry.info}</td>
+                              {(selectedKillForCombat.hit_history || []).length === 0 ? (
+                                <tr>
+                                  <td colSpan={10} style={{ textAlign: 'center', padding: '20px', color: 'rgba(255,255,255,0.5)' }}>
+                                    Нет данных комбатлога
+                                  </td>
                                 </tr>
-                              ))}
+                              ) : (
+                                (selectedKillForCombat.hit_history || []).map((entry, idx) => (
+                                  <tr key={idx}>
+                                    <td>{typeof entry.time === 'number' ? entry.time.toFixed(2) : entry.time}</td>
+                                    <td>{entry.attacker === 'player' ? (entry.attacker_steam_id === selectedKillForCombat.killer_steam_id ? selectedKillForCombat.killer_name : selectedKillForCombat.victim_name) : entry.attacker}</td>
+                                    <td className="target-cell">{entry.target === 'player' ? (entry.target_steam_id === selectedKillForCombat.victim_steam_id ? selectedKillForCombat.victim_name : selectedKillForCombat.killer_name) : entry.target}</td>
+                                    <td>{entry.weapon}</td>
+                                    <td>{entry.ammo}</td>
+                                    <td className={entry.bone === 'head' ? 'bone-head' : ''}>{entry.bone}</td>
+                                    <td>{entry.distance.toFixed(2)}</td>
+                                    <td>{entry.hp_old.toFixed(2)}</td>
+                                    <td>{entry.hp_new.toFixed(2)}</td>
+                                    <td>{entry.info}</td>
+                                  </tr>
+                                ))
+                              )}
                             </tbody>
                           </table>
                         </div>
@@ -767,14 +791,22 @@ export default function Players() {
                         <div className="combatlog-players">
                           <div className="combatlog-player">
                             <div className="combatlog-player-avatar">
-                              <img src={selectedPlayer?.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                              <img src={selectedKillForCombat.killer_avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
                             </div>
                             <div className="combatlog-player-info">
-                              <span className="combatlog-player-name">{selectedPlayer?.name}</span>
-                              <span className="combatlog-player-id">{selectedPlayer?.steam_id}</span>
+                              <span className="combatlog-player-name">{selectedKillForCombat.killer_name}</span>
+                              <span className="combatlog-player-id">{selectedKillForCombat.killer_steam_id}</span>
                             </div>
                           </div>
-                          <div className="combatlog-player-empty"></div>
+                          <div className="combatlog-player">
+                            <div className="combatlog-player-avatar">
+                              <img src={selectedKillForCombat.victim_avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                            </div>
+                            <div className="combatlog-player-info">
+                              <span className="combatlog-player-name">{selectedKillForCombat.victim_name}</span>
+                              <span className="combatlog-player-id">{selectedKillForCombat.victim_steam_id}</span>
+                            </div>
+                          </div>
                           <div className="combatlog-player-empty"></div>
                           <div className="combatlog-player-empty"></div>
                         </div>
