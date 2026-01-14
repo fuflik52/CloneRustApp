@@ -467,30 +467,6 @@ export default function Players() {
                   <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}/`} target="_blank" rel="noopener noreferrer" className="modal-action-btn"><SteamIcon /></a>
                   <button className="modal-action-btn" onClick={handleContextMenu}><MoreIcon /></button>
                 </div>
-                {contextMenu && (
-                  <div 
-                    ref={contextMenuRef}
-                    className="player-context-menu"
-                    style={{ left: contextMenu.x, top: contextMenu.y }}
-                  >
-                    <button className="context-menu-item" onClick={() => { copyToClipboard(selectedPlayer.steam_id); setContextMenu(null) }}>
-                      <CopySmallIcon /> Скопировать SteamID
-                    </button>
-                    <button className="context-menu-item" onClick={goToPlayerChat}>
-                      <ChatIcon /> Сообщения
-                    </button>
-                    <div className="context-menu-divider" />
-                    <button className="context-menu-item destructive" onClick={() => { setShowMuteModal(true); setContextMenu(null) }}>
-                      <MutesIcon /> Выдать мут
-                    </button>
-                    <button className="context-menu-item destructive" onClick={() => { setShowKickModal(true); setContextMenu(null) }}>
-                      <KickIcon /> Кикнуть
-                    </button>
-                    <button className="context-menu-item destructive" onClick={() => { setShowBanModal(true); setContextMenu(null) }}>
-                      <BansIcon /> Заблокировать
-                    </button>
-                  </div>
-                )}
               </div>
               <div className="modal-menu-items">
                 <div className={`modal-menu-item ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}><OverviewIcon /> Обзор</div>
@@ -1042,6 +1018,32 @@ export default function Players() {
               <button className="btn-action destructive" onClick={handleKick}>Кикнуть</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Context Menu */}
+      {contextMenu && selectedPlayer && (
+        <div 
+          ref={contextMenuRef}
+          className="player-context-menu"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+        >
+          <button className="context-menu-item" onClick={() => { copyToClipboard(selectedPlayer.steam_id); setContextMenu(null) }}>
+            <CopySmallIcon /> Скопировать SteamID
+          </button>
+          <button className="context-menu-item" onClick={goToPlayerChat}>
+            <ChatIcon /> Сообщения
+          </button>
+          <div className="context-menu-divider" />
+          <button className="context-menu-item destructive" onClick={() => { setShowMuteModal(true); setContextMenu(null) }}>
+            <MutesIcon /> Выдать мут
+          </button>
+          <button className="context-menu-item destructive" onClick={() => { setShowKickModal(true); setContextMenu(null) }}>
+            <KickIcon /> Кикнуть
+          </button>
+          <button className="context-menu-item destructive" onClick={() => { setShowBanModal(true); setContextMenu(null) }}>
+            <BansIcon /> Заблокировать
+          </button>
         </div>
       )}
     </div>

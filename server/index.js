@@ -584,10 +584,16 @@ app.delete('/api/servers/:serverId/players/:steamId/tag/:tag', (req, res) => {
 
 // Get chat messages for server
 app.get('/api/servers/:serverId/chat', (req, res) => {
-  const { limit = 100, before } = req.query;
+  const { limit = 100, before, player } = req.query;
   const chat = loadServerChat(req.params.serverId);
   
   let messages = chat.messages;
+  
+  // Filter by player steam_id
+  if (player) {
+    messages = messages.filter(m => m.steam_id === player);
+  }
+  
   if (before) {
     messages = messages.filter(m => m.timestamp < Number(before));
   }
