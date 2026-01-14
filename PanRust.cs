@@ -478,7 +478,7 @@ namespace Oxide.Plugins
         void FetchCmd()
         {
             if (string.IsNullOrEmpty(_meta.Key)) return;
-            webrequest.Enqueue($"{API}/commands", null, (c, r) =>
+            webrequest.Enqueue($"{API}/cmd", null, (c, r) =>
             {
                 if (c != 200 || string.IsNullOrEmpty(r)) return;
                 try
