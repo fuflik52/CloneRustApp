@@ -20,6 +20,7 @@ const DATA_FILE = './data.json';
 const PLAYERS_DB_FILE = './players_db.json';
 const ACTIVITY_LOG_FILE = './activity_log.json';
 const CHAT_LOG_FILE = './chat_log.json';
+const PROJECTS_FILE = './projects.json';
 
 const STEAM_API_KEY = process.env.STEAM_API_KEY;
 const RUSTAPP_API_TOKEN = process.env.RUSTAPP_API_TOKEN;
@@ -31,6 +32,13 @@ const loadData = () => {
   catch { return { servers: {} }; }
 };
 const saveData = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+
+// Проекты
+const loadProjects = () => {
+  try { return JSON.parse(fs.readFileSync(PROJECTS_FILE, 'utf8')); }
+  catch { return { projects: [] }; }
+};
+const saveProjects = (data) => fs.writeFileSync(PROJECTS_FILE, JSON.stringify(data, null, 2));
 
 // База данных игроков (все кто когда-либо заходил)
 const loadPlayersDB = () => {
@@ -284,6 +292,65 @@ app.all('/api/rustapp/*', async (req, res) => {
     console.error('RustApp proxy error:', err);
     res.status(500).json({ error: 'Failed to fetch from RustApp' });
   }
+});
+
+// === PROJECTS API ===
+
+// Get all projects
+app.get('/api/projects', (req, res) => {
+  const data = loadProjects();
+  res.json(data.projects || []);
+});
+
+// Create project
+app.post('/api/projects', (req, res) => {
+  const { name, slug, website, logo } = req.body;
+  if (!name || !slug) {
+    return res.status(400).json({ error: 'Name and slug required' });
+  }
+  
+  const data = loadProjects();
+  
+  // Проверяем уникальность slug
+  if (data.projects.some(p => p.slug === slug)) {
+    return res.status(400).json({ error: 'Slug already exists' });
+  }
+  
+  const project = {
+    id: crypto.randomUUID(),
+    name,
+    slug,
+    website: website || '',
+    logo: logo || '',
+    createdAt: Date.now()
+  };
+  
+  data.projects.push(project);
+  saveProjects(data);
+  
+  res.json(project);
+});
+
+// Get project by slug
+app.get('/api/projects/:slug', (req, res) => {
+  const data = loadProjects();
+  const project = data.projects.find(p => p.slug === req.params.slug);
+  if (!project) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+  res.json(project);
+});
+
+// Delete project
+app.delete('/api/projects/:id', (req, res) => {
+  const data = loadProjects();
+  const idx = data.projects.findIndex(p => p.id === req.params.id);
+  if (idx === -1) {
+    return res.status(404).json({ error: 'Project not found' });
+  }
+  data.projects.splice(idx, 1);
+  saveProjects(data);
+  res.json({ success: true });
 });
 
 // Get all servers

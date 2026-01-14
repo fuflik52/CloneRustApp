@@ -1,39 +1,102 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-interface Server {
+interface Project {
   id: string
   name: string
-  hostname: string
-  secretKey: string
-  online: number
-  maxPlayers: number
-  status: string
+  slug: string
+  website?: string
   logo?: string
+  createdAt: number
 }
 
 export default function Profile() {
-  const [servers, setServers] = useState<Server[]>([])
+  const [projects, setProjects] = useState<Project[]>([])
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [projectName, setProjectName] = useState('')
+  const [projectSlug, setProjectSlug] = useState('')
+  const [projectWebsite, setProjectWebsite] = useState('')
+  const [projectLogo, setProjectLogo] = useState<string | null>(null)
+  const [creating, setCreating] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const fetchServers = async () => {
+    const fetchProjects = async () => {
       try {
-        const res = await fetch('/api/servers')
+        const res = await fetch('/api/projects')
         if (res.ok) {
           const data = await res.json()
-          setServers(data)
+          setProjects(data)
         }
       } catch {}
     }
-    fetchServers()
+    fetchProjects()
   }, [])
 
-  const handleServerClick = (server: Server) => {
-    // Создаём slug из имени сервера
-    const slug = server.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-    localStorage.setItem('selectedServer', slug)
-    navigate(`/${slug}/welcome`)
+  // Автогенерация slug из названия
+  useEffect(() => {
+    if (projectName) {
+      const slug = projectName
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[^a-z0-9]/g, '')
+      setProjectSlug(slug)
+    }
+  }, [projectName])
+
+  const handleProjectClick = (project: Project) => {
+    localStorage.setItem('selectedProject', project.slug)
+    navigate(`/${project.slug}/welcome`)
+  }
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        setProjectLogo(e.target?.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
+  }
+
+  const handleCreateProject = async () => {
+    if (!projectName.trim() || !projectSlug.trim()) return
+    
+    setCreating(true)
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: projectName,
+          slug: projectSlug,
+          website: projectWebsite,
+          logo: projectLogo
+        })
+      })
+      if (res.ok) {
+        const newProject = await res.json()
+        setProjects([...projects, newProject])
+        setShowCreateModal(false)
+        setProjectName('')
+        setProjectSlug('')
+        setProjectWebsite('')
+        setProjectLogo(null)
+        // Переходим в новый проект
+        navigate(`/${newProject.slug}/welcome`)
+      }
+    } catch {}
+    setCreating(false)
+  }
+
+  const closeModal = () => {
+    setShowCreateModal(false)
+    setProjectName('')
+    setProjectSlug('')
+    setProjectWebsite('')
+    setProjectLogo(null)
   }
 
   return (
@@ -49,25 +112,25 @@ export default function Profile() {
 
         <div className="profile-content">
           <div className="profile-projects">
-            {servers.length === 0 ? (
+            {projects.length === 0 ? (
               <div className="profile-empty">
-                <p>Нет подключенных серверов</p>
-                <span>Добавьте сервер на странице "Сервера"</span>
+                <p>Нет проектов</p>
+                <span>Создайте свой первый проект</span>
               </div>
             ) : (
-              servers.map(server => (
-                <div key={server.id} className="profile-project" onClick={() => handleServerClick(server)}>
+              projects.map(project => (
+                <div key={project.id} className="profile-project" onClick={() => handleProjectClick(project)}>
                   <div className="project-info">
                     <div className="project-logo">
-                      {server.logo ? (
-                        <img src={server.logo} alt="" />
+                      {project.logo ? (
+                        <img src={project.logo} alt="" />
                       ) : (
-                        <ServerIcon />
+                        <DefaultProjectIcon />
                       )}
                     </div>
                     <div className="project-details">
-                      <p className="project-name">{server.name}</p>
-                      <p className="project-url">app.bublickrust.ru/{server.name.toLowerCase().replace(/\s+/g, '')}</p>
+                      <p className="project-name">{project.name}</p>
+                      <p className="project-url">app.bublickrust.ru/{project.slug}</p>
                     </div>
                   </div>
                   <ArrowIcon />
@@ -77,7 +140,7 @@ export default function Profile() {
           </div>
 
           <div className="profile-buttons">
-            <button className="profile-btn primary" onClick={() => navigate('/servers')}>
+            <button className="profile-btn primary" onClick={() => setShowCreateModal(true)}>
               <PlusIcon />
               <p>Создать новый проект</p>
             </button>
@@ -92,14 +155,88 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно создания проекта */}
+      {showCreateModal && (
+        <div className="modal-overlay" onClick={closeModal}>
+          <div className="create-project-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span>Новый проект</span>
+            </div>
+            <div className="modal-content">
+              <div className="input-group">
+                <label>Название проекта</label>
+                <input 
+                  type="text"
+                  placeholder="Null Rust"
+                  value={projectName}
+                  onChange={e => setProjectName(e.target.value)}
+                  autoFocus
+                />
+              </div>
+              <div className="input-group">
+                <label>Ссылка</label>
+                <div className="input-with-prefix">
+                  <span className="input-prefix">app.bublickrust.ru/</span>
+                  <input 
+                    type="text"
+                    placeholder="nullrust"
+                    value={projectSlug}
+                    onChange={e => setProjectSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                  />
+                </div>
+              </div>
+              <div className="input-group">
+                <label>Сайт проекта</label>
+                <input 
+                  type="text"
+                  placeholder="https://nullrust.com"
+                  value={projectWebsite}
+                  onChange={e => setProjectWebsite(e.target.value)}
+                />
+              </div>
+              <div className="upload-area" onClick={() => fileInputRef.current?.click()}>
+                <div className="upload-preview">
+                  {projectLogo ? (
+                    <img src={projectLogo} alt="" />
+                  ) : (
+                    <CameraIcon />
+                  )}
+                </div>
+                <div className="upload-text">
+                  <p className="upload-title">Загрузите логотип проекта</p>
+                  <span className="upload-subtitle">PNG, JPEG или GIF (не более 10MB)</span>
+                </div>
+                <input 
+                  ref={fileInputRef}
+                  type="file" 
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  style={{ display: 'none' }}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={closeModal}>Закрыть</button>
+              <button 
+                className="btn-primary" 
+                onClick={handleCreateProject}
+                disabled={!projectName.trim() || !projectSlug.trim() || creating}
+              >
+                {creating ? 'Создание...' : 'Создать'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function ServerIcon() {
+function DefaultProjectIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M4 1h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V3a2 2 0 0 1 2-2m0 6h16V3H4v4m0 8h16a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2m0 6h16v-4H4v4M9 5h2v2H9V5m0 10h2v2H9v-2M5 5h2v2H5V5m0 10h2v2H5v-2z"/>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>
     </svg>
   )
 }
@@ -132,6 +269,14 @@ function LogoutIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path fillRule="evenodd" clipRule="evenodd" d="M3 5C3 3.89543 3.89543 3 5 3L11.25 3C11.8023 3 12.25 3.44772 12.25 4C12.25 4.55229 11.8023 5 11.25 5L5 5L5 19H11.25C11.8023 19 12.25 19.4477 12.25 20C12.25 20.5523 11.8023 21 11.25 21H5C3.89543 21 3 20.1046 3 19L3 5ZM14.7929 6.79289C15.1834 6.40237 15.8166 6.40237 16.2071 6.79289L20.7071 11.2929C21.0976 11.6834 21.0976 12.3166 20.7071 12.7071L16.2071 17.2071C15.8166 17.5976 15.1834 17.5976 14.7929 17.2071C14.4024 16.8166 14.4024 16.1834 14.7929 15.7929L17.5858 13L8.75 13C8.19772 13 7.75 12.5523 7.75 12C7.75 11.4477 8.19772 11 8.75 11L17.5858 11L14.7929 8.20711C14.4024 7.81658 14.4024 7.18342 14.7929 6.79289Z"/>
+    </svg>
+  )
+}
+
+function CameraIcon() {
+  return (
+    <svg viewBox="0 0 49 49" fill="currentColor">
+      <path d="M29.0711 6.08691C31.0111 6.10689 32.5911 7.10578 33.5111 8.90378C33.7486 9.37826 34.0798 10.0712 34.4267 10.8023L34.8455 11.6862L35.0511 12.1202L35.2511 12.5597C35.3311 12.6996 35.4711 12.7995 35.6511 12.7995C40.4511 12.7995 44.3711 16.7151 44.3711 21.5098V33.3766C44.3711 38.1713 40.4511 42.0869 35.6511 42.0869H13.0911C8.27109 42.0869 4.37109 38.1713 4.37109 33.3766V21.5098C4.37109 16.7151 8.27109 12.7995 13.0911 12.7995C13.2511 12.7995 13.4111 12.7195 13.4711 12.5597L13.5911 12.32C14.1511 11.1413 14.8311 9.7029 15.2311 8.90378C16.1511 7.10578 17.7111 6.10689 19.6511 6.08691H29.0711ZM24.3711 18.8927C22.2711 18.8927 20.2911 19.7118 18.7911 21.2101C17.3111 22.7084 16.4911 24.6663 16.5111 26.744C16.5111 28.8416 17.3311 30.7995 18.8111 32.2978C20.3111 33.7761 22.2711 34.5952 24.3711 34.5952C26.5311 34.5952 28.4911 33.7162 29.9111 32.2978C31.3311 30.8794 32.2111 28.9215 32.2311 26.744C32.2311 24.6663 31.4111 22.6885 29.9311 21.1901C28.4511 19.7118 26.4711 18.8927 24.3711 18.8927ZM24.3711 21.8894C25.6711 21.8894 26.8911 22.3888 27.8111 23.3078C28.7311 24.2268 29.2311 25.4454 29.2311 26.744C29.2111 29.421 27.0511 31.5986 24.3711 31.5986C23.0711 31.5986 21.8511 31.0991 20.9311 30.1801C20.0111 29.2612 19.5111 28.0425 19.5111 26.744V26.724C19.4911 25.4654 19.9911 24.2467 20.9111 23.3278C21.8511 22.3888 23.0711 21.8894 24.3711 21.8894ZM35.5911 18.4132C34.5911 18.4132 33.7911 19.2323 33.7911 20.2312C33.7911 21.2301 34.5911 22.0292 35.5911 22.0292C36.5911 22.0292 37.4111 21.2301 37.4111 20.2312C37.4111 19.2323 36.5911 18.4132 35.5911 18.4132Z"/>
     </svg>
   )
 }
