@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 
 interface ChatMessage {
@@ -15,76 +15,56 @@ interface ChatMessage {
   date: string
 }
 
-interface Player {
-  steam_id: string
-  steam_name: string
-  avatar: string
-  country?: string
-  countryCode?: string
-  city?: string
-  provider?: string
-  ips_history?: { ip: string }[]
-}
-
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
-  const [playerModalOpen, setPlayerModalOpen] = useState(false)
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{id: string, x: number, y: number} | null>(null)
   const { showToast } = useToast()
+  const navigate = useNavigate()
   const chatEndRef = useRef<HTMLDivElement>(null)
+  const messagesRef = useRef<ChatMessage[]>([])
   const playerSteamId = searchParams.get('player')
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const url = playerSteamId 
-          ? `/api/chat/player/${playerSteamId}?limit=200`
-          : '/api/chat?limit=200'
-        const res = await fetch(url)
-        if (res.ok) {
-          const data = await res.json()
-          setMessages(playerSteamId ? data : data.messages)
+  // Загрузка сообщений
+  const fetchMessages = async () => {
+    try {
+      const url = playerSteamId 
+        ? `/api/chat/player/${playerSteamId}?limit=200`
+        : '/api/chat?limit=200'
+      const res = await fetch(url)
+      if (res.ok) {
+        const data = await res.json()
+        const newMessages = playerSteamId ? data : data.messages
+        // Проверяем есть ли новые сообщения
+        if (JSON.stringify(newMessages) !== JSON.stringify(messagesRef.current)) {
+          messagesRef.current = newMessages
+          setMessages(newMessages)
         }
-      } catch {}
-    }
+      }
+    } catch {}
+  }
+
+
+  useEffect(() => {
     fetchMessages()
-    const interval = setInterval(fetchMessages, 3000)
+    // Обновляем каждую секунду для real-time
+    const interval = setInterval(fetchMessages, 1000)
     return () => clearInterval(interval)
   }, [playerSteamId])
-
 
   useEffect(() => {
     scrollToBottom()
   }, [messages])
 
-  // Загружаем данные игрока при клике на ник
-  const handlePlayerClick = async (steamId: string) => {
-    try {
-      const res = await fetch(`/api/players/db/${steamId}`)
-      if (res.ok) {
-        const player = await res.json()
-        setSelectedPlayer(player)
-        setPlayerModalOpen(true)
-        // Обновляем URL
-        setSearchParams({ player: steamId })
-      }
-    } catch {
-      showToast('Игрок не найден', 'error')
-    }
-  }
-
-  const handleClosePlayerModal = () => {
-    setPlayerModalOpen(false)
-    setSelectedPlayer(null)
-    setSearchParams({})
+  // Открыть профиль игрока на странице Players
+  const handlePlayerClick = (steamId: string) => {
+    navigate(`/players?player=${steamId}`)
   }
 
   const handleSendMessage = async () => {
@@ -95,14 +75,16 @@ export default function Chat() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          steam_id: playerSteamId || undefined,
+          target_steam_id: playerSteamId || null,
           message: inputMessage,
           is_global: !playerSteamId
         })
       })
       if (res.ok) {
         setInputMessage('')
-        showToast('Сообщение отправлено')
+        showToast('Сообщение отправлено в игру')
+        // Сразу обновляем чат
+        fetchMessages()
       }
     } catch {
       showToast('Ошибка отправки', 'error')
@@ -138,6 +120,12 @@ export default function Chat() {
 
   return (
     <div className="chat-page">
+      {playerSteamId && (
+        <div className="chat-filter-bar">
+          <span>Сообщения игрока: {playerSteamId}</span>
+          <button onClick={() => setSearchParams({})}>Показать все</button>
+        </div>
+      )}
       <div className="chat-container">
         <div className="chat-messages">
           {messages.length === 0 ? (
@@ -157,7 +145,7 @@ export default function Chat() {
               >
                 {hoveredMessage === msg.id && (
                   <div className="message-actions">
-                    <button className="action-btn" title="Ответить в ЛС" onClick={() => handlePlayerClick(msg.steam_id)}>
+                    <button className="action-btn" title="Открыть профиль" onClick={() => handlePlayerClick(msg.steam_id)}>
                       <ReplyIcon />
                     </button>
                     <button className="action-btn destructive" title="Выдать мут">
@@ -196,10 +184,10 @@ export default function Chat() {
         </div>
 
         <div className="chat-input-area">
-          <span className="input-hint">?</span>
+          <span className="input-hint" title="Сообщение будет отправлено в игру">?</span>
           <input
             type="text"
-            placeholder="Введите сообщение..."
+            placeholder={playerSteamId ? "Написать игроку в ЛС..." : "Написать в глобальный чат..."}
             value={inputMessage}
             onChange={e => setInputMessage(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
@@ -221,7 +209,7 @@ export default function Chat() {
             const msg = messages.find(m => m.id === contextMenu.id)
             if (msg) handlePlayerClick(msg.steam_id)
           }}>
-            Ответить
+            Открыть профиль
           </button>
           <button onClick={() => {
             const msg = messages.find(m => m.id === contextMenu.id)
@@ -231,85 +219,18 @@ export default function Chat() {
           </button>
           <button onClick={() => {
             const msg = messages.find(m => m.id === contextMenu.id)
-            if (msg) {
-              setSearchParams({ player: msg.steam_id })
-            }
+            if (msg) setSearchParams({ player: msg.steam_id })
           }}>
-            Все сообщения
+            Все сообщения игрока
           </button>
           <button className="destructive">
             Выдать мут
           </button>
         </div>
       )}
-
-      {/* Player Modal */}
-      {playerModalOpen && selectedPlayer && (
-        <div className="player-modal-overlay" onClick={handleClosePlayerModal}>
-          <div className="player-modal" onClick={e => e.stopPropagation()}>
-            <div className="player-modal-nav">
-              <div className="modal-nav-header">
-                <div className="modal-player-card">
-                  <div className="modal-player-avatar">
-                    <img src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
-                  </div>
-                  <div className="modal-player-info">
-                    <span className="modal-player-name">{selectedPlayer.steam_name}</span>
-                    <span className="modal-player-status">{selectedPlayer.steam_id}</span>
-                  </div>
-                </div>
-                <div className="modal-action-btns">
-                  <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}/`} target="_blank" className="modal-action-btn">
-                    <SteamIcon />
-                  </a>
-                </div>
-              </div>
-              <div className="modal-menu-items">
-                <div className="modal-menu-item active"><OverviewIcon /> Обзор</div>
-              </div>
-            </div>
-            <div className="player-modal-content">
-              <div className="modal-content-header">
-                <button className="modal-close-btn" onClick={handleClosePlayerModal}>
-                  <CloseIcon />
-                </button>
-              </div>
-              <div className="modal-content-body">
-                <div className="modal-info-card">
-                  <div className="modal-card-title">Об игроке</div>
-                  <div className="modal-card-grid">
-                    <div className="modal-card-cell">
-                      <span className="cell-label">SteamID</span>
-                      <div className="cell-value-actions">
-                        <span className="cell-value-white">{selectedPlayer.steam_id}</span>
-                        <button className="cell-action-btn" onClick={() => copyToClipboard(selectedPlayer.steam_id)}>
-                          <CopyIcon />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="modal-card-cell">
-                      <span className="cell-label">IP адрес</span>
-                      <span className="cell-value">{selectedPlayer.ips_history?.[0]?.ip || 'N/A'}</span>
-                    </div>
-                    <div className="modal-card-cell">
-                      <span className="cell-label">Страна</span>
-                      <span className="cell-value">{selectedPlayer.country || 'N/A'}</span>
-                    </div>
-                    <div className="modal-card-cell">
-                      <span className="cell-label">Город</span>
-                      <span className="cell-value">{selectedPlayer.city || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
-
 
 // Icons
 function ChatEmptyIcon() {
@@ -323,7 +244,7 @@ function ChatEmptyIcon() {
 function ReplyIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M11.9993 4.74371C11.9993 3.20733 10.1611 2.41665 9.04577 3.4733L1.38629 10.7296C0.657697 11.4199 0.657693 12.5802 1.38629 13.2705L9.04577 20.5268C10.1611 21.5835 11.9993 20.7928 11.9993 19.2564V16.5077C15.4173 16.5617 17.3248 16.9005 18.5115 17.4405C19.708 17.985 20.2451 18.7648 20.918 20.0773C21.4759 21.1658 23.0084 20.6606 22.9971 19.5622C22.9545 15.431 22.2976 12.3156 20.3178 10.275C18.4876 8.38862 15.7291 7.62495 11.9993 7.51439V4.74371Z"/>
+      <path d="M12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4ZM12 14C8.67 14 2 15.67 2 19V20C2 20.55 2.45 21 3 21H21C21.55 21 22 20.55 22 20V19C22 15.67 15.33 14 12 14Z"/>
     </svg>
   )
 }
@@ -349,38 +270,6 @@ function SendIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor">
       <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
-    </svg>
-  )
-}
-
-function SteamIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3l-.5 3H13v6.95c5.05-.5 9-4.76 9-9.95 0-5.52-4.48-10-10-10z"/>
-    </svg>
-  )
-}
-
-function OverviewIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V5h14v14z"/>
-    </svg>
-  )
-}
-
-function CloseIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor">
-      <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
-    </svg>
-  )
-}
-
-function CopyIcon() {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14">
-      <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
     </svg>
   )
 }

@@ -307,3 +307,35 @@
     padding: 8px;
   }
 }
+
+
+/* Chat Filter Bar */
+.chat-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: #252525;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.chat-filter-bar span {
+  color: #888;
+  font-size: 13px;
+}
+
+.chat-filter-bar button {
+  background: #333;
+  border: none;
+  color: #0099ff;
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.chat-filter-bar button:hover {
+  background: #3a3a3a;
+}

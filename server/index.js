@@ -769,9 +769,18 @@ app.get('/api/chat', (req, res) => {
   res.json({ messages, total });
 });
 
+// Очередь команд для плагина (сообщения админа в игру)
+const COMMANDS_QUEUE_FILE = './commands_queue.json';
+
+const loadCommandsQueue = () => {
+  try { return JSON.parse(fs.readFileSync(COMMANDS_QUEUE_FILE, 'utf8')); }
+  catch { return { commands: [] }; }
+};
+const saveCommandsQueue = (data) => fs.writeFileSync(COMMANDS_QUEUE_FILE, JSON.stringify(data, null, 2));
+
 // Send message to player (admin -> player)
 app.post('/api/chat/send', (req, res) => {
-  const { steam_id, message, is_global } = req.body;
+  const { target_steam_id, message, is_global } = req.body;
   
   if (!message) {
     return res.status(400).json({ error: 'Message required' });
@@ -779,28 +788,56 @@ app.post('/api/chat/send', (req, res) => {
   
   const chatLog = loadChatLog();
   
-  // Сохраняем сообщение админа
+  // Сохраняем сообщение админа в лог чата
   chatLog.messages.push({
     id: crypto.randomUUID(),
-    steam_id: steam_id || 'admin',
+    steam_id: 'admin',
     name: 'Администратор',
     avatar: '',
     message: message,
     is_team: false,
     is_admin: true,
     is_global: is_global || false,
-    target_steam_id: steam_id,
+    target_steam_id: target_steam_id || null,
     server: 'Panel',
     timestamp: Date.now(),
     date: new Date().toISOString()
   });
-  
   saveChatLog(chatLog);
   
-  // TODO: Отправить сообщение на сервер через очередь команд
-  // Пока просто сохраняем в лог
+  // Добавляем команду в очередь для плагина
+  const queue = loadCommandsQueue();
+  queue.commands.push({
+    id: crypto.randomUUID(),
+    type: 'chat_message',
+    target_steam_id: target_steam_id || null,
+    message: message,
+    is_global: !target_steam_id,
+    timestamp: Date.now()
+  });
+  saveCommandsQueue(queue);
   
   res.json({ success: true });
+});
+
+// Плагин забирает команды из очереди
+app.get('/api/commands', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const key = auth.slice(7);
+  const data = loadData();
+  const server = Object.values(data.servers).find(s => s.secretKey === key);
+  if (!server) return res.status(401).json({ error: 'Invalid key' });
+  
+  const queue = loadCommandsQueue();
+  const commands = queue.commands;
+  
+  // Очищаем очередь после получения
+  queue.commands = [];
+  saveCommandsQueue(queue);
+  
+  res.json({ commands });
 });
 
 // Get chat messages for specific player

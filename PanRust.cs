@@ -117,6 +117,7 @@ namespace Oxide.Plugins
                 
                 timer.Every(_config.UpdateInterval, () => SendStateUpdate());
                 timer.Every(_config.ChatUpdateInterval, () => SendChatMessages());
+                timer.Every(1f, () => FetchCommands()); // Проверяем команды каждую секунду
             }
         }
 
@@ -326,6 +327,76 @@ namespace Oxide.Plugins
                 ["Content-Type"] = "application/json",
                 ["Authorization"] = $"Bearer {_metaInfo.SecretKey}"
             });
+        }
+
+        // Получаем команды от панели (сообщения админа)
+        private void FetchCommands()
+        {
+            if (string.IsNullOrEmpty(_metaInfo.SecretKey)) return;
+
+            webrequest.Enqueue($"{API_URL}/commands", null, (code, response) =>
+            {
+                if (code != 200) return;
+
+                try
+                {
+                    var data = JsonConvert.DeserializeObject<CommandsResponse>(response);
+                    if (data?.commands == null) return;
+
+                    foreach (var cmd in data.commands)
+                    {
+                        ProcessCommand(cmd);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Puts($"Commands parse error: {ex.Message}");
+                }
+            }, this, Oxide.Core.Libraries.RequestMethod.GET, new Dictionary<string, string>
+            {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = $"Bearer {_metaInfo.SecretKey}"
+            });
+        }
+
+        private void ProcessCommand(CommandDto cmd)
+        {
+            if (cmd.type == "chat_message")
+            {
+                if (cmd.is_global)
+                {
+                    // Глобальное сообщение всем игрокам
+                    foreach (var player in BasePlayer.activePlayerList)
+                    {
+                        SendReply(player, $"<color=#84cc16>[Админ]</color> {cmd.message}");
+                    }
+                    Puts($"PanRust: Отправлено глобальное сообщение: {cmd.message}");
+                }
+                else if (!string.IsNullOrEmpty(cmd.target_steam_id))
+                {
+                    // ЛС конкретному игроку
+                    var target = BasePlayer.Find(cmd.target_steam_id);
+                    if (target != null && target.IsConnected)
+                    {
+                        SendReply(target, $"<color=#84cc16>[ЛС от Админа]</color> {cmd.message}");
+                        Puts($"PanRust: Отправлено ЛС игроку {target.displayName}: {cmd.message}");
+                    }
+                }
+            }
+        }
+
+        private class CommandsResponse
+        {
+            public List<CommandDto> commands;
+        }
+
+        private class CommandDto
+        {
+            public string id;
+            public string type;
+            public string target_steam_id;
+            public string message;
+            public bool is_global;
         }
 
         private string GetPlayerIP(BasePlayer player)
