@@ -1,0 +1,280 @@
+/* ==================== SIDEBAR ==================== */
+.sidebar {
+  width: 260px;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  background: #1E1E1E;
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease;
+  overflow-y: auto;
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar.collapsed {
+  width: 60px;
+  padding: 12px 8px;
+}
+
+.sidebar.collapsed .logo-text,
+.sidebar.collapsed .search-box,
+.sidebar.collapsed .early-access-text,
+.sidebar.collapsed .section-header,
+.sidebar.collapsed .item-name {
+  display: none;
+}
+
+.sidebar.collapsed .logo-wrapper {
+  justify-content: center;
+  padding: 6px;
+}
+
+.sidebar.collapsed .header {
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sidebar.collapsed .early-access {
+  justify-content: center;
+  padding: 10px;
+}
+
+.sidebar.collapsed .menu-item {
+  justify-content: center;
+  padding: 10px;
+}
+
+.sidebar.collapsed .divider {
+  display: block;
+  height: 1px;
+  background: #333;
+  margin: 8px 0;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.logo-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.logo-wrapper:hover {
+  border-color: #444;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+}
+
+.logo-text {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.nav-btn {
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.nav-btn:hover {
+  background: #2a2a2a;
+}
+
+.nav-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke: #666;
+  fill: none;
+  transition: transform 0.3s ease;
+}
+
+.sidebar.collapsed .nav-btn svg {
+  transform: scaleX(-1);
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #1a1a1a;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.search-box:hover {
+  background: #222;
+}
+
+.search-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.search-icon {
+  width: 18px;
+  height: 18px;
+  stroke: #666;
+  stroke-width: 2;
+  fill: none;
+}
+
+.search-text {
+  color: #666;
+  font-size: 14px;
+}
+
+.search-hotkeys {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hot-key {
+  background: #333;
+  border-radius: 4px;
+  padding: 2px 8px;
+  color: #888;
+  font-size: 12px;
+}
+
+.plus {
+  color: #666;
+  font-size: 12px;
+}
+
+.early-access {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.early-access:hover {
+  background: #2a2a2a;
+}
+
+.early-access.active {
+  background: #2a2a2a;
+}
+
+.info-icon {
+  width: 18px;
+  height: 18px;
+  fill: #8D8D8D;
+}
+
+.early-access-text {
+  color: #fff;
+  font-size: 13px;
+}
+
+.menu-section {
+  margin-bottom: 8px;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 0;
+}
+
+.section-title {
+  color: #4B5454;
+  font-size: 12px;
+}
+
+.arrow-icon {
+  width: 16px;
+  height: 16px;
+  fill: #4B5454;
+  transition: transform 0.2s;
+}
+
+.arrow-icon.open {
+  transform: rotate(90deg);
+}
+
+.divider {
+  display: none;
+}
+
+.menu-items {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px;
+  color: #ccc;
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.menu-item:hover {
+  background: #2a2a2a;
+}
+
+.menu-item.active {
+  background: #2a2a2a;
+}
+
+.menu-item.active svg {
+  fill: #fff;
+}
+
+.menu-item.active .item-name {
+  color: #fff;
+}
+
+.menu-item svg {
+  width: 18px;
+  height: 18px;
+  fill: #8D8D8D;
+  flex-shrink: 0;
+}
+
+.item-name {
+  color: #83878C;
+  font-size: 13px;
+}

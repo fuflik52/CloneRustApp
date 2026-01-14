@@ -1,0 +1,617 @@
+/* ==================== PLAYER MODAL ==================== */
+.player-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 1000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.player-modal {
+  display: flex;
+  width: 750px;
+  height: 550px;
+  max-width: 95vw;
+  max-height: 95vh;
+  background: #1a1a1a;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #2a2a2a;
+  animation: slideUp 0.25s ease;
+}
+
+.player-modal-nav {
+  width: 240px;
+  background: rgba(39, 39, 39, 0.5);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.modal-nav-header {
+  padding: 16px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.modal-player-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.modal-player-avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+}
+
+.modal-player-avatar img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.modal-status-badge {
+  position: absolute;
+  bottom: -2px;
+  right: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #1E1E1E;
+}
+
+.modal-status-badge.online {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.modal-status-badge.offline {
+  background: #666;
+}
+
+.modal-player-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modal-player-name {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+}
+
+.modal-player-status {
+  color: #666;
+  font-size: 12px;
+}
+
+.modal-action-btns {
+  display: flex;
+  gap: 8px;
+}
+
+.modal-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: #2a2a2a;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s;
+  text-decoration: none;
+}
+
+.modal-action-btn:hover {
+  background: #3a3a3a;
+}
+
+.modal-action-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: #888;
+}
+
+.modal-menu-items {
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.modal-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  color: #767676;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.modal-menu-item:hover {
+  background: #2a2a2a;
+  color: #999;
+}
+
+.modal-menu-item.active {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.modal-menu-item svg {
+  width: 18px;
+  height: 18px;
+  fill: #888888;
+}
+
+.player-modal-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.modal-content-header {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.modal-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #2a2a2a;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.modal-close-btn:hover {
+  background: #3a3a3a;
+}
+
+.modal-close-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: #888;
+}
+
+.modal-content-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.modal-tags {
+  display: flex;
+  gap: 8px;
+}
+
+.modal-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #2a2a2a;
+  padding: 4px 10px;
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 12px;
+}
+
+.modal-info-card {
+  background: #272727;
+  border-radius: 10px;
+  border: 1px solid #2a2a2a;
+  overflow: hidden;
+}
+
+.modal-card-title {
+  padding: 8px 12px;
+  color: #888;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.modal-card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.modal-card-cell {
+  padding: 8px 12px;
+  border-bottom: 1px solid #2a2a2a;
+  border-right: 1px solid #2a2a2a;
+}
+
+.modal-card-cell:nth-child(2n) {
+  border-right: none;
+}
+
+.modal-card-cell:nth-last-child(-n+2) {
+  border-bottom: none;
+}
+
+.cell-label {
+  display: block;
+  color: #666;
+  font-size: 11px;
+  margin-bottom: 2px;
+}
+
+.cell-value {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cell-value-copy {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.cell-value-copy svg {
+  width: 16px;
+  height: 16px;
+  fill: #666;
+  cursor: pointer;
+  transition: fill 0.2s;
+}
+
+.cell-value-copy svg:hover {
+  fill: #84cc16;
+}
+
+.cell-value-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #84cc16;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.cell-value-link svg {
+  width: 16px;
+  height: 16px;
+  fill: #84cc16;
+}
+
+.cell-value-country {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.cell-value-country img {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+}
+
+/* Cell value with actions */
+.cell-value-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cell-value-white {
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.cell-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+}
+
+.cell-action-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cell-action-btn svg {
+  width: 14px;
+  height: 14px;
+  fill: #888;
+  color: #888;
+}
+
+.cell-action-btn:hover svg {
+  fill: #84cc16;
+  color: #84cc16;
+}
+
+/* Steam loading spinner */
+.steam-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  gap: 12px;
+}
+
+.steam-loading span {
+  color: #666;
+  font-size: 13px;
+}
+
+.steam-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #333;
+  border-top-color: #84cc16;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+/* Activity Log */
+.activity-log {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.activity-tabs {
+  display: flex;
+  gap: 8px;
+  background: #272727;
+  padding: 6px;
+  border-radius: 10px;
+}
+
+.activity-tab {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 10px 16px;
+  color: #888;
+  font-size: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.activity-tab:hover {
+  color: #ccc;
+}
+
+.activity-tab.active {
+  background: #3a3a3a;
+  color: #fff;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.activity-card {
+  background: #272727;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.activity-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.activity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #333;
+  padding: 6px 10px;
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 12px;
+}
+
+.activity-badge svg {
+  fill: #888;
+}
+
+.activity-badge.red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.activity-badge.green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.activity-card-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid #333;
+}
+
+.activity-card-row:last-child {
+  border-bottom: none;
+}
+
+.row-label {
+  color: #666;
+  font-size: 12px;
+  min-width: 130px;
+}
+
+.row-value {
+  color: #fff;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.activity-connector {
+  width: 2px;
+  height: 20px;
+  background: #333;
+  margin-left: 24px;
+}
+
+.activity-info-box {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #2E2E2E;
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.activity-info-box::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='5' height='5' viewBox='0 0 5 5' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 1.5v2M1.5 2.5h2' stroke='rgba(255,255,255,0.1)' stroke-width='0.4' fill='none'/%3E%3C/svg%3E");
+  background-size: 5px 5px;
+  pointer-events: none;
+}
+
+.activity-info-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200px;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(0, 100, 180, 0.4) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.activity-info-box svg {
+  fill: #0099ff;
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.activity-info-box span {
+  color: #d0e8ff;
+  font-size: 13px;
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+}
+
+.activity-share-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: #333;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.activity-share-btn:hover {
+  background: #444;
+}
+
+.activity-share-btn svg {
+  fill: #0099ff;
+  color: #0099ff;
+}
+
+.row-value-copy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.row-value-copy span {
+  color: #fff;
+  font-size: 13px;
+}
+
+.row-copy-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.06);
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.row-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.row-copy-btn svg {
+  width: 12px;
+  height: 12px;
+  fill: #fff;
+  color: #fff;
+}
+
+.row-copy-btn:hover svg {
+  fill: #0099ff;
+  color: #0099ff;
+}
+
+.activity-card-row .row-label {
+  flex-shrink: 0;
+}

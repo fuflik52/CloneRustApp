@@ -1,0 +1,433 @@
+/* ==================== SERVERS PAGE ==================== */
+.servers-page { 
+  padding: 20px; 
+}
+
+.servers-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  margin-bottom: 24px; 
+}
+
+.servers-header span { 
+  font-size: 24px; 
+  font-weight: 600; 
+  color: #fff; 
+}
+
+.add-server-btn { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  background: #2a2a2a; 
+  color: #fff; 
+  border: 1px solid #333; 
+  padding: 10px 16px; 
+  border-radius: 8px; 
+  cursor: pointer; 
+  font-size: 14px; 
+  font-weight: 500; 
+  transition: all 0.2s; 
+}
+
+.add-server-btn:hover { 
+  background: #3a3a3a; 
+  border-color: #444; 
+}
+
+.add-server-btn svg { 
+  width: 18px; 
+  height: 18px; 
+  fill: currentColor; 
+}
+
+.servers-empty { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  justify-content: center; 
+  padding: 60px 20px; 
+  color: #666; 
+}
+
+.servers-empty .empty-icon { 
+  width: 64px; 
+  height: 64px; 
+  fill: #444; 
+  margin-bottom: 16px; 
+}
+
+.servers-empty p { 
+  font-size: 18px; 
+  color: #888; 
+  margin-bottom: 8px; 
+}
+
+.servers-empty span { 
+  font-size: 14px; 
+}
+
+.servers-list { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 12px; 
+}
+
+.server-card { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  background: #1E1E1E; 
+  border: 1px solid #2a2a2a; 
+  border-radius: 10px; 
+  padding: 16px 20px; 
+}
+
+.server-card.online { 
+  border-color: #22c55e33; 
+}
+
+.server-info { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 6px; 
+}
+
+.server-name { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+  font-size: 16px; 
+  font-weight: 500; 
+  color: #fff; 
+}
+
+.status-dot { 
+  width: 10px; 
+  height: 10px; 
+  border-radius: 50%; 
+  background: #666; 
+}
+
+.status-dot.online { 
+  background: #22c55e; 
+  box-shadow: 0 0 8px #22c55e66; 
+}
+
+.server-stats { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  font-size: 13px; 
+  color: #888; 
+}
+
+.server-stats .loader { 
+  --uib-color: #888; 
+}
+
+.server-stats .sep { 
+  color: #444; 
+}
+
+.countdown-timer { 
+  font-family: 'Consolas', monospace; 
+  color: #888; 
+  font-size: 13px;
+  background: #252525;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.server-actions { 
+  display: flex; 
+  gap: 8px; 
+}
+
+.server-actions button { 
+  background: #2a2a2a; 
+  border: none; 
+  padding: 8px; 
+  border-radius: 6px; 
+  cursor: pointer; 
+  transition: background 0.2s; 
+}
+
+.server-actions button:hover { 
+  background: #3a3a3a; 
+}
+
+.server-actions svg { 
+  width: 18px; 
+  height: 18px; 
+  fill: #888; 
+}
+
+.server-actions .delete-btn:hover svg { 
+  fill: #ef4444; 
+}
+
+.server-actions .key-btn:hover svg { 
+  fill: #fff; 
+}
+
+/* Server Modal */
+.server-modal { 
+  width: 420px; 
+  background: #1E1E1E; 
+  border-radius: 12px; 
+  border: 1px solid #333; 
+}
+
+.server-modal .modal-header { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 16px 20px; 
+  border-bottom: 1px solid #333; 
+}
+
+.server-modal .modal-header span { 
+  font-size: 16px; 
+  font-weight: 500; 
+  color: #fff; 
+}
+
+.server-modal .modal-header button { 
+  background: none; 
+  border: none; 
+  cursor: pointer; 
+  padding: 4px; 
+}
+
+.server-modal .modal-header button svg { 
+  width: 20px; 
+  height: 20px; 
+  fill: #888; 
+}
+
+.server-modal .modal-body { 
+  padding: 20px; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 16px; 
+}
+
+.server-modal .form-group { 
+  display: flex; 
+  flex-direction: column; 
+  gap: 8px; 
+}
+
+.server-modal .form-group label { 
+  font-size: 13px; 
+  color: #888; 
+}
+
+.server-modal .form-group input { 
+  background: #141414; 
+  border: 1px solid #333; 
+  border-radius: 8px; 
+  padding: 12px; 
+  color: #fff; 
+  font-size: 14px; 
+  outline: none; 
+}
+
+.server-modal .form-group input:focus { 
+  border-color: #555; 
+}
+
+.server-modal .form-group input::placeholder { 
+  color: #666; 
+}
+
+.server-modal .success-text { 
+  color: #84cc16; 
+  font-size: 15px; 
+  text-align: center; 
+}
+
+.modal-btn { 
+  background: #2a2a2a; 
+  color: #fff; 
+  border: 1px solid #333; 
+  padding: 12px; 
+  border-radius: 8px; 
+  font-size: 14px; 
+  font-weight: 500; 
+  cursor: pointer; 
+  transition: all 0.2s; 
+  width: 100%; 
+}
+
+.modal-btn:hover { 
+  background: #3a3a3a; 
+  border-color: #444; 
+}
+
+.modal-btn:disabled { 
+  background: #1a1a1a; 
+  color: #444; 
+  border-color: #2a2a2a; 
+  cursor: not-allowed; 
+}
+
+/* Server Success Modal */
+.success-body { 
+  gap: 20px; 
+}
+
+.success-header { 
+  display: flex; 
+  flex-direction: column; 
+  align-items: center; 
+  gap: 12px; 
+  padding: 8px 0; 
+}
+
+.success-icon-wrap { 
+  width: 56px; 
+  height: 56px; 
+  background: #2a2a2a; 
+  border-radius: 50%; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+}
+
+.success-icon-wrap svg { 
+  width: 28px; 
+  height: 28px; 
+  fill: #888; 
+}
+
+.success-title { 
+  color: #fff; 
+  font-size: 16px; 
+  font-weight: 500; 
+  margin: 0; 
+}
+
+.key-display { 
+  background: #1a1a1a; 
+  border: 1px solid #333; 
+  border-radius: 10px; 
+  padding: 14px; 
+}
+
+.key-display label { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+  font-size: 12px; 
+  color: #666; 
+  margin-bottom: 10px; 
+}
+
+.key-display label svg { 
+  width: 14px; 
+  height: 14px; 
+  fill: #666; 
+}
+
+.key-value { 
+  display: flex; 
+  align-items: center; 
+  gap: 10px; 
+}
+
+.key-value code { 
+  flex: 1; 
+  font-family: 'Consolas', monospace; 
+  font-size: 11px; 
+  color: #ccc; 
+  word-break: break-all; 
+  background: #141414; 
+  padding: 10px 12px; 
+  border-radius: 6px; 
+  border: 1px solid #2a2a2a; 
+}
+
+.key-value button { 
+  background: #2a2a2a; 
+  border: none; 
+  padding: 10px; 
+  border-radius: 6px; 
+  cursor: pointer; 
+  transition: background 0.2s; 
+}
+
+.key-value button svg { 
+  width: 16px; 
+  height: 16px; 
+  fill: #888; 
+}
+
+.key-value button:hover { 
+  background: #3a3a3a; 
+}
+
+.key-value button:hover svg { 
+  fill: #fff; 
+}
+
+.instructions { 
+  background: #1a1a1a; 
+  border: 1px solid #333; 
+  border-radius: 10px; 
+  padding: 4px 0; 
+}
+
+.instruction-item { 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  padding: 12px 14px; 
+  color: #aaa; 
+  font-size: 13px; 
+  border-bottom: 1px solid #2a2a2a; 
+}
+
+.instruction-item:last-child { 
+  border-bottom: none; 
+}
+
+.instruction-item svg { 
+  width: 18px; 
+  height: 18px; 
+  fill: #666; 
+  flex-shrink: 0; 
+}
+
+.step-num { 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  width: 22px; 
+  height: 22px; 
+  background: #2a2a2a; 
+  border-radius: 6px; 
+  color: #888; 
+  font-size: 12px; 
+  font-weight: 500; 
+  flex-shrink: 0; 
+}
+
+.modal-btn-gray { 
+  background: #2a2a2a; 
+  color: #fff; 
+  border: none; 
+  padding: 12px; 
+  border-radius: 8px; 
+  font-size: 14px; 
+  font-weight: 500; 
+  cursor: pointer; 
+  transition: background 0.2s; 
+  width: 100%; 
+}
+
+.modal-btn-gray:hover { 
+  background: #3a3a3a; 
+}

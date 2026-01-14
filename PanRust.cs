@@ -14,7 +14,7 @@ namespace Oxide.Plugins
         private static Configuration _config;
         private static MetaInfo _metaInfo;
 
-        private const string API_URL = "http://app.bublickrust.ru/api";
+        private const string API_URL = "http://localhost:3001/api";
 
         #region Meta (хранит секретный ключ)
         private class MetaInfo
@@ -96,8 +96,70 @@ namespace Oxide.Plugins
             else
             {
                 Puts("PanRust: Подключен к панели");
+                
+                // Синхронизация всех игроков (включая спящих) при запуске
+                timer.Once(2f, () => SyncAllPlayers());
+                
                 timer.Every(_config.UpdateInterval, () => SendStateUpdate());
             }
+        }
+
+        private void SyncAllPlayers()
+        {
+            var allPlayers = new List<PlayerDto>();
+
+            // Онлайн игроки
+            foreach (var player in BasePlayer.activePlayerList)
+            {
+                allPlayers.Add(new PlayerDto
+                {
+                    steam_id = player.UserIDString,
+                    name = player.displayName,
+                    ip = GetPlayerIP(player),
+                    ping = Network.Net.sv.GetAveragePing(player.Connection),
+                    online = true,
+                    position = player.transform.position.ToString(),
+                    server = ConVar.Server.hostname
+                });
+            }
+
+            // Спящие игроки
+            foreach (var sleeper in BasePlayer.sleepingPlayerList)
+            {
+                allPlayers.Add(new PlayerDto
+                {
+                    steam_id = sleeper.UserIDString,
+                    name = sleeper.displayName,
+                    ip = "",
+                    ping = 0,
+                    online = false,
+                    position = sleeper.transform.position.ToString(),
+                    server = ConVar.Server.hostname
+                });
+            }
+
+            var payload = new
+            {
+                hostname = ConVar.Server.hostname,
+                port = ConVar.Server.port,
+                players = allPlayers
+            };
+
+            var json = JsonConvert.SerializeObject(payload);
+            
+            Puts($"PanRust: Автосинхронизация при запуске - {allPlayers.Count} игроков ({BasePlayer.activePlayerList.Count} онлайн, {BasePlayer.sleepingPlayerList.Count} спящих)");
+
+            webrequest.Enqueue($"{API_URL}/sync", json, (code, response) =>
+            {
+                if (code == 200)
+                    Puts($"PanRust: Синхронизация завершена!");
+                else
+                    Puts($"PanRust: Ошибка синхронизации: {code} - {response}");
+            }, this, Oxide.Core.Libraries.RequestMethod.POST, new Dictionary<string, string>
+            {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = $"Bearer {_metaInfo.SecretKey}"
+            });
         }
 
         private void OnPlayerConnected(BasePlayer player) => timer.Once(1f, () => SendStateUpdate());
@@ -156,6 +218,20 @@ namespace Oxide.Plugins
             _metaInfo.SecretKey = "";
             MetaInfo.Write(_metaInfo);
             Puts("PanRust: Настройки сброшены. Перезагрузите плагин.");
+        }
+
+        [ConsoleCommand("panrust.sync")]
+        private void CmdSync(ConsoleSystem.Arg args)
+        {
+            if (args.Connection != null) return;
+
+            if (string.IsNullOrEmpty(_metaInfo.SecretKey))
+            {
+                Puts("PanRust: Сначала подключитесь через panrust.pair SECRET_KEY");
+                return;
+            }
+
+            SyncAllPlayers();
         }
         #endregion
 

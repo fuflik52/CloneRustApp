@@ -312,6 +312,71 @@ app.post('/api/state', async (req, res) => {
   res.json({ success: true });
 });
 
+// Sync all players (including sleepers) from plugin
+app.post('/api/sync', async (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const key = auth.slice(7);
+  const data = loadData();
+  const server = Object.values(data.servers).find(s => s.secretKey === key);
+  if (!server) return res.status(401).json({ error: 'Invalid key' });
+  
+  const players = req.body.players || [];
+  const steamIds = players.filter(p => p.online).map(p => p.steam_id).join(',');
+  
+  // Получаем аватары для онлайн игроков через Steam API
+  let avatars = {};
+  if (steamIds && STEAM_API_KEY) {
+    try {
+      const steamRes = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamIds}`);
+      const steamData = await steamRes.json();
+      steamData.response?.players?.forEach(p => { avatars[p.steamid] = p.avatarfull; });
+    } catch {}
+  }
+  
+  let added = 0;
+  let updated = 0;
+  
+  for (const p of players) {
+    p.avatar = avatars[p.steam_id] || p.avatar || '';
+    
+    // Геолокация для онлайн игроков с IP
+    if (p.ip && p.online && !p.country) {
+      try {
+        const geo = await fetch(`http://ip-api.com/json/${p.ip}?fields=country,city,isp,countryCode`);
+        const info = await geo.json();
+        p.country = info.country || '';
+        p.countryCode = (info.countryCode || '').toLowerCase();
+        p.city = info.city || '';
+        p.provider = info.isp || '';
+      } catch {}
+    }
+    
+    const db = loadPlayersDB();
+    if (!db.players[p.steam_id]) {
+      added++;
+    } else {
+      updated++;
+    }
+    
+    // Обновляем игрока в базе
+    updatePlayerInDB(p, server.name);
+  }
+  
+  addActivityLog('server_sync', {
+    server: server.name,
+    total: players.length,
+    added,
+    updated,
+    online: players.filter(p => p.online).length,
+    sleepers: players.filter(p => !p.online).length
+  });
+  
+  console.log(`Sync from ${server.name}: ${players.length} players (${added} new, ${updated} updated)`);
+  res.json({ success: true, added, updated, total: players.length });
+});
+
 // Get players (online on all servers)
 app.get('/api/players', (req, res) => {
   const data = loadData();

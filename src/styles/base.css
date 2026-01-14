@@ -1,0 +1,92 @@
+/* ==================== BASE STYLES ==================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3a3a3a;
+}
+
+body {
+  min-height: 100vh;
+  background: #1a1a1a;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.hidden {
+  display: none !important;
+}
+
+/* Loader Animation */
+.loader {
+  --uib-size: 20px;
+  --uib-color: #0099ff;
+  --uib-speed: 1s;
+  --uib-stroke: 2px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: var(--uib-size);
+  width: var(--uib-size);
+}
+
+.loader .line {
+  position: absolute;
+  width: var(--uib-stroke);
+  height: 25%;
+  background: var(--uib-color);
+  border-radius: 10px;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.loader .line:nth-child(1) { transform: rotate(0deg) translateY(-130%); animation-delay: -0.9s; }
+.loader .line:nth-child(2) { transform: rotate(30deg) translateY(-130%); animation-delay: -0.8s; }
+.loader .line:nth-child(3) { transform: rotate(60deg) translateY(-130%); animation-delay: -0.7s; }
+.loader .line:nth-child(4) { transform: rotate(90deg) translateY(-130%); animation-delay: -0.6s; }
+.loader .line:nth-child(5) { transform: rotate(120deg) translateY(-130%); animation-delay: -0.5s; }
+.loader .line:nth-child(6) { transform: rotate(150deg) translateY(-130%); animation-delay: -0.4s; }
+.loader .line:nth-child(7) { transform: rotate(180deg) translateY(-130%); animation-delay: -0.3s; }
+.loader .line:nth-child(8) { transform: rotate(210deg) translateY(-130%); animation-delay: -0.2s; }
+.loader .line:nth-child(9) { transform: rotate(240deg) translateY(-130%); animation-delay: -0.1s; }
+.loader .line:nth-child(10) { transform: rotate(270deg) translateY(-130%); animation-delay: 0s; }
+.loader .line:nth-child(11) { transform: rotate(300deg) translateY(-130%); animation-delay: 0.1s; }
+.loader .line:nth-child(12) { transform: rotate(330deg) translateY(-130%); animation-delay: 0.2s; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.2; }
+  50% { opacity: 1; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes modalIn {
+  to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

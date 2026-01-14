@@ -1,0 +1,346 @@
+/* ==================== COMPONENTS ==================== */
+
+/* Buttons */
+.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: #0099ff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  background: #0088ee;
+}
+
+.btn-primary.btn-disabled,
+.btn-primary:disabled {
+  background: #1a3a4a;
+  color: #4a6a7a;
+  cursor: not-allowed;
+}
+
+.btn-primary svg {
+  width: 16px;
+  height: 16px;
+  fill: #fff;
+}
+
+.btn-default {
+  background: #2a2a2a;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-default:hover {
+  background: #333;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  display: flex;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.25s ease;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* Divided Card */
+.divided-card {
+  background: #1a1a1a;
+  border-radius: 10px;
+  width: 460px;
+  max-width: 90%;
+  overflow: hidden;
+  transform: scale(0.9) translateY(-20px);
+  opacity: 0;
+  transition: all 0.25s ease;
+}
+
+.modal-overlay.active .divided-card {
+  transform: scale(1) translateY(0);
+  opacity: 1;
+}
+
+.card-header {
+  padding: 14px 16px;
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.card-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.card-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+  border-top: 1px solid #2a2a2a;
+}
+
+/* Select */
+.select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #252525;
+  border-radius: 6px;
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.select-wrapper:hover {
+  background: #2a2a2a;
+}
+
+.select-wrapper.open {
+  border-radius: 6px 6px 0 0;
+}
+
+.select-icon {
+  width: 18px;
+  height: 18px;
+  fill: #A9A9A9;
+}
+
+.select-wrapper > span {
+  flex: 1;
+  color: #fff;
+  font-size: 13px;
+}
+
+.select-arrow {
+  width: 16px;
+  height: 16px;
+  fill: #666;
+  transform: rotate(90deg);
+  transition: transform 0.2s ease;
+}
+
+.select-wrapper.open .select-arrow {
+  transform: rotate(-90deg);
+}
+
+/* Options List */
+.options-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #252525;
+  border-radius: 0 0 6px 6px;
+  display: none;
+  z-index: 10;
+}
+
+.select-wrapper.open .options-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.option:hover {
+  background: #333;
+}
+
+.option svg {
+  width: 18px;
+  height: 18px;
+  fill: #A9A9A9;
+}
+
+.option span {
+  color: #fff;
+  font-size: 13px;
+}
+
+/* Textarea */
+.card-content textarea {
+  background: #141414;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 13px;
+  font-family: inherit;
+  resize: vertical;
+  min-height: 100px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.card-content textarea::placeholder {
+  color: #666;
+}
+
+.card-content textarea:focus {
+  background: #1a1a1a;
+}
+
+/* Confirm Delete Modal */
+.confirm-modal { 
+  background: #1E1E1E; 
+  border: 1px solid #333; 
+  border-radius: 12px; 
+  padding: 24px; 
+  width: 360px; 
+  max-width: 90%; 
+  text-align: center;
+  transform: scale(0.9) translateY(-20px);
+  opacity: 0;
+  animation: modalIn 0.2s ease forwards;
+}
+
+.confirm-icon-wrap { 
+  width: 56px; 
+  height: 56px; 
+  background: #2a2a2a; 
+  border-radius: 50%; 
+  display: flex; 
+  align-items: center; 
+  justify-content: center; 
+  margin: 0 auto 16px; 
+}
+
+.confirm-icon-wrap svg { 
+  width: 28px; 
+  height: 28px; 
+  fill: #888; 
+}
+
+.confirm-modal h3 { 
+  color: #fff; 
+  font-size: 18px; 
+  font-weight: 500; 
+  margin: 0 0 8px; 
+}
+
+.confirm-modal p { 
+  color: #888; 
+  font-size: 14px; 
+  line-height: 1.5; 
+  margin: 0 0 20px; 
+}
+
+.confirm-actions { 
+  display: flex; 
+  gap: 10px; 
+}
+
+.confirm-btn-cancel { 
+  flex: 1; 
+  background: #2a2a2a; 
+  border: 1px solid #333; 
+  color: #fff; 
+  padding: 12px; 
+  border-radius: 8px; 
+  font-size: 14px; 
+  cursor: pointer; 
+  transition: all 0.2s; 
+}
+
+.confirm-btn-cancel:hover { 
+  background: #3a3a3a; 
+}
+
+.confirm-btn-delete { 
+  flex: 1; 
+  background: #ef4444; 
+  border: none; 
+  color: #fff; 
+  padding: 12px; 
+  border-radius: 8px; 
+  font-size: 14px; 
+  font-weight: 500; 
+  cursor: pointer; 
+  transition: all 0.2s; 
+}
+
+.confirm-btn-delete:hover { 
+  background: #dc2626; 
+}
+
+/* Hyperlink */
+.row-value.hyperlink,
+.hyperlink {
+  color: #0099ff;
+  cursor: pointer;
+}
+
+.hyperlink:hover {
+  text-decoration: underline;
+}
+
+/* Tab Placeholder */
+.tab-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 16px;
+}
+
+.placeholder-icon-box {
+  opacity: 0.6;
+}
+
+.placeholder-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.placeholder-desc {
+  color: #666;
+  font-size: 13px;
+}
+
+.mini-flag {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-right: 4px;
+}
