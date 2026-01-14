@@ -487,7 +487,8 @@ namespace Oxide.Plugins
                                 break;
                                 
                             case "mute":
-                                if (!string.IsNullOrEmpty(cmd.target_steam_id) && ulong.TryParse(cmd.target_steam_id, out var muteId))
+                                var muteSteamId = cmd.GetSteamId();
+                                if (!string.IsNullOrEmpty(muteSteamId) && ulong.TryParse(muteSteamId, out var muteId))
                                 {
                                     _mutes[muteId] = new MuteData
                                     {
@@ -495,7 +496,7 @@ namespace Oxide.Plugins
                                         expired_at = cmd.expired_at,
                                         created_at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                                     };
-                                    var target = BasePlayer.Find(cmd.target_steam_id);
+                                    var target = BasePlayer.Find(muteSteamId);
                                     if (target?.IsConnected == true)
                                     {
                                         var duration = cmd.expired_at == 0 ? "<color=#ff6b6b>навсегда</color>" : $"<color=#ffd93d>{GetTimeLeft(cmd.expired_at - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())}</color>";
@@ -505,21 +506,22 @@ namespace Oxide.Plugins
                                     {
                                         var durationText = cmd.expired_at == 0 ? "навсегда" : GetTimeLeft(cmd.expired_at - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                                         foreach (var p in BasePlayer.activePlayerList)
-                                            SendReply(p, $"<size=14><color=#ef4444>[МУТ]</color> <color=#fcd34d>{target?.displayName ?? cmd.target_steam_id}</color> <color=#888>получил мут</color></size>\n<size=11><color=#666>Причина:</color> <color=#aaa>{cmd.reason}</color> <color=#666>•</color> <color=#666>Срок:</color> <color=#aaa>{durationText}</color></size>");
+                                            SendReply(p, $"<size=14><color=#ef4444>[МУТ]</color> <color=#fcd34d>{target?.displayName ?? muteSteamId}</color> <color=#888>получил мут</color></size>\n<size=11><color=#666>Причина:</color> <color=#aaa>{cmd.reason}</color> <color=#666>•</color> <color=#666>Срок:</color> <color=#aaa>{durationText}</color></size>");
                                     }
-                                    Puts($"[Mute] {cmd.target_steam_id} - {cmd.reason}");
+                                    Puts($"[Mute] {muteSteamId} - {cmd.reason}");
                                 }
                                 break;
                                 
                             case "unmute":
-                                if (!string.IsNullOrEmpty(cmd.target_steam_id) && ulong.TryParse(cmd.target_steam_id, out var unmuteId))
+                                var unmuteSteamId = cmd.GetSteamId();
+                                if (!string.IsNullOrEmpty(unmuteSteamId) && ulong.TryParse(unmuteSteamId, out var unmuteId))
                                 {
                                     if (_mutes.Remove(unmuteId))
                                     {
-                                        var target = BasePlayer.Find(cmd.target_steam_id);
+                                        var target = BasePlayer.Find(unmuteSteamId);
                                         if (target?.IsConnected == true)
                                             SendReply(target, "<size=16><color=#22c55e>МУТ СНЯТ</color></size>\n<size=12><color=#888>Теперь вы снова можете писать в чат</color></size>");
-                                        Puts($"[Unmute] {cmd.target_steam_id}");
+                                        Puts($"[Unmute] {unmuteSteamId}");
                                     }
                                 }
                                 break;
@@ -532,9 +534,12 @@ namespace Oxide.Plugins
         class CmdResp { public List<Cmd> commands; }
         class Cmd 
         { 
-            public string type, target_steam_id, message, reason; 
+            public string type, target_steam_id, steam_id, message, reason; 
             public bool is_global, broadcast; 
             public long expired_at;
+            
+            // Получить steam_id из любого поля
+            public string GetSteamId() => !string.IsNullOrEmpty(target_steam_id) ? target_steam_id : steam_id;
         }
         #endregion
 
