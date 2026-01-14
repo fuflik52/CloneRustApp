@@ -24,7 +24,10 @@
 
 body {
   min-height: 100vh;
-  background: #1a1a1a;
+  background-color: #1E1E1E;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-attachment: fixed;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
