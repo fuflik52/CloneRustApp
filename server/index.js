@@ -1064,6 +1064,21 @@ app.post('/api/servers/:serverId/chat/send', (req, res) => {
   cmds.commands.push(cmd);
   saveCommands(serverId, cmds);
   
+  // Also save to chat history so it appears in web interface
+  const chat = loadServerChat(serverId);
+  chat.messages.push({
+    id: crypto.randomUUID(),
+    steam_id: 'admin',
+    name: '[Админ]',
+    message: target_steam_id ? `[ЛС → ${target_steam_id}] ${message.trim()}` : message.trim(),
+    team: false,
+    avatar: '',
+    timestamp: Date.now(),
+    server: server.name,
+    is_admin: true
+  });
+  saveServerChat(serverId, chat);
+  
   res.json({ success: true, command: cmd });
 });
 
