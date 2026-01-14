@@ -487,7 +487,7 @@ namespace Oxide.Plugins
                                 break;
                                 
                             case "mute":
-                                var muteSteamId = cmd.GetSteamId();
+                                var muteSteamId = !string.IsNullOrEmpty(cmd.target_steam_id) ? cmd.target_steam_id : cmd.steam_id;
                                 if (!string.IsNullOrEmpty(muteSteamId) && ulong.TryParse(muteSteamId, out var muteId))
                                 {
                                     _mutes[muteId] = new MuteData
@@ -513,7 +513,7 @@ namespace Oxide.Plugins
                                 break;
                                 
                             case "unmute":
-                                var unmuteSteamId = cmd.GetSteamId();
+                                var unmuteSteamId = !string.IsNullOrEmpty(cmd.target_steam_id) ? cmd.target_steam_id : cmd.steam_id;
                                 if (!string.IsNullOrEmpty(unmuteSteamId) && ulong.TryParse(unmuteSteamId, out var unmuteId))
                                 {
                                     if (_mutes.Remove(unmuteId))
@@ -534,12 +534,14 @@ namespace Oxide.Plugins
         class CmdResp { public List<Cmd> commands; }
         class Cmd 
         { 
-            public string type, target_steam_id, steam_id, message, reason; 
-            public bool is_global, broadcast; 
+            public string type; 
+            public string target_steam_id;
+            public string steam_id;
+            public string message;
+            public string reason; 
+            public bool is_global;
+            public bool broadcast; 
             public long expired_at;
-            
-            // Получить steam_id из любого поля
-            public string GetSteamId() => !string.IsNullOrEmpty(target_steam_id) ? target_steam_id : steam_id;
         }
         #endregion
 
