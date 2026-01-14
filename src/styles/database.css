@@ -3,13 +3,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 100vh;
-  background: linear-gradient(135deg, #0a0a0f 0%, #12121a 100%);
+  min-height: calc(100vh - 48px);
+  background: #1a1a1a;
 }
 
 .db-login-box {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: #1E1E1E;
+  border: 1px solid #333;
   border-radius: 16px;
   padding: 48px;
   text-align: center;
@@ -20,7 +20,7 @@
 .db-login-icon {
   width: 64px;
   height: 64px;
-  background: rgba(205,164,87,0.1);
+  background: rgba(0,153,255,0.1);
   border-radius: 16px;
   display: flex;
   align-items: center;
@@ -31,7 +31,7 @@
 .db-login-icon svg {
   width: 32px;
   height: 32px;
-  color: #cda457;
+  color: #0099ff;
 }
 
 .db-login-box h2 {
@@ -42,14 +42,14 @@
 }
 
 .db-login-box p {
-  color: rgba(255,255,255,0.5);
+  color: #888;
   margin: 0 0 32px;
 }
 
 .db-login-box input {
   width: 100%;
-  background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: #141414;
+  border: 1px solid #333;
   border-radius: 10px;
   padding: 14px 16px;
   color: #fff;
@@ -60,16 +60,16 @@
 }
 
 .db-login-box input:focus {
-  border-color: #cda457;
+  border-color: #0099ff;
 }
 
 .db-login-box button {
   width: 100%;
-  background: linear-gradient(135deg, #cda457 0%, #a67c3d 100%);
+  background: #0099ff;
   border: none;
   border-radius: 10px;
   padding: 14px;
-  color: #000;
+  color: #fff;
   font-size: 15px;
   font-weight: 600;
   cursor: pointer;
@@ -107,7 +107,7 @@
   font-weight: 600;
 }
 
-.db-title svg { width: 28px; height: 28px; color: #cda457; }
+.db-title svg { width: 28px; height: 28px; color: #0099ff; }
 
 .db-tabs {
   display: flex;
@@ -116,11 +116,11 @@
 }
 
 .db-tabs button {
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: #1E1E1E;
+  border: 1px solid #333;
   border-radius: 8px;
   padding: 10px 16px;
-  color: rgba(255,255,255,0.6);
+  color: #888;
   font-size: 14px;
   cursor: pointer;
   display: flex;
@@ -130,8 +130,8 @@
 }
 
 .db-tabs button svg { width: 18px; height: 18px; }
-.db-tabs button:hover { background: rgba(255,255,255,0.05); color: #fff; }
-.db-tabs button.active { background: rgba(205,164,87,0.15); border-color: rgba(205,164,87,0.3); color: #cda457; }
+.db-tabs button:hover { background: #2a2a2a; color: #fff; }
+.db-tabs button.active { background: rgba(0,153,255,0.15); border-color: rgba(0,153,255,0.3); color: #0099ff; }
 
 .db-logout {
   background: rgba(239,68,68,0.1);
@@ -151,14 +151,14 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(255,255,255,0.03);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: #141414;
+  border: 1px solid #333;
   border-radius: 10px;
   padding: 12px 16px;
   margin-bottom: 20px;
 }
 
-.db-search svg { width: 20px; height: 20px; color: rgba(255,255,255,0.4); flex-shrink: 0; }
+.db-search svg { width: 20px; height: 20px; color: #8D8D8D; flex-shrink: 0; }
 
 .db-search input {
   flex: 1;
@@ -169,14 +169,14 @@
   outline: none;
 }
 
-.db-search input::placeholder { color: rgba(255,255,255,0.4); }
+.db-search input::placeholder { color: #666; }
 
 .db-search-clear {
   background: none;
   border: none;
   padding: 4px;
   cursor: pointer;
-  color: rgba(255,255,255,0.4);
+  color: #666;
   transition: color 0.2s;
 }
 
@@ -185,8 +185,8 @@
 
 /* Table */
 .db-table {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: #1E1E1E;
+  border: 1px solid #333;
   border-radius: 12px;
   overflow: hidden;
 }
@@ -196,9 +196,9 @@
   grid-template-columns: 2fr 1.5fr 1fr 0.8fr 1fr 50px;
   gap: 16px;
   padding: 14px 20px;
-  background: rgba(255,255,255,0.03);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
-  color: rgba(255,255,255,0.5);
+  background: #1a1a1a;
+  border-bottom: 1px solid #333;
+  color: #888;
   font-size: 13px;
   font-weight: 500;
 }
@@ -210,13 +210,13 @@
   grid-template-columns: 2fr 1.5fr 1fr 0.8fr 1fr 50px;
   gap: 16px;
   padding: 14px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid #2a2a2a;
   cursor: pointer;
   transition: background 0.2s;
   align-items: center;
 }
 
-.db-row:hover { background: rgba(255,255,255,0.03); }
+.db-row:hover { background: #2a2a2a; }
 .db-row:last-child { border-bottom: none; }
 
 .db-col-player {
@@ -242,7 +242,7 @@
 }
 
 .db-col-id {
-  color: rgba(255,255,255,0.5);
+  color: #666;
   font-size: 13px;
   font-family: monospace;
 }
@@ -251,27 +251,24 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgba(255,255,255,0.7);
+  color: #888;
 }
 
 .db-col-country img { width: 20px; height: 20px; border-radius: 50%; }
 
-.db-col-time { color: rgba(255,255,255,0.6); }
-.db-col-seen { color: rgba(255,255,255,0.5); font-size: 13px; }
+.db-col-time { color: #888; }
+.db-col-seen { color: #666; font-size: 13px; }
 
-.db-col-action {
-  display: flex;
-  justify-content: center;
-}
+.db-col-action { display: flex; justify-content: center; }
 
 .db-col-action svg {
   width: 20px;
   height: 20px;
-  color: rgba(255,255,255,0.3);
+  color: #4B5454;
   transition: color 0.2s;
 }
 
-.db-row:hover .db-col-action svg { color: #cda457; }
+.db-row:hover .db-col-action svg { color: #0099ff; }
 
 /* Loading & Empty */
 .db-loading, .db-empty {
@@ -280,7 +277,7 @@
   justify-content: center;
   gap: 12px;
   padding: 60px;
-  color: rgba(255,255,255,0.5);
+  color: #666;
 }
 
 .db-loading svg { width: 24px; height: 24px; }
@@ -302,8 +299,8 @@
   align-items: flex-start;
   gap: 14px;
   padding: 14px 18px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.04);
+  background: #1E1E1E;
+  border: 1px solid #333;
   border-radius: 10px;
 }
 
@@ -315,27 +312,27 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  background: rgba(255,255,255,0.05);
+  background: #2a2a2a;
 }
 
-.db-log-icon svg { width: 18px; height: 18px; color: rgba(255,255,255,0.6); }
+.db-log-icon svg { width: 18px; height: 18px; color: #888; }
 
-.db-log-player_connect .db-log-icon { background: rgba(34,197,94,0.15); }
-.db-log-player_connect .db-log-icon svg { color: #22c55e; }
+.db-log-player_connect .db-log-icon { background: rgba(132,204,22,0.15); }
+.db-log-player_connect .db-log-icon svg { color: #84cc16; }
 
 .db-log-player_disconnect .db-log-icon { background: rgba(239,68,68,0.15); }
 .db-log-player_disconnect .db-log-icon svg { color: #ef4444; }
 
-.db-log-player_first_join .db-log-icon { background: rgba(205,164,87,0.15); }
-.db-log-player_first_join .db-log-icon svg { color: #cda457; }
+.db-log-player_first_join .db-log-icon { background: rgba(0,153,255,0.15); }
+.db-log-player_first_join .db-log-icon svg { color: #0099ff; }
 
-.db-log-server_sync .db-log-icon { background: rgba(59,130,246,0.15); }
-.db-log-server_sync .db-log-icon svg { color: #3b82f6; }
+.db-log-server_sync .db-log-icon { background: rgba(34,211,238,0.15); }
+.db-log-server_sync .db-log-icon svg { color: #22d3ee; }
 
 .db-log-content { flex: 1; min-width: 0; }
 .db-log-content p { color: #fff; margin: 0 0 4px; font-size: 14px; }
-.db-log-content p strong { color: #cda457; }
-.db-log-content span { color: rgba(255,255,255,0.4); font-size: 12px; }
+.db-log-content p strong { color: #0099ff; }
+.db-log-content span { color: #666; font-size: 12px; }
 
 /* Stats */
 .db-stats {
@@ -349,8 +346,8 @@
   align-items: center;
   gap: 16px;
   padding: 20px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: #1E1E1E;
+  border: 1px solid #333;
   border-radius: 12px;
 }
 
@@ -361,19 +358,19 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.05);
+  background: #2a2a2a;
 }
 
-.db-stat-icon svg { width: 24px; height: 24px; color: rgba(255,255,255,0.6); }
+.db-stat-icon svg { width: 24px; height: 24px; color: #888; }
 
-.db-stat.online .db-stat-icon { background: rgba(34,197,94,0.15); }
-.db-stat.online .db-stat-icon svg { color: #22c55e; }
+.db-stat.online .db-stat-icon { background: rgba(132,204,22,0.15); }
+.db-stat.online .db-stat-icon svg { color: #84cc16; }
 
-.db-stat.new .db-stat-icon { background: rgba(205,164,87,0.15); }
-.db-stat.new .db-stat-icon svg { color: #cda457; }
+.db-stat.new .db-stat-icon { background: rgba(0,153,255,0.15); }
+.db-stat.new .db-stat-icon svg { color: #0099ff; }
 
 .db-stat-info { display: flex; flex-direction: column; gap: 4px; }
-.db-stat-info span { color: rgba(255,255,255,0.5); font-size: 13px; }
+.db-stat-info span { color: #888; font-size: 13px; }
 .db-stat-info strong { color: #fff; font-size: 28px; font-weight: 600; }
 
 /* Responsive */

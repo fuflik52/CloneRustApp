@@ -409,9 +409,9 @@ app.get('/api/players', (req, res) => {
 });
 
 // Get all players from database (including offline)
-app.get('/api/players/all', (req, res) => {
+app.get('/api/players/all', async (req, res) => {
   const db = loadPlayersDB();
-  const players = Object.values(db.players).map(p => ({
+  let players = Object.values(db.players).map(p => ({
     ...p,
     playtime_hours: Math.round(p.total_playtime_seconds / 3600 * 10) / 10
   }));
@@ -419,16 +419,49 @@ app.get('/api/players/all', (req, res) => {
   // Сортируем по последнему визиту
   players.sort((a, b) => b.last_seen - a.last_seen);
   
+  // Фоновая загрузка аватаров для игроков без аватара (первые 50)
+  const playersWithoutAvatar = players.filter(p => !p.avatar).slice(0, 50);
+  if (playersWithoutAvatar.length > 0 && STEAM_API_KEY) {
+    const steamIds = playersWithoutAvatar.map(p => p.steam_id).join(',');
+    try {
+      const steamRes = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamIds}`);
+      const steamData = await steamRes.json();
+      steamData.response?.players?.forEach(sp => {
+        if (db.players[sp.steamid]) {
+          db.players[sp.steamid].avatar = sp.avatarfull;
+          // Обновляем в ответе тоже
+          const idx = players.findIndex(p => p.steam_id === sp.steamid);
+          if (idx !== -1) players[idx].avatar = sp.avatarfull;
+        }
+      });
+      savePlayersDB(db);
+    } catch {}
+  }
+  
   res.json(players);
 });
 
 // Get player by steam_id
-app.get('/api/players/db/:steamId', (req, res) => {
+app.get('/api/players/db/:steamId', async (req, res) => {
   const db = loadPlayersDB();
   const player = db.players[req.params.steamId];
   if (!player) {
     return res.status(404).json({ error: 'Player not found' });
   }
+  
+  // Подгружаем аватар если нет
+  if (!player.avatar && STEAM_API_KEY) {
+    try {
+      const steamRes = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${req.params.steamId}`);
+      const steamData = await steamRes.json();
+      const sp = steamData.response?.players?.[0];
+      if (sp) {
+        player.avatar = sp.avatarfull;
+        savePlayersDB(db);
+      }
+    } catch {}
+  }
+  
   res.json({
     ...player,
     playtime_hours: Math.round(player.total_playtime_seconds / 3600 * 10) / 10
@@ -553,64 +586,67 @@ app.get('/api/activity/player/:steamId', (req, res) => {
 // Get player Steam info
 app.get('/api/player/:steamId/steam', async (req, res) => {
   const { steamId } = req.params;
-  console.log('Fetching Steam info for:', steamId);
+  const db = loadPlayersDB();
+  const player = db.players[steamId];
+  
+  // Проверяем кэш (обновляем раз в час)
+  if (player?.steamInfo && player.steamInfoUpdated && Date.now() - player.steamInfoUpdated < 3600000) {
+    return res.json(player.steamInfo);
+  }
   
   if (!STEAM_API_KEY) {
     return res.status(500).json({ error: 'Steam API key not configured' });
   }
   
   try {
-    // Получаем профиль
-    const profileUrl = `https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamId}`;
-    const profileRes = await fetch(profileUrl);
-    const profileData = await profileRes.json();
-    const player = profileData.response?.players?.[0];
+    // Параллельные запросы для скорости
+    const [profileRes, bansRes, gamesRes, recentRes] = await Promise.all([
+      fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamId}`),
+      fetch(`https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=${STEAM_API_KEY}&steamids=${steamId}`),
+      fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&include_played_free_games=1&appids_filter[0]=252490`).catch(() => null),
+      fetch(`https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}`).catch(() => null)
+    ]);
     
-    if (!player) {
+    const profileData = await profileRes.json();
+    const steamPlayer = profileData.response?.players?.[0];
+    
+    if (!steamPlayer) {
       return res.json({ error: 'Player not found' });
     }
 
-    // Получаем баны
-    const bansRes = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerBans/v1/?key=${STEAM_API_KEY}&steamids=${steamId}`);
     const bansData = await bansRes.json();
     const bans = bansData.players?.[0];
 
-    // Получаем игры (часы в Rust)
     let rustHours = null;
     let recentHours = null;
-    try {
-      const gamesRes = await fetch(`https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&include_played_free_games=1&appids_filter[0]=252490`);
-      const gamesData = await gamesRes.json();
-      const rustGame = gamesData.response?.games?.find(g => g.appid === 252490);
-      if (rustGame) {
-        rustHours = Math.round(rustGame.playtime_forever / 60);
-      }
-      
-      const recentRes = await fetch(`https://api.steampowered.com/IPlayerService/GetRecentlyPlayedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}`);
-      const recentData = await recentRes.json();
-      const recentRust = recentData.response?.games?.find(g => g.appid === 252490);
-      if (recentRust) {
-        recentHours = Math.round(recentRust.playtime_2weeks / 60);
-      }
-    } catch (e) {
-      console.log('Games fetch error:', e.message);
+    
+    if (gamesRes) {
+      try {
+        const gamesData = await gamesRes.json();
+        const rustGame = gamesData.response?.games?.find(g => g.appid === 252490);
+        if (rustGame) rustHours = Math.round(rustGame.playtime_forever / 60);
+      } catch {}
+    }
+    
+    if (recentRes) {
+      try {
+        const recentData = await recentRes.json();
+        const recentRust = recentData.response?.games?.find(g => g.appid === 252490);
+        if (recentRust) recentHours = Math.round(recentRust.playtime_2weeks / 60);
+      } catch {}
     }
 
-    const privacyStates = {
-      1: 'Профиль скрыт',
-      2: 'Только друзья',
-      3: 'Публичный'
-    };
+    const privacyStates = { 1: 'Профиль скрыт', 2: 'Только друзья', 3: 'Публичный' };
 
     const result = {
-      steamId: player.steamid,
-      personaName: player.personaname,
-      avatar: player.avatarfull,
-      profileUrl: player.profileurl,
-      privacy: privacyStates[player.communityvisibilitystate] || 'Неизвестно',
-      isPrivate: player.communityvisibilitystate !== 3,
-      accountCreated: player.timecreated ? new Date(player.timecreated * 1000).toISOString() : null,
-      lastLogoff: player.lastlogoff ? new Date(player.lastlogoff * 1000).toISOString() : null,
+      steamId: steamPlayer.steamid,
+      personaName: steamPlayer.personaname,
+      avatar: steamPlayer.avatarfull,
+      profileUrl: steamPlayer.profileurl,
+      privacy: privacyStates[steamPlayer.communityvisibilitystate] || 'Неизвестно',
+      isPrivate: steamPlayer.communityvisibilitystate !== 3,
+      accountCreated: steamPlayer.timecreated ? new Date(steamPlayer.timecreated * 1000).toISOString() : null,
+      lastLogoff: steamPlayer.lastlogoff ? new Date(steamPlayer.lastlogoff * 1000).toISOString() : null,
       rustHours,
       recentHours,
       vacBans: bans?.NumberOfVACBans || 0,
@@ -618,6 +654,14 @@ app.get('/api/player/:steamId/steam', async (req, res) => {
       daysSinceLastBan: bans?.DaysSinceLastBan || null,
       communityBanned: bans?.CommunityBanned || false
     };
+    
+    // Кэшируем в базу
+    if (player) {
+      player.steamInfo = result;
+      player.steamInfoUpdated = Date.now();
+      player.avatar = steamPlayer.avatarfull;
+      savePlayersDB(db);
+    }
     
     res.json(result);
   } catch (err) {
