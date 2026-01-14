@@ -8,14 +8,6 @@ interface SearchModalProps {
   onClose: () => void
 }
 
-interface Player {
-  steam_id: string
-  name: string
-  avatar: string
-  serverName: string
-  online: boolean
-}
-
 interface SearchResult {
   type: 'page' | 'player'
   id: string
