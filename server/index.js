@@ -323,20 +323,25 @@ app.post('/api/sync', async (req, res) => {
   if (!server) return res.status(401).json({ error: 'Invalid key' });
   
   const players = req.body.players || [];
-  const steamIds = players.filter(p => p.online).map(p => p.steam_id).join(',');
   
-  // Получаем аватары для онлайн игроков через Steam API
+  // Получаем аватары для ВСЕХ игроков через Steam API (батчами по 100)
   let avatars = {};
-  if (steamIds && STEAM_API_KEY) {
-    try {
-      const steamRes = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamIds}`);
-      const steamData = await steamRes.json();
-      steamData.response?.players?.forEach(p => { avatars[p.steamid] = p.avatarfull; });
-    } catch {}
+  if (STEAM_API_KEY) {
+    const allSteamIds = players.map(p => p.steam_id);
+    for (let i = 0; i < allSteamIds.length; i += 100) {
+      const batch = allSteamIds.slice(i, i + 100).join(',');
+      try {
+        const steamRes = await fetch(`https://api.steampowered.com/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${batch}`);
+        const steamData = await steamRes.json();
+        steamData.response?.players?.forEach(p => { avatars[p.steamid] = p.avatarfull; });
+      } catch {}
+    }
   }
   
   let added = 0;
   let updated = 0;
+  
+  const db = loadPlayersDB();
   
   for (const p of players) {
     p.avatar = avatars[p.steam_id] || p.avatar || '';
@@ -353,7 +358,24 @@ app.post('/api/sync', async (req, res) => {
       } catch {}
     }
     
-    const db = loadPlayersDB();
+    // Для офлайн игроков — подтягиваем данные из базы если есть
+    if (!p.online && db.players[p.steam_id]) {
+      const existing = db.players[p.steam_id];
+      if (!p.avatar) p.avatar = existing.avatar || '';
+      if (!p.country && existing.country) p.country = existing.country;
+      if (!p.countryCode && existing.countryCode) p.countryCode = existing.countryCode;
+      if (!p.city && existing.city) p.city = existing.city;
+      if (!p.provider && existing.provider) p.provider = existing.provider;
+      // Берём последний известный IP из истории
+      if (!p.ip && existing.ips_history?.length > 0) {
+        const lastIp = existing.ips_history[existing.ips_history.length - 1];
+        p.ip = lastIp.ip || '';
+        if (!p.country) p.country = lastIp.country || '';
+        if (!p.city) p.city = lastIp.city || '';
+        if (!p.provider) p.provider = lastIp.provider || '';
+      }
+    }
+    
     if (!db.players[p.steam_id]) {
       added++;
     } else {
