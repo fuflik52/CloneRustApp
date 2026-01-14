@@ -703,6 +703,23 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
+  animation: fadeInUp 0.4s ease forwards;
+  opacity: 0;
+}
+
+.stats-card:nth-child(1) { animation-delay: 0.1s; }
+.stats-card:nth-child(2) { animation-delay: 0.2s; }
+.stats-card:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .stats-card-title {
@@ -730,7 +747,12 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  animation: fadeInUp 0.4s ease forwards;
+  opacity: 0;
 }
+
+.stats-chart-card:nth-child(1) { animation-delay: 0.4s; }
+.stats-chart-card:nth-child(2) { animation-delay: 0.5s; }
 
 .stats-chart-info {
   display: flex;
@@ -924,9 +946,11 @@
 }
 
 .kills-table-header {
-  display: flex;
+  display: grid;
+  grid-template-columns: 70px 1fr 1fr 1fr 50px;
+  gap: 8px;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 12px;
   background: #272727;
   border-radius: 8px 8px 0 0;
   border: 1px solid #333;
@@ -935,33 +959,14 @@
 
 .kills-col {
   color: #666;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
-}
-
-.kills-col.date {
-  width: 80px;
-  flex-shrink: 0;
-}
-
-.kills-col.killer {
-  width: 120px;
-  flex-shrink: 0;
-}
-
-.kills-col.target {
-  width: 120px;
-  flex-shrink: 0;
-}
-
-.kills-col.weapon {
-  flex: 1;
-  min-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .kills-col.combatlog {
-  width: 80px;
-  flex-shrink: 0;
   text-align: center;
 }
 
@@ -971,16 +976,40 @@
   background: #1e1e1e;
   border: 1px solid #333;
   border-radius: 0 0 8px 8px;
-  max-height: 300px;
+  max-height: 280px;
   overflow-y: auto;
 }
 
 .kills-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: 70px 1fr 1fr 1fr 50px;
+  gap: 8px;
   align-items: center;
-  padding: 12px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid #2a2a2a;
   transition: background 0.2s;
+  animation: fadeInRow 0.3s ease forwards;
+  opacity: 0;
+}
+
+.kills-row:nth-child(1) { animation-delay: 0.05s; }
+.kills-row:nth-child(2) { animation-delay: 0.1s; }
+.kills-row:nth-child(3) { animation-delay: 0.15s; }
+.kills-row:nth-child(4) { animation-delay: 0.2s; }
+.kills-row:nth-child(5) { animation-delay: 0.25s; }
+.kills-row:nth-child(6) { animation-delay: 0.3s; }
+.kills-row:nth-child(7) { animation-delay: 0.35s; }
+.kills-row:nth-child(8) { animation-delay: 0.4s; }
+
+@keyframes fadeInRow {
+  from {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 .kills-row:last-child {
@@ -994,23 +1023,26 @@
 .kills-row .kills-col.date {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
 }
 
 .kill-date {
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
 }
 
 .kill-time {
   color: #666;
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .killer-name, .target-name {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .killer-name {
@@ -1032,18 +1064,25 @@
 .kills-row .kills-col.weapon {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  min-width: 0;
 }
 
 .weapon-name {
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .weapon-info {
   color: #666;
-  font-size: 11px;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .weapon-info .headshot {
@@ -1054,8 +1093,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   background: #333;
   border: none;
   border-radius: 6px;
@@ -1069,6 +1108,8 @@
 }
 
 .combatlog-btn svg {
+  width: 16px;
+  height: 16px;
   fill: #888;
   color: #888;
 }

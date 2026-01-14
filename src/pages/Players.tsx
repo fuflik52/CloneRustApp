@@ -968,95 +968,139 @@ function CloseIcon() {
   return <svg viewBox="0 0 24 24" width="18" height="18"><path fillRule="evenodd" clipRule="evenodd" d="M4.29289 4.29289C4.68342 3.90237 5.31658 3.90237 5.70711 4.29289L12 10.5858L18.2929 4.29289C18.6834 3.90237 19.3166 3.90237 19.7071 4.29289C20.0976 4.68342 20.0976 5.31658 19.7071 5.70711L13.4142 12L19.7071 18.2929C20.0976 18.6834 20.0976 19.3166 19.7071 19.7071C19.3166 20.0976 18.6834 20.0976 18.2929 19.7071L12 13.4142L5.70711 19.7071C5.31658 20.0976 4.68342 20.0976 4.29289 19.7071C3.90237 19.3166 3.90237 18.6834 4.29289 18.2929L10.5858 12L4.29289 5.70711C3.90237 5.31658 3.90237 4.68342 4.29289 4.29289Z" fill="currentColor"/></svg>
 }
 
-// Компонент для круговой диаграммы убийств/смертей
+// Компонент для круговой диаграммы убийств/смертей с анимацией
 function DonutChart({ kills, deaths }: { kills: number, deaths: number }) {
+  const [animatedProgress, setAnimatedProgress] = useState(0)
   const total = kills + deaths || 1
   
-  // SVG arc path calculation
-  const createArc = (startAngle: number, endAngle: number, color: string) => {
-    const radius = 50
-    const cx = 60
-    const cy = 60
-    const innerRadius = 32
-    
-    const startRad = (startAngle - 90) * Math.PI / 180
-    const endRad = (endAngle - 90) * Math.PI / 180
-    
-    const x1 = cx + radius * Math.cos(startRad)
-    const y1 = cy + radius * Math.sin(startRad)
-    const x2 = cx + radius * Math.cos(endRad)
-    const y2 = cy + radius * Math.sin(endRad)
-    
-    const x3 = cx + innerRadius * Math.cos(endRad)
-    const y3 = cy + innerRadius * Math.sin(endRad)
-    const x4 = cx + innerRadius * Math.cos(startRad)
-    const y4 = cy + innerRadius * Math.sin(startRad)
-    
-    const largeArc = endAngle - startAngle > 180 ? 1 : 0
-    
-    return (
-      <path
-        d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`}
-        fill={color}
-        stroke="#272727"
-        strokeWidth="3"
-      />
-    )
-  }
+  useEffect(() => {
+    setAnimatedProgress(0)
+    const timer = setTimeout(() => {
+      setAnimatedProgress(1)
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [kills, deaths])
+  
+  const radius = 50
+  const cx = 60
+  const cy = 60
+  const innerRadius = 32
+  const circumference = 2 * Math.PI * radius
+  
+  const killsPercent = (kills / total) * animatedProgress
+  const deathsPercent = (deaths / total) * animatedProgress
+  
+  const deathsOffset = circumference * (1 - deathsPercent)
   
   return (
-    <svg width="120" height="120" viewBox="0 0 120 120">
-      {deaths > 0 && createArc(0, (deaths / total) * 360, '#6F6F6F')}
-      {kills > 0 && createArc((deaths / total) * 360, 360, '#BBC94E')}
+    <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
+      {/* Background circle */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={(radius + innerRadius) / 2}
+        fill="none"
+        stroke="#333"
+        strokeWidth={radius - innerRadius}
+      />
+      {/* Deaths arc */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={(radius + innerRadius) / 2}
+        fill="none"
+        stroke="#6F6F6F"
+        strokeWidth={radius - innerRadius}
+        strokeDasharray={circumference}
+        strokeDashoffset={deathsOffset}
+        style={{ transition: 'stroke-dashoffset 0.8s ease-out' }}
+      />
+      {/* Kills arc */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={(radius + innerRadius) / 2}
+        fill="none"
+        stroke="#BBC94E"
+        strokeWidth={radius - innerRadius}
+        strokeDasharray={`${circumference * killsPercent} ${circumference}`}
+        strokeDashoffset={-circumference * deathsPercent}
+        style={{ transition: 'stroke-dasharray 0.8s ease-out, stroke-dashoffset 0.8s ease-out' }}
+      />
     </svg>
   )
 }
 
-// Компонент для круговой диаграммы частей тела
+// Компонент для круговой диаграммы частей тела с анимацией
 function BodyPartsChart({ headshots, bodyshots, limbshots }: { headshots: number, bodyshots: number, limbshots: number }) {
+  const [animatedProgress, setAnimatedProgress] = useState(0)
   const total = headshots + bodyshots + limbshots || 1
   
-  const createArc = (startAngle: number, endAngle: number, color: string) => {
-    if (endAngle - startAngle <= 0) return null
-    
-    const radius = 50
-    const cx = 60
-    const cy = 60
-    const innerRadius = 32
-    
-    const startRad = (startAngle - 90) * Math.PI / 180
-    const endRad = (endAngle - 90) * Math.PI / 180
-    
-    const x1 = cx + radius * Math.cos(startRad)
-    const y1 = cy + radius * Math.sin(startRad)
-    const x2 = cx + radius * Math.cos(endRad)
-    const y2 = cy + radius * Math.sin(endRad)
-    
-    const x3 = cx + innerRadius * Math.cos(endRad)
-    const y3 = cy + innerRadius * Math.sin(endRad)
-    const x4 = cx + innerRadius * Math.cos(startRad)
-    const y4 = cy + innerRadius * Math.sin(startRad)
-    
-    const largeArc = endAngle - startAngle > 180 ? 1 : 0
-    
-    return (
-      <path
-        d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`}
-        fill={color}
-        stroke="#272727"
-        strokeWidth="3"
-      />
-    )
-  }
+  useEffect(() => {
+    setAnimatedProgress(0)
+    const timer = setTimeout(() => {
+      setAnimatedProgress(1)
+    }, 50)
+    return () => clearTimeout(timer)
+  }, [headshots, bodyshots, limbshots])
   
-  const limbAngle = (limbshots / total) * 360
-  const bodyAngle = limbAngle + (bodyshots / total) * 360
+  const radius = 50
+  const cx = 60
+  const cy = 60
+  const innerRadius = 32
+  const circumference = 2 * Math.PI * radius
+  
+  const headshotsPercent = (headshots / total) * animatedProgress
+  const bodyshotsPercent = (bodyshots / total) * animatedProgress
+  const limbshotsPercent = (limbshots / total) * animatedProgress
   
   return (
-    <svg width="120" height="120" viewBox="0 0 120 120">
-      {limbshots > 0 && createArc(0, limbAngle, '#6F6F6F')}
-      {bodyshots > 0 && createArc(limbAngle, bodyAngle, '#fdba74')}
-      {headshots > 0 && createArc(bodyAngle, 360, '#f97316')}
+    <svg width="120" height="120" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
+      {/* Background circle */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={(radius + innerRadius) / 2}
+        fill="none"
+        stroke="#333"
+        strokeWidth={radius - innerRadius}
+      />
+      {/* Limbshots arc */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={(radius + innerRadius) / 2}
+        fill="none"
+        stroke="#6F6F6F"
+        strokeWidth={radius - innerRadius}
+        strokeDasharray={`${circumference * limbshotsPercent} ${circumference}`}
+        strokeDashoffset={0}
+        style={{ transition: 'stroke-dasharray 0.8s ease-out' }}
+      />
+      {/* Bodyshots arc */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={(radius + innerRadius) / 2}
+        fill="none"
+        stroke="#fdba74"
+        strokeWidth={radius - innerRadius}
+        strokeDasharray={`${circumference * bodyshotsPercent} ${circumference}`}
+        strokeDashoffset={-circumference * limbshotsPercent}
+        style={{ transition: 'stroke-dasharray 0.8s ease-out, stroke-dashoffset 0.8s ease-out' }}
+      />
+      {/* Headshots arc */}
+      <circle
+        cx={cx}
+        cy={cy}
+        r={(radius + innerRadius) / 2}
+        fill="none"
+        stroke="#f97316"
+        strokeWidth={radius - innerRadius}
+        strokeDasharray={`${circumference * headshotsPercent} ${circumference}`}
+        strokeDashoffset={-circumference * (limbshotsPercent + bodyshotsPercent)}
+        style={{ transition: 'stroke-dasharray 0.8s ease-out, stroke-dashoffset 0.8s ease-out' }}
+      />
     </svg>
   )
 }
