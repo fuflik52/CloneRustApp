@@ -615,3 +615,273 @@
 .activity-card-row .row-label {
   flex-shrink: 0;
 }
+
+/* ==================== STATS TAB ==================== */
+.stats-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stats-tabs {
+  display: flex;
+  gap: 4px;
+  background: #272727;
+  padding: 4px;
+  border-radius: 8px;
+}
+
+.stats-tab {
+  background: transparent;
+  border: none;
+  padding: 8px 16px;
+  color: #888;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.stats-tab:hover {
+  color: #ccc;
+}
+
+.stats-tab.active {
+  background: #3a3a3a;
+  color: #fff;
+}
+
+.stats-period-select select {
+  background: #272727;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 8px 32px 8px 12px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='%23888'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.stats-period-select select:hover {
+  border-color: #444;
+}
+
+.stats-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  gap: 12px;
+}
+
+.stats-loading span {
+  color: #666;
+  font-size: 13px;
+}
+
+.stats-cards-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.stats-card {
+  background: #272727;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.stats-card-title {
+  color: #888;
+  font-size: 12px;
+}
+
+.stats-card-value {
+  color: #fff;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.stats-charts-row {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.stats-chart-card {
+  background: #272727;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stats-chart-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stats-chart-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.legend-dot.kills {
+  background: #BBC94E;
+}
+
+.legend-dot.deaths {
+  background: #6F6F6F;
+}
+
+.legend-dot.headshot {
+  background: #f97316;
+}
+
+.legend-dot.bodyshot {
+  background: #fdba74;
+}
+
+.legend-dot.limbshot {
+  background: #6F6F6F;
+}
+
+.legend-label {
+  color: #888;
+  font-size: 12px;
+}
+
+.legend-value {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.stats-donut-chart {
+  width: 120px;
+  height: 120px;
+}
+
+.stats-info-tip {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: #2E2E2E;
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow: hidden;
+}
+
+.stats-info-tip::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='5' height='5' viewBox='0 0 5 5' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 1.5v2M1.5 2.5h2' stroke='rgba(255,255,255,0.1)' stroke-width='0.4' fill='none'/%3E%3C/svg%3E");
+  background-size: 5px 5px;
+  pointer-events: none;
+}
+
+.stats-info-tip .tip-gradient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 200px;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(234, 179, 8, 0.3) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.stats-info-tip svg {
+  fill: #eab308;
+  flex-shrink: 0;
+  margin-top: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.stats-info-tip span {
+  color: #fef3c7;
+  font-size: 13px;
+  line-height: 1.5;
+  position: relative;
+  z-index: 1;
+}
+
+/* Tab placeholder */
+.tab-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  gap: 16px;
+}
+
+.placeholder-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100px;
+  height: 82px;
+}
+
+.placeholder-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.placeholder-desc {
+  color: #666;
+  font-size: 13px;
+}
+
+.hyperlink {
+  color: #0099ff;
+  cursor: pointer;
+}
+
+.hyperlink:hover {
+  text-decoration: underline;
+}
+
+.mini-flag {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-right: 4px;
+}

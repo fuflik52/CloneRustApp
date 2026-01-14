@@ -164,6 +164,31 @@ const updatePlayerInDB = (playerData, serverName) => {
     }
   }
   
+  // Обновляем статистику если пришла от плагина
+  if (playerData.stats) {
+    const player = db.players[steamId];
+    if (!player.stats) {
+      player.stats = { kills: 0, deaths: 0, headshots: 0, bodyshots: 0, limbshots: 0, playtime_hours: 0, reports_count: 0, kd: 0 };
+    }
+    // Обновляем статистику из плагина
+    player.stats.kills = playerData.stats.kills || player.stats.kills;
+    player.stats.deaths = playerData.stats.deaths || player.stats.deaths;
+    player.stats.headshots = playerData.stats.headshots || player.stats.headshots;
+    player.stats.bodyshots = playerData.stats.bodyshots || player.stats.bodyshots;
+    player.stats.limbshots = playerData.stats.limbshots || player.stats.limbshots;
+    player.stats.reports_count = playerData.stats.reports_count || player.stats.reports_count;
+    if (playerData.stats.playtime_hours) {
+      player.stats.playtime_hours = playerData.stats.playtime_hours;
+    }
+    if (playerData.stats.kd !== undefined) {
+      player.stats.kd = playerData.stats.kd;
+    } else if (player.stats.deaths > 0) {
+      player.stats.kd = Math.round((player.stats.kills / player.stats.deaths) * 100) / 100;
+    } else {
+      player.stats.kd = player.stats.kills;
+    }
+  }
+  
   savePlayersDB(db);
   return db.players[steamId];
 };
@@ -682,6 +707,119 @@ app.get('/api/player/:steamId/steam', async (req, res) => {
     console.error('Steam API error:', err);
     res.status(500).json({ error: 'Steam API error', details: err.message });
   }
+});
+
+// === PLAYER STATS API ===
+
+// Get player stats
+app.get('/api/player/:steamId/stats', (req, res) => {
+  const { steamId } = req.params;
+  const db = loadPlayersDB();
+  const player = db.players[steamId];
+  
+  if (!player) {
+    return res.status(404).json({ error: 'Player not found' });
+  }
+  
+  // Возвращаем статистику игрока
+  const stats = player.stats || {
+    kills: 0,
+    deaths: 0,
+    headshots: 0,
+    bodyshots: 0,
+    limbshots: 0,
+    playtime_hours: 0,
+    reports_count: 0,
+    kd: 0
+  };
+  
+  // Рассчитываем K/D если не задан
+  if (!stats.kd && stats.deaths > 0) {
+    stats.kd = Math.round((stats.kills / stats.deaths) * 100) / 100;
+  } else if (!stats.kd) {
+    stats.kd = stats.kills;
+  }
+  
+  // Добавляем время на проекте из базы
+  if (!stats.playtime_hours && player.total_playtime_seconds) {
+    stats.playtime_hours = Math.round(player.total_playtime_seconds / 3600 * 10) / 10;
+  }
+  
+  res.json(stats);
+});
+
+// Plugin sends kills data
+app.post('/api/kills', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const key = auth.slice(7);
+  const data = loadData();
+  const server = Object.values(data.servers).find(s => s.secretKey === key);
+  if (!server) return res.status(401).json({ error: 'Invalid key' });
+  
+  const { kills, server: serverName } = req.body;
+  if (!kills || !Array.isArray(kills)) {
+    return res.status(400).json({ error: 'Kills array required' });
+  }
+  
+  const db = loadPlayersDB();
+  
+  for (const kill of kills) {
+    // Обновляем статистику убийцы
+    if (kill.killer_steam_id && db.players[kill.killer_steam_id]) {
+      const killer = db.players[kill.killer_steam_id];
+      if (!killer.stats) {
+        killer.stats = { kills: 0, deaths: 0, headshots: 0, bodyshots: 0, limbshots: 0, playtime_hours: 0, reports_count: 0, kd: 0 };
+      }
+      killer.stats.kills++;
+      
+      // Определяем часть тела
+      const bone = (kill.bone || '').toLowerCase();
+      if (bone.includes('head') || bone.includes('jaw') || bone.includes('eye') || bone.includes('neck')) {
+        killer.stats.headshots++;
+      } else if (bone.includes('hand') || bone.includes('arm') || bone.includes('finger') || 
+                 bone.includes('leg') || bone.includes('foot') || bone.includes('toe') || bone.includes('knee')) {
+        killer.stats.limbshots++;
+      } else {
+        killer.stats.bodyshots++;
+      }
+      
+      // Пересчитываем K/D
+      killer.stats.kd = killer.stats.deaths > 0 
+        ? Math.round((killer.stats.kills / killer.stats.deaths) * 100) / 100 
+        : killer.stats.kills;
+    }
+    
+    // Обновляем статистику жертвы
+    if (kill.victim_steam_id && db.players[kill.victim_steam_id]) {
+      const victim = db.players[kill.victim_steam_id];
+      if (!victim.stats) {
+        victim.stats = { kills: 0, deaths: 0, headshots: 0, bodyshots: 0, limbshots: 0, playtime_hours: 0, reports_count: 0, kd: 0 };
+      }
+      victim.stats.deaths++;
+      
+      // Пересчитываем K/D
+      victim.stats.kd = victim.stats.deaths > 0 
+        ? Math.round((victim.stats.kills / victim.stats.deaths) * 100) / 100 
+        : victim.stats.kills;
+    }
+    
+    // Логируем убийство
+    addActivityLog('player_kill', {
+      killer_steam_id: kill.killer_steam_id,
+      victim_steam_id: kill.victim_steam_id,
+      weapon: kill.weapon,
+      distance: kill.distance,
+      is_headshot: kill.is_headshot,
+      bone: kill.bone,
+      server: serverName || server.name
+    });
+  }
+  
+  savePlayersDB(db);
+  console.log(`Kills from ${server.name}: ${kills.length} kills processed`);
+  res.json({ success: true, count: kills.length });
 });
 
 // === CHAT API ===

@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react'
 import { useToast } from '../components/Toast'
 
+interface PlayerStats {
+  kills: number
+  deaths: number
+  headshots: number
+  bodyshots: number
+  limbshots: number
+  playtime_hours: number
+  reports_count: number
+  kd: number
+}
+
 interface Player {
   steam_id: string
   name: string
@@ -16,6 +27,7 @@ interface Player {
   provider?: string
   avatar?: string
   firstSeen?: string
+  stats?: PlayerStats
 }
 
 interface SteamInfo {
@@ -43,6 +55,10 @@ export default function Players() {
   const [steamLoading, setSteamLoading] = useState(false)
   const [activeTab, setActiveTab] = useState('overview')
   const [activityTab, setActivityTab] = useState<'sessions' | 'ips' | 'nicknames'>('sessions')
+  const [statsTab, setStatsTab] = useState<'main' | 'kills'>('main')
+  const [statsPeriod, setStatsPeriod] = useState('7d')
+  const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null)
+  const [statsLoading, setStatsLoading] = useState(false)
   const { showToast } = useToast()
 
   const copyToClipboard = (text: string) => {
@@ -77,12 +93,14 @@ export default function Players() {
     setSteamInfo(null)
     setSteamLoading(true)
     setActiveTab('overview')
+    setPlayerStats(null)
     
     // Обновляем URL
     const url = new URL(window.location.href)
     url.searchParams.set('player', player.steam_id)
     window.history.pushState({}, '', url.toString())
     
+    // Загружаем Steam инфо
     try {
       const res = await fetch(`/api/player/${player.steam_id}/steam`)
       if (res.ok) {
@@ -93,11 +111,27 @@ export default function Players() {
       }
     } catch {}
     setSteamLoading(false)
+    
+    // Загружаем статистику
+    loadPlayerStats(player.steam_id)
+  }
+
+  const loadPlayerStats = async (steamId: string) => {
+    setStatsLoading(true)
+    try {
+      const res = await fetch(`/api/player/${steamId}/stats`)
+      if (res.ok) {
+        const data = await res.json()
+        setPlayerStats(data)
+      }
+    } catch {}
+    setStatsLoading(false)
   }
 
   const handleCloseModal = () => {
     setSelectedPlayer(null)
     setSteamInfo(null)
+    setPlayerStats(null)
     // Убираем player из URL
     const url = new URL(window.location.href)
     url.searchParams.delete('player')
@@ -130,7 +164,8 @@ export default function Players() {
             countryCode: p.countryCode || '',
             city: p.city || p.ips_history?.[p.ips_history.length - 1]?.city || '',
             provider: p.provider || p.ips_history?.[p.ips_history.length - 1]?.provider || '',
-            avatar: p.avatar || ''
+            avatar: p.avatar || '',
+            stats: p.stats || null
           }))
           setAllPlayers(players)
         }
@@ -421,7 +456,115 @@ export default function Players() {
                   </div>
                 )}
 
-                {activeTab !== 'overview' && activeTab !== 'activity' && (
+                {activeTab === 'stats' && (
+                  <div className="stats-page">
+                    <div className="stats-header">
+                      <div className="stats-tabs">
+                        <button className={`stats-tab ${statsTab === 'main' ? 'active' : ''}`} onClick={() => setStatsTab('main')}>Основное</button>
+                        <button className={`stats-tab ${statsTab === 'kills' ? 'active' : ''}`} onClick={() => setStatsTab('kills')}>Убийства</button>
+                      </div>
+                      <div className="stats-period-select">
+                        <select value={statsPeriod} onChange={(e) => setStatsPeriod(e.target.value)}>
+                          <option value="7d">7 дней</option>
+                          <option value="30d">30 дней</option>
+                          <option value="all">Всё время</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {statsLoading ? (
+                      <div className="stats-loading">
+                        <div className="steam-spinner"></div>
+                        <span>Загрузка статистики...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="stats-cards-row">
+                          <div className="stats-card">
+                            <span className="stats-card-title">K/D</span>
+                            <span className="stats-card-value">{playerStats?.kd?.toFixed(2) || selectedPlayer?.stats?.kd?.toFixed(2) || '0.00'}</span>
+                          </div>
+                          <div className="stats-card">
+                            <span className="stats-card-title">На проекте</span>
+                            <span className="stats-card-value">{playerStats?.playtime_hours?.toFixed(0) || selectedPlayer?.stats?.playtime_hours?.toFixed(0) || '0'} ч.</span>
+                          </div>
+                          <div className="stats-card">
+                            <span className="stats-card-title">Репортов</span>
+                            <span className="stats-card-value">{playerStats?.reports_count || selectedPlayer?.stats?.reports_count || '0'}</span>
+                          </div>
+                        </div>
+
+                        <div className="stats-charts-row">
+                          <div className="stats-chart-card">
+                            <div className="stats-chart-info">
+                              <div className="stats-chart-legend">
+                                <div className="legend-item">
+                                  <span className="legend-dot kills"></span>
+                                  <span className="legend-label">Убийств</span>
+                                </div>
+                                <div className="legend-value">{playerStats?.kills || selectedPlayer?.stats?.kills || 0}</div>
+                              </div>
+                              <div className="stats-chart-legend">
+                                <div className="legend-item">
+                                  <span className="legend-dot deaths"></span>
+                                  <span className="legend-label">Смертей</span>
+                                </div>
+                                <div className="legend-value">{playerStats?.deaths || selectedPlayer?.stats?.deaths || 0}</div>
+                              </div>
+                            </div>
+                            <div className="stats-donut-chart">
+                              <DonutChart 
+                                kills={playerStats?.kills || selectedPlayer?.stats?.kills || 0} 
+                                deaths={playerStats?.deaths || selectedPlayer?.stats?.deaths || 0} 
+                              />
+                            </div>
+                          </div>
+
+                          <div className="stats-chart-card">
+                            <div className="stats-chart-info">
+                              <div className="stats-chart-legend">
+                                <div className="legend-item">
+                                  <span className="legend-dot headshot"></span>
+                                  <span className="legend-label">В голову</span>
+                                </div>
+                                <div className="legend-value">{playerStats?.headshots || selectedPlayer?.stats?.headshots || 0}</div>
+                              </div>
+                              <div className="stats-chart-legend">
+                                <div className="legend-item">
+                                  <span className="legend-dot bodyshot"></span>
+                                  <span className="legend-label">В туловище</span>
+                                </div>
+                                <div className="legend-value">{playerStats?.bodyshots || selectedPlayer?.stats?.bodyshots || 0}</div>
+                              </div>
+                              <div className="stats-chart-legend">
+                                <div className="legend-item">
+                                  <span className="legend-dot limbshot"></span>
+                                  <span className="legend-label">В конечности</span>
+                                </div>
+                                <div className="legend-value">{playerStats?.limbshots || selectedPlayer?.stats?.limbshots || 0}</div>
+                              </div>
+                            </div>
+                            <div className="stats-donut-chart">
+                              <BodyPartsChart 
+                                headshots={playerStats?.headshots || selectedPlayer?.stats?.headshots || 0}
+                                bodyshots={playerStats?.bodyshots || selectedPlayer?.stats?.bodyshots || 0}
+                                limbshots={playerStats?.limbshots || selectedPlayer?.stats?.limbshots || 0}
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="stats-info-tip">
+                          <div className="tip-gradient"></div>
+                          <InfoIcon />
+                          <span>В графике отображаются только завершённые сессии, поэтому время, проведённое в активной сессии, отображено не будет.</span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {activeTab !== 'overview' && activeTab !== 'activity' && activeTab !== 'stats' && (
                   <div className="tab-placeholder">
                     <div className="placeholder-icon-box">
                       <BoxIcon />
@@ -562,6 +705,99 @@ function BoxIcon() {
       <path d="M53.8501 28.0195V48.0195C53.8501 49.0595 53.1901 49.9695 51.8501 50.7395C51.3101 51.0595 50.7201 51.3095 50.0901 51.4895L26.8401 38.0695L26.1401 37.6695V19.7795C26.1401 20.8195 26.8201 21.7395 28.1701 22.5095L42.4001 30.7295C43.7401 31.4995 45.3201 31.8895 47.1301 31.8995C48.9401 31.8995 50.5201 31.5195 51.8501 30.7395C52.4001 30.4195 52.8401 30.0795 53.1501 29.7195C53.6201 29.1995 53.8501 28.6295 53.8501 28.0195Z"/>
       <path d="M54.0001 55.3196V75.3196C54.0001 76.3596 53.3401 77.2696 52.0001 78.0396C50.6701 78.8196 49.0901 79.1996 47.2801 79.1996C45.4701 79.1896 43.89 78.7996 42.54 78.0296L4.60004 56.1196C3.25004 55.3396 2.58007 54.4296 2.57007 53.3796V33.3796C2.58007 34.4296 3.25004 35.3396 4.60004 36.1196L42.54 58.0296C43.89 58.7996 45.4701 59.1896 47.2801 59.1996C49.0901 59.1996 50.6701 58.8196 52.0001 58.0396C53.3401 57.2696 54.0001 56.3596 54.0001 55.3196Z"/>
       <path d="M87.97 63.2997V83.2997C84.73 82.9697 81.66 82.3497 78.74 81.4397C75.82 80.5197 73.21 79.3997 70.92 78.0797C64.35 74.2897 61.06 69.7297 61.03 64.4097V44.4097C61.05 48.0997 62.64 51.4197 65.8 54.3697C67.2 55.6797 68.91 56.9097 70.92 58.0797C72.36 58.9097 73.93 59.6597 75.62 60.3297C76.61 60.7297 77.66 61.0997 78.74 61.4397C81.66 62.3497 84.73 62.9697 87.97 63.2997Z"/>
+    </svg>
+  )
+}
+
+// Компонент для круговой диаграммы убийств/смертей
+function DonutChart({ kills, deaths }: { kills: number, deaths: number }) {
+  const total = kills + deaths || 1
+  
+  // SVG arc path calculation
+  const createArc = (startAngle: number, endAngle: number, color: string) => {
+    const radius = 50
+    const cx = 60
+    const cy = 60
+    const innerRadius = 32
+    
+    const startRad = (startAngle - 90) * Math.PI / 180
+    const endRad = (endAngle - 90) * Math.PI / 180
+    
+    const x1 = cx + radius * Math.cos(startRad)
+    const y1 = cy + radius * Math.sin(startRad)
+    const x2 = cx + radius * Math.cos(endRad)
+    const y2 = cy + radius * Math.sin(endRad)
+    
+    const x3 = cx + innerRadius * Math.cos(endRad)
+    const y3 = cy + innerRadius * Math.sin(endRad)
+    const x4 = cx + innerRadius * Math.cos(startRad)
+    const y4 = cy + innerRadius * Math.sin(startRad)
+    
+    const largeArc = endAngle - startAngle > 180 ? 1 : 0
+    
+    return (
+      <path
+        d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`}
+        fill={color}
+        stroke="#272727"
+        strokeWidth="3"
+      />
+    )
+  }
+  
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120">
+      {deaths > 0 && createArc(0, (deaths / total) * 360, '#6F6F6F')}
+      {kills > 0 && createArc((deaths / total) * 360, 360, '#BBC94E')}
+    </svg>
+  )
+}
+
+// Компонент для круговой диаграммы частей тела
+function BodyPartsChart({ headshots, bodyshots, limbshots }: { headshots: number, bodyshots: number, limbshots: number }) {
+  const total = headshots + bodyshots + limbshots || 1
+  
+  const createArc = (startAngle: number, endAngle: number, color: string) => {
+    if (endAngle - startAngle <= 0) return null
+    
+    const radius = 50
+    const cx = 60
+    const cy = 60
+    const innerRadius = 32
+    
+    const startRad = (startAngle - 90) * Math.PI / 180
+    const endRad = (endAngle - 90) * Math.PI / 180
+    
+    const x1 = cx + radius * Math.cos(startRad)
+    const y1 = cy + radius * Math.sin(startRad)
+    const x2 = cx + radius * Math.cos(endRad)
+    const y2 = cy + radius * Math.sin(endRad)
+    
+    const x3 = cx + innerRadius * Math.cos(endRad)
+    const y3 = cy + innerRadius * Math.sin(endRad)
+    const x4 = cx + innerRadius * Math.cos(startRad)
+    const y4 = cy + innerRadius * Math.sin(startRad)
+    
+    const largeArc = endAngle - startAngle > 180 ? 1 : 0
+    
+    return (
+      <path
+        d={`M ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4} Z`}
+        fill={color}
+        stroke="#272727"
+        strokeWidth="3"
+      />
+    )
+  }
+  
+  const limbAngle = (limbshots / total) * 360
+  const bodyAngle = limbAngle + (bodyshots / total) * 360
+  
+  return (
+    <svg width="120" height="120" viewBox="0 0 120 120">
+      {limbshots > 0 && createArc(0, limbAngle, '#6F6F6F')}
+      {bodyshots > 0 && createArc(limbAngle, bodyAngle, '#fdba74')}
+      {headshots > 0 && createArc(bodyAngle, 360, '#f97316')}
     </svg>
   )
 }
