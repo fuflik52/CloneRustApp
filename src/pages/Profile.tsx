@@ -30,7 +30,10 @@ export default function Profile() {
   }, [])
 
   const handleServerClick = (server: Server) => {
-    navigate(`/servers?server=${server.id}`)
+    // Создаём slug из имени сервера
+    const slug = server.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    localStorage.setItem('selectedServer', slug)
+    navigate(`/${slug}/welcome`)
   }
 
   return (

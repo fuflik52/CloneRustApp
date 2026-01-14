@@ -8,10 +8,13 @@ interface SidebarProps {
   onSearchClick: () => void
   mobileOpen?: boolean
   onMobileClose?: () => void
+  serverSlug?: string
+  serverName?: string | null
 }
 
-export default function Sidebar({ collapsed, onToggle, onSearchClick, mobileOpen, onMobileClose }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, onSearchClick, mobileOpen, onMobileClose, serverSlug, serverName }: SidebarProps) {
   const location = useLocation()
+  const basePath = serverSlug ? `/${serverSlug}` : ''
 
   const handleNavClick = () => {
     if (onMobileClose) onMobileClose()
@@ -20,10 +23,10 @@ export default function Sidebar({ collapsed, onToggle, onSearchClick, mobileOpen
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
       <div className="header">
-        <div className="logo-wrapper">
-          <img className="avatar" src="https://s3.rustapp.io/avatar-project/1755276829361-35f5b20e8642407589c95dc2.png" alt="PAN RUST" />
-          <span className="logo-text">PAN RUST</span>
-        </div>
+        <NavLink to="/profile" className="logo-wrapper">
+          <img className="avatar" src="https://s3.rustapp.io/avatar-project/1755276829361-35f5b20e8642407589c95dc2.png" alt="" />
+          <span className="logo-text">{serverName || 'PAN RUST'}</span>
+        </NavLink>
         <div className="nav-btn" onClick={onToggle}>
           <svg viewBox="0 0 19 19" fill="none">
             <path d="M3.16602 4.74984C3.16602 3.87539 3.8749 3.1665 4.74935 3.1665H14.2493C15.1238 3.1665 15.8327 3.87539 15.8327 4.74984V14.2498C15.8327 15.1243 15.1238 15.8332 14.2493 15.8332H4.74935C3.8749 15.8332 3.16602 15.1243 3.16602 14.2498V4.74984Z" strokeWidth="1.58333" strokeLinecap="round" strokeLinejoin="round" />
@@ -48,8 +51,8 @@ export default function Sidebar({ collapsed, onToggle, onSearchClick, mobileOpen
       </div>
 
       <NavLink 
-        to="/welcome" 
-        className={`early-access ${location.pathname === '/welcome' ? 'active' : ''}`}
+        to={`${basePath}/welcome`}
+        className={`early-access ${location.pathname.endsWith('/welcome') ? 'active' : ''}`}
         onClick={handleNavClick}
       >
         <svg className="info-icon" viewBox="0 0 16 16">
@@ -58,14 +61,14 @@ export default function Sidebar({ collapsed, onToggle, onSearchClick, mobileOpen
         <span className="early-access-text">Ранний доступ</span>
       </NavLink>
 
-      <MenuSection title="Модерация" items={moderationItems} collapsed={collapsed} onNavClick={handleNavClick} />
-      <MenuSection title="Управление" items={managementItems} collapsed={collapsed} onNavClick={handleNavClick} />
-      <MenuSection title="Проект" items={projectItems} collapsed={collapsed} onNavClick={handleNavClick} />
+      <MenuSection title="Модерация" items={moderationItems} collapsed={collapsed} onNavClick={handleNavClick} basePath={basePath} />
+      <MenuSection title="Управление" items={managementItems} collapsed={collapsed} onNavClick={handleNavClick} basePath={basePath} />
+      <MenuSection title="Проект" items={projectItems} collapsed={collapsed} onNavClick={handleNavClick} basePath={basePath} />
 
       <div className="sidebar-footer">
         <NavLink 
           to="/profile" 
-          className={`profile-link ${location.pathname === '/profile' ? 'active' : ''}`}
+          className="profile-link"
           onClick={handleNavClick}
         >
           <div className="profile-avatar-small">
@@ -83,9 +86,10 @@ interface MenuSectionProps {
   items: { name: string; slug: string; icon: string }[]
   collapsed: boolean
   onNavClick?: () => void
+  basePath: string
 }
 
-function MenuSection({ title, items, collapsed, onNavClick }: MenuSectionProps) {
+function MenuSection({ title, items, collapsed, onNavClick, basePath }: MenuSectionProps) {
   return (
     <div className="menu-section">
       <div className="section-header">
@@ -99,7 +103,7 @@ function MenuSection({ title, items, collapsed, onNavClick }: MenuSectionProps) 
         {items.map(item => (
           <NavLink 
             key={item.slug} 
-            to={`/${item.slug}`} 
+            to={`${basePath}/${item.slug}`} 
             className={({ isActive }) => `menu-item ${isActive ? 'active' : ''}`}
             onClick={onNavClick}
           >

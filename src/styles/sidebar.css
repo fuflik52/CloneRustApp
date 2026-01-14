@@ -75,6 +75,7 @@
   cursor: pointer;
   border: 1px solid transparent;
   transition: all 0.2s ease;
+  text-decoration: none;
 }
 
 .logo-wrapper:hover {
