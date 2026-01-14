@@ -741,75 +741,79 @@ export default function Players() {
                         </button>
                       </div>
                       <div className="combatlog-content">
-                        <div className="combatlog-table-container">
-                          <table className="combatlog-table">
-                            <thead>
-                              <tr>
-                                <th>Time</th>
-                                <th>Attacker</th>
-                                <th>Target</th>
-                                <th>Weapon</th>
-                                <th>Ammo</th>
-                                <th>Bone</th>
-                                <th>Distance</th>
-                                <th>Old_hp</th>
-                                <th>New_hp</th>
-                                <th>Info</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {(selectedKillForCombat.hit_history || []).length === 0 ? (
-                                <tr>
-                                  <td colSpan={10} style={{ textAlign: 'center', padding: '20px', color: 'rgba(255,255,255,0.5)' }}>
-                                    Нет данных комбатлога
-                                  </td>
-                                </tr>
-                              ) : (
-                                (selectedKillForCombat.hit_history || []).map((entry, idx) => (
-                                  <tr key={idx}>
-                                    <td>{typeof entry.time === 'number' ? entry.time.toFixed(2) : entry.time}</td>
-                                    <td>{entry.attacker === 'player' ? (entry.attacker_steam_id === selectedKillForCombat.killer_steam_id ? selectedKillForCombat.killer_name : selectedKillForCombat.victim_name) : entry.attacker}</td>
-                                    <td className="target-cell">{entry.target === 'player' ? (entry.target_steam_id === selectedKillForCombat.victim_steam_id ? selectedKillForCombat.victim_name : selectedKillForCombat.killer_name) : entry.target}</td>
-                                    <td>{entry.weapon}</td>
-                                    <td>{entry.ammo}</td>
-                                    <td className={entry.bone === 'head' ? 'bone-head' : ''}>{entry.bone}</td>
-                                    <td>{entry.distance.toFixed(2)}</td>
-                                    <td>{entry.hp_old.toFixed(2)}</td>
-                                    <td>{entry.hp_new.toFixed(2)}</td>
-                                    <td>{entry.info}</td>
+                        {(selectedKillForCombat.hit_history || []).length === 0 ? (
+                          <div className="combatlog-empty">
+                            <div className="combatlog-empty-icon">
+                              <CombatLogEmptyIcon />
+                            </div>
+                            <span className="combatlog-empty-title">Нет данных комбатлога</span>
+                            <span className="combatlog-empty-desc">История урона для этого убийства недоступна</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="combatlog-table-container">
+                              <table className="combatlog-table">
+                                <thead>
+                                  <tr>
+                                    <th>Time</th>
+                                    <th>Attacker</th>
+                                    <th>Target</th>
+                                    <th>Weapon</th>
+                                    <th>Ammo</th>
+                                    <th>Bone</th>
+                                    <th>Distance</th>
+                                    <th>Old_hp</th>
+                                    <th>New_hp</th>
+                                    <th>Info</th>
                                   </tr>
-                                ))
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="combatlog-divider">
-                          <div className="divider-line"></div>
-                          <span className="divider-text">Участники файта</span>
-                          <div className="divider-line"></div>
-                        </div>
-                        <div className="combatlog-players">
-                          <div className="combatlog-player">
-                            <div className="combatlog-player-avatar">
-                              <img src={selectedKillForCombat.killer_avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                                </thead>
+                                <tbody>
+                                  {(selectedKillForCombat.hit_history || []).map((entry, idx) => (
+                                    <tr key={idx}>
+                                      <td>{typeof entry.time === 'number' ? entry.time.toFixed(2) : entry.time}</td>
+                                      <td>{entry.attacker === 'player' ? (entry.attacker_steam_id === selectedKillForCombat.killer_steam_id ? selectedKillForCombat.killer_name : selectedKillForCombat.victim_name) : entry.attacker}</td>
+                                      <td className="target-cell">{entry.target === 'player' ? (entry.target_steam_id === selectedKillForCombat.victim_steam_id ? selectedKillForCombat.victim_name : selectedKillForCombat.killer_name) : entry.target}</td>
+                                      <td>{entry.weapon}</td>
+                                      <td>{entry.ammo}</td>
+                                      <td className={entry.bone === 'head' ? 'bone-head' : ''}>{entry.bone}</td>
+                                      <td>{entry.distance.toFixed(2)}</td>
+                                      <td>{entry.hp_old.toFixed(2)}</td>
+                                      <td>{entry.hp_new.toFixed(2)}</td>
+                                      <td>{entry.info}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
                             </div>
-                            <div className="combatlog-player-info">
-                              <span className="combatlog-player-name">{selectedKillForCombat.killer_name}</span>
-                              <span className="combatlog-player-id">{selectedKillForCombat.killer_steam_id}</span>
+                            <div className="combatlog-divider">
+                              <div className="divider-line"></div>
+                              <span className="divider-text">Участники файта</span>
+                              <div className="divider-line"></div>
                             </div>
-                          </div>
-                          <div className="combatlog-player">
-                            <div className="combatlog-player-avatar">
-                              <img src={selectedKillForCombat.victim_avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                            <div className="combatlog-players">
+                              <div className="combatlog-player">
+                                <div className="combatlog-player-avatar">
+                                  <img src={selectedKillForCombat.killer_avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                                </div>
+                                <div className="combatlog-player-info">
+                                  <span className="combatlog-player-name">{selectedKillForCombat.killer_name}</span>
+                                  <span className="combatlog-player-id">{selectedKillForCombat.killer_steam_id}</span>
+                                </div>
+                              </div>
+                              <div className="combatlog-player">
+                                <div className="combatlog-player-avatar">
+                                  <img src={selectedKillForCombat.victim_avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                                </div>
+                                <div className="combatlog-player-info">
+                                  <span className="combatlog-player-name">{selectedKillForCombat.victim_name}</span>
+                                  <span className="combatlog-player-id">{selectedKillForCombat.victim_steam_id}</span>
+                                </div>
+                              </div>
+                              <div className="combatlog-player-empty"></div>
+                              <div className="combatlog-player-empty"></div>
                             </div>
-                            <div className="combatlog-player-info">
-                              <span className="combatlog-player-name">{selectedKillForCombat.victim_name}</span>
-                              <span className="combatlog-player-id">{selectedKillForCombat.victim_steam_id}</span>
-                            </div>
-                          </div>
-                          <div className="combatlog-player-empty"></div>
-                          <div className="combatlog-player-empty"></div>
-                        </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>

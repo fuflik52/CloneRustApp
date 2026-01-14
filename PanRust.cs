@@ -1,6 +1,5 @@
 using Newtonsoft.Json;
 using Oxide.Core;
-using Oxide.Core.Libraries.Covalence;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,907 +7,358 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("PanRust", "PanRust.io", "1.1.0")]
+    [Info("PanRust", "PanRust.io", "1.2.0")]
     public class PanRust : RustPlugin
     {
-        private static PanRust _instance;
-        private static Configuration _config;
-        private static MetaInfo _metaInfo;
-        private static PlayerStatsData _statsData;
+        static PanRust _instance;
+        static Configuration _config;
+        static MetaInfo _meta;
+        static StatsData _stats;
 
-        private const string API_URL = "http://app.bublickrust.ru/api";
+        const string API = "http://app.bublickrust.ru/api";
 
-        // Очереди для отправки данных
-        private List<ChatMessageDto> _chatQueue = new List<ChatMessageDto>();
-        private List<KillEventDto> _killsQueue = new List<KillEventDto>();
-        private Dictionary<string, HitRecord> _woundedHits = new Dictionary<string, HitRecord>();
+        readonly List<ChatMsg> _chatQueue = new List<ChatMsg>(32);
+        readonly List<KillDto> _killsQueue = new List<KillDto>(16);
+        readonly Dictionary<ulong, HitData> _wounds = new Dictionary<ulong, HitData>();
+        readonly Dictionary<ulong, float> _sessions = new Dictionary<ulong, float>();
 
-        // Сессии игроков для подсчёта времени
-        private Dictionary<string, DateTime> _playerSessions = new Dictionary<string, DateTime>();
-
-        #region Data Classes
-
-        // Структура для хранения информации о попадании
-        private struct HitRecord
+        #region Data
+        
+        struct HitData
         {
-            public BasePlayer InitiatorPlayer;
+            public BasePlayer Attacker;
             public string Weapon;
             public float Distance;
-            public bool IsHeadshot;
+            public bool Headshot;
             public string Bone;
+        }
 
-            public HitRecord(HitInfo info)
+        class PlayerStats
+        {
+            public int k, d, hs, bs, ls, rp;
+            public double pt;
+            public long fs, ls_t;
+        }
+
+        class StatsData
+        {
+            public Dictionary<string, PlayerStats> p = new Dictionary<string, PlayerStats>();
+            public static StatsData Read() => Interface.Oxide.DataFileSystem.ExistsDatafile("PanRust_Stats") 
+                ? Interface.Oxide.DataFileSystem.ReadObject<StatsData>("PanRust_Stats") 
+                : new StatsData();
+            public static void Write(StatsData d) => Interface.Oxide.DataFileSystem.WriteObject("PanRust_Stats", d);
+        }
+
+        class KillDto
+        {
+            public string ki, vi, wp, bn;
+            public float ds;
+            public bool hs;
+            public long ts;
+            public List<CombatDto> h;
+        }
+
+        class CombatDto
+        {
+            public float t;
+            public string asi, tsi, a, tg, wp, am, bn, inf;
+            public float ds, ho, hn;
+            public int ph, dy;
+            public float pi, pt, pm;
+            public bool ad;
+
+            public CombatDto(float kt, CombatLog.Event e)
             {
-                InitiatorPlayer = info?.InitiatorPlayer;
-                Weapon = info?.Weapon?.GetItem()?.info?.displayName?.english ?? 
-                         info?.WeaponPrefab?.ShortPrefabName ?? "unknown";
-                Distance = info?.ProjectileDistance ?? 0f;
-                IsHeadshot = info?.isHeadshot ?? false;
-                Bone = info?.boneName ?? "";
+                if (e.attacker == "player")
+                    asi = (BaseNetworkable.serverEntities.Find(new NetworkableId(e.attacker_id)) as BasePlayer)?.UserIDString ?? "";
+                if (e.target == "player")
+                    tsi = (BaseNetworkable.serverEntities.Find(new NetworkableId(e.target_id)) as BasePlayer)?.UserIDString ?? "";
+                t = kt - e.time; a = e.attacker; tg = e.target; wp = e.weapon; am = e.ammo; bn = e.bone;
+                ds = (float)Math.Round(e.distance, 2); ho = (float)Math.Round(e.health_old, 2); hn = (float)Math.Round(e.health_new, 2);
+                inf = e.info; ph = e.proj_hits; pt = e.proj_travel; dy = e.desync; pi = e.proj_integrity; pm = e.proj_mismatch; ad = e.attacker_dead;
             }
         }
 
-        // Статистика игрока
-        public class PlayerStats
+        class MetaInfo
         {
-            public int kills = 0;
-            public int deaths = 0;
-            public int headshots = 0;
-            public int bodyshots = 0;
-            public int limbshots = 0;
-            public double playtime_seconds = 0; // Общее время на сервере в секундах
-            public int reports_count = 0;
-            public long first_seen = 0;
-            public long last_seen = 0;
-            public List<SessionRecord> sessions = new List<SessionRecord>();
+            public string Key = "";
+            public static MetaInfo Read() => Interface.Oxide.DataFileSystem.ExistsDatafile("PanRust_Meta") 
+                ? Interface.Oxide.DataFileSystem.ReadObject<MetaInfo>("PanRust_Meta") 
+                : new MetaInfo();
+            public static void Write(MetaInfo m) => Interface.Oxide.DataFileSystem.WriteObject("PanRust_Meta", m);
         }
 
-        public class SessionRecord
+        class Configuration
         {
-            public long start_time;
-            public long end_time;
-            public double duration_seconds;
+            public float UpdateInt = 5f, ChatInt = 1f, KillsInt = 5f, SaveInt = 60f;
         }
 
-        // Хранилище статистики всех игроков
-        public class PlayerStatsData
-        {
-            public Dictionary<string, PlayerStats> players = new Dictionary<string, PlayerStats>();
-
-            public static PlayerStatsData Read()
-            {
-                if (!Interface.Oxide.DataFileSystem.ExistsDatafile("PanRust_Stats"))
-                {
-                    return new PlayerStatsData();
-                }
-                return Interface.Oxide.DataFileSystem.ReadObject<PlayerStatsData>("PanRust_Stats");
-            }
-
-            public static void Write(PlayerStatsData data)
-            {
-                Interface.Oxide.DataFileSystem.WriteObject("PanRust_Stats", data);
-            }
-        }
-
-        // DTO для отправки убийств
-        public class KillEventDto
-        {
-            public string killer_steam_id;
-            public string victim_steam_id;
-            public string weapon;
-            public float distance;
-            public bool is_headshot;
-            public string bone;
-            public long timestamp;
-            public List<CombatLogEventDto> hit_history;
-        }
-
-        // DTO для комбатлога (как в RustApp.cs)
-        public class CombatLogEventDto
-        {
-            public float time;
-            public string attacker_steam_id;
-            public string target_steam_id;
-            public string attacker;
-            public string target;
-            public string weapon;
-            public string ammo;
-            public string bone;
-            public float distance;
-            public float hp_old;
-            public float hp_new;
-            public string info;
-            public int proj_hits;
-            public float proj_integrity;
-            public float proj_travel;
-            public float proj_mismatch;
-            public int desync;
-            public bool attacker_dead;
-
-            public CombatLogEventDto(float killTime, CombatLog.Event ev)
-            {
-                if (ev.attacker == "player")
-                {
-                    var attackerEntity = BaseNetworkable.serverEntities.Find(new NetworkableId(ev.attacker_id)) as BasePlayer;
-                    this.attacker_steam_id = attackerEntity?.UserIDString ?? "";
-                }
-
-                if (ev.target == "player")
-                {
-                    var targetEntity = BaseNetworkable.serverEntities.Find(new NetworkableId(ev.target_id)) as BasePlayer;
-                    this.target_steam_id = targetEntity?.UserIDString ?? "";
-                }
-
-                this.time = killTime - ev.time;
-                this.attacker = ev.attacker;
-                this.target = ev.target;
-                this.weapon = ev.weapon;
-                this.ammo = ev.ammo;
-                this.bone = ev.bone;
-                this.distance = (float)Math.Round(ev.distance, 2);
-                this.hp_old = (float)Math.Round(ev.health_old, 2);
-                this.hp_new = (float)Math.Round(ev.health_new, 2);
-                this.info = ev.info;
-                this.proj_hits = ev.proj_hits;
-                this.proj_travel = ev.proj_travel;
-                this.desync = ev.desync;
-                this.proj_integrity = ev.proj_integrity;
-                this.proj_mismatch = ev.proj_mismatch;
-                this.attacker_dead = ev.attacker_dead;
-            }
-        }
+        class ChatMsg { public string si, n, m; public bool t; public long ts; }
 
         #endregion
 
-        #region Meta (хранит секретный ключ)
-        private class MetaInfo
-        {
-            public string SecretKey = "";
-
-            public static MetaInfo Read()
-            {
-                if (!Interface.Oxide.DataFileSystem.ExistsDatafile("PanRust_Meta"))
-                {
-                    return new MetaInfo();
-                }
-                return Interface.Oxide.DataFileSystem.ReadObject<MetaInfo>("PanRust_Meta");
-            }
-
-            public static void Write(MetaInfo meta)
-            {
-                Interface.Oxide.DataFileSystem.WriteObject("PanRust_Meta", meta);
-            }
-        }
-        #endregion
-
-        #region Configuration
-        private class Configuration
-        {
-            [JsonProperty("Update Interval (seconds)")]
-            public float UpdateInterval = 5f;
-
-            [JsonProperty("Chat Update Interval (seconds)")]
-            public float ChatUpdateInterval = 1f;
-
-            [JsonProperty("Kills Update Interval (seconds)")]
-            public float KillsUpdateInterval = 5f;
-
-            [JsonProperty("Stats Save Interval (seconds)")]
-            public float StatsSaveInterval = 60f;
-        }
-
+        #region Config
         protected override void LoadConfig()
         {
             base.LoadConfig();
-            try { _config = Config.ReadObject<Configuration>(); }
-            catch { LoadDefaultConfig(); }
+            try { _config = Config.ReadObject<Configuration>(); } catch { _config = new Configuration(); }
             SaveConfig();
         }
-
         protected override void LoadDefaultConfig() => _config = new Configuration();
         protected override void SaveConfig() => Config.WriteObject(_config);
         #endregion
 
-        #region DTO Classes
-        private class PlayerDto
-        {
-            public string steam_id;
-            public string name;
-            public string ip;
-            public int ping;
-            public bool online;
-            public string position;
-            public string server;
-        }
-
-        private class ChatMessageDto
-        {
-            public string steam_id;
-            public string name;
-            public string message;
-            public bool is_team;
-            public long timestamp;
-        }
-
-        private class StatePayload
-        {
-            public string hostname = ConVar.Server.hostname;
-            public int port = ConVar.Server.port;
-            public int online = BasePlayer.activePlayerList.Count;
-            public int max_players = ConVar.Server.maxplayers;
-            public List<PlayerDto> players = new List<PlayerDto>();
-        }
-
-        private class StatsPayload
-        {
-            public string steam_id;
-            public PlayerStats stats;
-        }
-        #endregion
-
         #region Hooks
-        private void OnServerInitialized()
+        void OnServerInitialized()
         {
             _instance = this;
-            _metaInfo = MetaInfo.Read();
-            _statsData = PlayerStatsData.Read();
+            _meta = MetaInfo.Read();
+            _stats = StatsData.Read();
 
-            if (string.IsNullOrEmpty(_metaInfo.SecretKey))
+            if (string.IsNullOrEmpty(_meta.Key))
             {
-                Puts("========================================");
-                Puts("PanRust: Сервер не подключен!");
-                Puts("1. Создайте сервер в панели: http://app.bublickrust.ru");
-                Puts("2. Скопируйте Secret Key");
-                Puts("3. Введите в консоль: panrust.pair ВАШ_SECRET_KEY");
-                Puts("========================================");
+                Puts("PanRust: Не подключен! panrust.pair SECRET_KEY");
+                return;
             }
-            else
-            {
-                Puts("PanRust: Подключен к панели");
-                
-                timer.Once(2f, () => SyncAllPlayers());
-                
-                timer.Every(_config.UpdateInterval, () => SendStateUpdate());
-                timer.Every(_config.ChatUpdateInterval, () => SendChatMessages());
-                timer.Every(_config.KillsUpdateInterval, () => SendKillsData());
-                timer.Every(_config.StatsSaveInterval, () => SaveStats());
-                timer.Every(1f, () => FetchCommands());
-            }
+            Puts("PanRust: Подключен");
+            timer.Once(2f, Sync);
+            timer.Every(_config.UpdateInt, SendState);
+            timer.Every(_config.ChatInt, SendChat);
+            timer.Every(_config.KillsInt, SendKills);
+            timer.Every(_config.SaveInt, Save);
+            timer.Every(1f, FetchCmd);
         }
 
-        private void Unload()
+        void Unload()
         {
-            // Завершаем все активные сессии
-            foreach (var session in _playerSessions.ToList())
-            {
-                EndPlayerSession(session.Key);
-            }
-            SaveStats();
+            foreach (var s in _sessions.Keys.ToArray()) EndSession(s);
+            Save();
             _instance = null;
         }
 
-        private void OnNewSave(string filename)
+        void OnPlayerConnected(BasePlayer p)
         {
-            // При вайпе можно сбросить статистику или оставить
-            Puts("PanRust: Обнаружен вайп сервера");
+            var id = p.userID;
+            if (!_sessions.ContainsKey(id)) _sessions[id] = Time.realtimeSinceStartup;
+            var s = GetStats(p.UserIDString);
+            var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            if (s.fs == 0) s.fs = now;
+            s.ls_t = now;
         }
-        #endregion
 
-        #region Player Connection Hooks
-        private void OnPlayerConnected(BasePlayer player)
+        void OnPlayerDisconnected(BasePlayer p, string r)
         {
-            StartPlayerSession(player.UserIDString);
-            
-            // Обновляем first_seen если это первый вход
-            var stats = GetOrCreateStats(player.UserIDString);
-            if (stats.first_seen == 0)
+            EndSession(p.userID);
+            GetStats(p.UserIDString).ls_t = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        }
+
+        void OnPlayerWound(BasePlayer v, HitInfo i)
+        {
+            if (i?.InitiatorPlayer == null || i.InitiatorPlayer == v) return;
+            _wounds[v.userID] = new HitData
             {
-                stats.first_seen = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            }
-            stats.last_seen = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            
-            timer.Once(1f, () => SendStateUpdate());
-        }
-
-        private void OnPlayerDisconnected(BasePlayer player, string reason)
-        {
-            EndPlayerSession(player.UserIDString);
-            
-            var stats = GetOrCreateStats(player.UserIDString);
-            stats.last_seen = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            
-            timer.Once(1f, () => SendStateUpdate());
-        }
-
-        private void StartPlayerSession(string steamId)
-        {
-            if (!_playerSessions.ContainsKey(steamId))
-            {
-                _playerSessions[steamId] = DateTime.UtcNow;
-            }
-        }
-
-        private void EndPlayerSession(string steamId)
-        {
-            if (_playerSessions.TryGetValue(steamId, out var startTime))
-            {
-                var duration = (DateTime.UtcNow - startTime).TotalSeconds;
-                var stats = GetOrCreateStats(steamId);
-                stats.playtime_seconds += duration;
-                
-                // Добавляем запись сессии
-                stats.sessions.Add(new SessionRecord
-                {
-                    start_time = new DateTimeOffset(startTime).ToUnixTimeMilliseconds(),
-                    end_time = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                    duration_seconds = duration
-                });
-
-                // Ограничиваем количество сессий (последние 100)
-                if (stats.sessions.Count > 100)
-                {
-                    stats.sessions = stats.sessions.Skip(stats.sessions.Count - 100).ToList();
-                }
-
-                _playerSessions.Remove(steamId);
-            }
-        }
-        #endregion
-
-        #region Combat Hooks
-        private void OnPlayerWound(BasePlayer victim, HitInfo info)
-        {
-            if (info?.InitiatorPlayer == null || info.InitiatorPlayer == victim)
-                return;
-
-            // Сохраняем информацию о попадании для случая если игрок умрёт
-            _woundedHits[victim.UserIDString] = new HitRecord(info);
-        }
-
-        private void OnPlayerRespawn(BasePlayer player)
-        {
-            _woundedHits.Remove(player.UserIDString);
-        }
-
-        private void OnPlayerRecovered(BasePlayer player)
-        {
-            _woundedHits.Remove(player.UserIDString);
-        }
-
-        private void OnPlayerDeath(BasePlayer victim, HitInfo info)
-        {
-            if (victim == null) return;
-
-            var hitRecord = GetRealHitInfo(victim, info);
-            var victimUserId = victim.userID;
-            var victimSteamId = victim.UserIDString;
-            
-            // Обновляем статистику жертвы
-            var victimStats = GetOrCreateStats(victimSteamId);
-            victimStats.deaths++;
-
-            // Если убийца - игрок
-            if (hitRecord.InitiatorPlayer != null && hitRecord.InitiatorPlayer != victim)
-            {
-                var killerSteamId = hitRecord.InitiatorPlayer.UserIDString;
-                var killerStats = GetOrCreateStats(killerSteamId);
-                killerStats.kills++;
-
-                // Определяем часть тела
-                var bodyPart = GetBodyPart(hitRecord.Bone);
-                switch (bodyPart)
-                {
-                    case "head":
-                        killerStats.headshots++;
-                        break;
-                    case "body":
-                        killerStats.bodyshots++;
-                        break;
-                    case "limb":
-                        killerStats.limbshots++;
-                        break;
-                }
-
-                // Используем NextFrame для получения комбатлога (как в RustApp.cs)
-                NextFrame(() =>
-                {
-                    var combatLog = GetCorrectCombatlog(victimUserId);
-                    
-                    _killsQueue.Add(new KillEventDto
-                    {
-                        killer_steam_id = killerSteamId,
-                        victim_steam_id = victimSteamId,
-                        weapon = hitRecord.Weapon,
-                        distance = hitRecord.Distance,
-                        is_headshot = hitRecord.IsHeadshot,
-                        bone = hitRecord.Bone,
-                        timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
-                        hit_history = combatLog
-                    });
-                });
-            }
-
-            _woundedHits.Remove(victimSteamId);
-        }
-
-        // Получение комбатлога для игрока (как в RustApp.cs)
-        private List<CombatLogEventDto> GetCorrectCombatlog(ulong targetUserId)
-        {
-            const int THRESHOLD_STREAK = 20;
-            const int THRESHOLD_MAX_LIMIT = 30;
-
-            var allCombatlogs = CombatLog.Get(targetUserId);
-
-            if (allCombatlogs == null || allCombatlogs.Count == 0)
-            {
-                return null;
-            }
-
-            var logsList = new List<CombatLog.Event>(allCombatlogs);
-            var logsLastIndex = logsList.Count - 1;
-            var killLog = logsList[logsLastIndex];
-
-            var container = new List<CombatLogEventDto>(8)
-            {
-                new CombatLogEventDto(killLog.time, killLog)
+                Attacker = i.InitiatorPlayer,
+                Weapon = i.Weapon?.GetItem()?.info?.displayName?.english ?? i.WeaponPrefab?.ShortPrefabName ?? "unknown",
+                Distance = i.ProjectileDistance,
+                Headshot = i.isHeadshot,
+                Bone = i.boneName ?? ""
             };
+        }
 
-            for (var i = logsLastIndex - 1; i >= 0; i--)
+        void OnPlayerRespawn(BasePlayer p) => _wounds.Remove(p.userID);
+        void OnPlayerRecovered(BasePlayer p) => _wounds.Remove(p.userID);
+
+        void OnPlayerDeath(BasePlayer v, HitInfo i)
+        {
+            if (v == null) return;
+            var h = GetHit(v, i);
+            var vid = v.userID;
+            var vsi = v.UserIDString;
+            GetStats(vsi).d++;
+            _wounds.Remove(vid);
+
+            if (h.Attacker == null || h.Attacker == v) return;
+            var ksi = h.Attacker.UserIDString;
+            var ks = GetStats(ksi);
+            ks.k++;
+            var bp = GetBodyPart(h.Bone);
+            if (bp == 0) ks.hs++; else if (bp == 1) ks.bs++; else ks.ls++;
+
+            NextFrame(() =>
             {
-                var ev = logsList[i];
-
-                if (ev.target != "player" && ev.target != "you")
+                _killsQueue.Add(new KillDto
                 {
-                    continue;
-                }
-
-                if (ev.info == "killed")
-                    break;
-
-                var timeSincePreviousEvent = ev.time - logsList[i + 1].time;
-                if (timeSincePreviousEvent > THRESHOLD_STREAK)
-                    break;
-
-                var timeSinceEvent = killLog.time - ev.time;
-                if (timeSinceEvent > THRESHOLD_MAX_LIMIT)
-                    break;
-
-                container.Add(new CombatLogEventDto(killLog.time, ev));
-            }
-
-            return container;
-        }
-
-        private HitRecord GetRealHitInfo(BasePlayer victim, HitInfo info)
-        {
-            // Если игрок был ранен и добит, используем информацию о ранении
-            if ((info?.InitiatorPlayer == null || info.InitiatorPlayer == victim) &&
-                _woundedHits.TryGetValue(victim.UserIDString, out var woundedHit))
-            {
-                return woundedHit;
-            }
-            return new HitRecord(info);
-        }
-
-        private string GetBodyPart(string bone)
-        {
-            if (string.IsNullOrEmpty(bone)) return "body";
-            
-            bone = bone.ToLower();
-            
-            if (bone.Contains("head") || bone.Contains("jaw") || bone.Contains("eye") || bone.Contains("neck"))
-                return "head";
-            
-            if (bone.Contains("hand") || bone.Contains("arm") || bone.Contains("finger") ||
-                bone.Contains("leg") || bone.Contains("foot") || bone.Contains("toe") || bone.Contains("knee"))
-                return "limb";
-            
-            return "body";
-        }
-        #endregion
-
-        #region Chat Hooks
-        private void OnPlayerChat(BasePlayer player, string message, ConVar.Chat.ChatChannel channel)
-        {
-            if (string.IsNullOrEmpty(_metaInfo.SecretKey)) return;
-            if (string.IsNullOrEmpty(message)) return;
-
-            if (channel != ConVar.Chat.ChatChannel.Team && channel != ConVar.Chat.ChatChannel.Global)
-                return;
-
-            _chatQueue.Add(new ChatMessageDto
-            {
-                steam_id = player.UserIDString,
-                name = player.displayName,
-                message = message,
-                is_team = channel == ConVar.Chat.ChatChannel.Team,
-                timestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                    ki = ksi, vi = vsi, wp = h.Weapon, ds = h.Distance, hs = h.Headshot, bn = h.Bone,
+                    ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), h = GetCombatLog(vid)
+                });
             });
         }
-        #endregion
 
-        #region Report Hooks
-        private void OnPlayerReported(BasePlayer reporter, string targetName, string targetId, string subject, string message, string type)
+        void OnPlayerChat(BasePlayer p, string m, ConVar.Chat.ChatChannel c)
         {
-            if (!ulong.TryParse(targetId, out _)) return;
-            
-            var stats = GetOrCreateStats(targetId);
-            stats.reports_count++;
+            if (string.IsNullOrEmpty(_meta.Key) || string.IsNullOrEmpty(m)) return;
+            if (c != ConVar.Chat.ChatChannel.Team && c != ConVar.Chat.ChatChannel.Global) return;
+            _chatQueue.Add(new ChatMsg { si = p.UserIDString, n = p.displayName, m = m, t = c == ConVar.Chat.ChatChannel.Team, ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
+        }
+
+        void OnPlayerReported(BasePlayer r, string tn, string ti, string s, string m, string t)
+        {
+            if (ulong.TryParse(ti, out _)) GetStats(ti).rp++;
         }
         #endregion
 
-        #region Helper Methods
-        private PlayerStats GetOrCreateStats(string steamId)
+        #region Methods
+        void EndSession(ulong id)
         {
-            if (!_statsData.players.TryGetValue(steamId, out var stats))
-            {
-                stats = new PlayerStats();
-                _statsData.players[steamId] = stats;
-            }
-            return stats;
+            if (!_sessions.TryGetValue(id, out var st)) return;
+            GetStats(id.ToString()).pt += Time.realtimeSinceStartup - st;
+            _sessions.Remove(id);
         }
 
-        private void SaveStats()
+        PlayerStats GetStats(string id)
         {
-            // Обновляем время активных сессий
-            foreach (var session in _playerSessions)
-            {
-                var stats = GetOrCreateStats(session.Key);
-                // Не добавляем к playtime_seconds здесь, только при завершении сессии
-            }
-            PlayerStatsData.Write(_statsData);
+            if (!_stats.p.TryGetValue(id, out var s)) { s = new PlayerStats(); _stats.p[id] = s; }
+            return s;
         }
 
-        private string GetPlayerIP(BasePlayer player)
+        double GetPlaytime(string id)
         {
-            var ip = player.Connection?.ipaddress;
-            if (string.IsNullOrEmpty(ip)) return "";
-            var idx = ip.IndexOf(':');
-            return idx > 0 ? ip.Substring(0, idx) : ip;
+            var s = GetStats(id);
+            var t = s.pt;
+            if (_sessions.TryGetValue(ulong.Parse(id), out var st)) t += Time.realtimeSinceStartup - st;
+            return t;
         }
 
-        private double GetCurrentPlaytime(string steamId)
+        HitData GetHit(BasePlayer v, HitInfo i)
         {
-            var stats = GetOrCreateStats(steamId);
-            var total = stats.playtime_seconds;
-            
-            // Добавляем время текущей сессии если игрок онлайн
-            if (_playerSessions.TryGetValue(steamId, out var startTime))
+            if ((i?.InitiatorPlayer == null || i.InitiatorPlayer == v) && _wounds.TryGetValue(v.userID, out var w)) return w;
+            return new HitData
             {
-                total += (DateTime.UtcNow - startTime).TotalSeconds;
-            }
-            
-            return total;
-        }
-        #endregion
-
-        #region API Methods
-        private void SyncAllPlayers()
-        {
-            var allPlayers = new List<object>();
-
-            foreach (var player in BasePlayer.activePlayerList)
-            {
-                var stats = GetOrCreateStats(player.UserIDString);
-                allPlayers.Add(new
-                {
-                    steam_id = player.UserIDString,
-                    name = player.displayName,
-                    ip = GetPlayerIP(player),
-                    ping = Network.Net.sv.GetAveragePing(player.Connection),
-                    online = true,
-                    position = player.transform.position.ToString(),
-                    server = ConVar.Server.hostname,
-                    stats = new
-                    {
-                        kills = stats.kills,
-                        deaths = stats.deaths,
-                        headshots = stats.headshots,
-                        bodyshots = stats.bodyshots,
-                        limbshots = stats.limbshots,
-                        playtime_hours = Math.Round(GetCurrentPlaytime(player.UserIDString) / 3600, 2),
-                        reports_count = stats.reports_count,
-                        kd = stats.deaths > 0 ? Math.Round((double)stats.kills / stats.deaths, 2) : stats.kills
-                    }
-                });
-            }
-
-            foreach (var sleeper in BasePlayer.sleepingPlayerList)
-            {
-                var stats = GetOrCreateStats(sleeper.UserIDString);
-                allPlayers.Add(new
-                {
-                    steam_id = sleeper.UserIDString,
-                    name = sleeper.displayName,
-                    ip = "",
-                    ping = 0,
-                    online = false,
-                    position = sleeper.transform.position.ToString(),
-                    server = ConVar.Server.hostname,
-                    stats = new
-                    {
-                        kills = stats.kills,
-                        deaths = stats.deaths,
-                        headshots = stats.headshots,
-                        bodyshots = stats.bodyshots,
-                        limbshots = stats.limbshots,
-                        playtime_hours = Math.Round(GetCurrentPlaytime(sleeper.UserIDString) / 3600, 2),
-                        reports_count = stats.reports_count,
-                        kd = stats.deaths > 0 ? Math.Round((double)stats.kills / stats.deaths, 2) : stats.kills
-                    }
-                });
-            }
-
-            var payload = new
-            {
-                hostname = ConVar.Server.hostname,
-                port = ConVar.Server.port,
-                players = allPlayers
+                Attacker = i?.InitiatorPlayer,
+                Weapon = i?.Weapon?.GetItem()?.info?.displayName?.english ?? i?.WeaponPrefab?.ShortPrefabName ?? "unknown",
+                Distance = i?.ProjectileDistance ?? 0f,
+                Headshot = i?.isHeadshot ?? false,
+                Bone = i?.boneName ?? ""
             };
-
-            var json = JsonConvert.SerializeObject(payload);
-            
-            webrequest.Enqueue($"{API_URL}/sync", json, (code, response) =>
-            {
-                if (code != 200)
-                    Puts($"PanRust: Ошибка синхронизации: {code} - {response}");
-            }, this, Oxide.Core.Libraries.RequestMethod.POST, GetHeaders());
         }
 
-        private void SendStateUpdate()
+        int GetBodyPart(string b)
         {
-            if (string.IsNullOrEmpty(_metaInfo.SecretKey)) return;
+            if (string.IsNullOrEmpty(b)) return 1;
+            b = b.ToLower();
+            if (b.Contains("head") || b.Contains("jaw") || b.Contains("eye") || b.Contains("neck")) return 0;
+            if (b.Contains("hand") || b.Contains("arm") || b.Contains("leg") || b.Contains("foot") || b.Contains("knee")) return 2;
+            return 1;
+        }
 
-            var players = new List<object>();
-            foreach (var player in BasePlayer.activePlayerList)
+        List<CombatDto> GetCombatLog(ulong id)
+        {
+            var queue = CombatLog.Get(id);
+            if (queue == null || queue.Count == 0) return null;
+            var logs = queue.ToArray();
+            var list = new List<CombatDto>(8);
+            var last = logs.Length - 1;
+            var kl = logs[last];
+            list.Add(new CombatDto(kl.time, kl));
+            for (var i = last - 1; i >= 0; i--)
             {
-                var stats = GetOrCreateStats(player.UserIDString);
-                players.Add(new
-                {
-                    steam_id = player.UserIDString,
-                    name = player.displayName,
-                    ip = GetPlayerIP(player),
-                    ping = Network.Net.sv.GetAveragePing(player.Connection),
-                    online = true,
-                    position = player.transform.position.ToString(),
-                    server = ConVar.Server.hostname,
-                    stats = new
-                    {
-                        kills = stats.kills,
-                        deaths = stats.deaths,
-                        headshots = stats.headshots,
-                        bodyshots = stats.bodyshots,
-                        limbshots = stats.limbshots,
-                        playtime_hours = Math.Round(GetCurrentPlaytime(player.UserIDString) / 3600, 2),
-                        reports_count = stats.reports_count,
-                        kd = stats.deaths > 0 ? Math.Round((double)stats.kills / stats.deaths, 2) : stats.kills
-                    }
-                });
+                var e = logs[i];
+                if (e.target != "player" && e.target != "you") continue;
+                if (e.info == "killed" || logs[i + 1].time - e.time > 20 || kl.time - e.time > 30) break;
+                list.Add(new CombatDto(kl.time, e));
             }
+            return list;
+        }
 
-            var payload = new
+        void Save() => StatsData.Write(_stats);
+        string GetIP(BasePlayer p) { var ip = p.Connection?.ipaddress; if (string.IsNullOrEmpty(ip)) return ""; var i = ip.IndexOf(':'); return i > 0 ? ip.Substring(0, i) : ip; }
+        Dictionary<string, string> Headers() => new Dictionary<string, string> { ["Content-Type"] = "application/json", ["Authorization"] = $"Bearer {_meta.Key}" };
+        #endregion
+
+        #region API
+        void Sync()
+        {
+            var pl = new List<object>();
+            foreach (var p in BasePlayer.activePlayerList) pl.Add(MakePlayer(p, true));
+            foreach (var p in BasePlayer.sleepingPlayerList) pl.Add(MakePlayer(p, false));
+            var json = JsonConvert.SerializeObject(new { hostname = ConVar.Server.hostname, port = ConVar.Server.port, players = pl });
+            webrequest.Enqueue($"{API}/sync", json, (c, r) => { if (c != 200) Puts($"Sync err: {c}"); }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+        }
+
+        void SendState()
+        {
+            if (string.IsNullOrEmpty(_meta.Key)) return;
+            var pl = new List<object>();
+            foreach (var p in BasePlayer.activePlayerList) pl.Add(MakePlayer(p, true));
+            var json = JsonConvert.SerializeObject(new { hostname = ConVar.Server.hostname, port = ConVar.Server.port, online = BasePlayer.activePlayerList.Count, max_players = ConVar.Server.maxplayers, players = pl });
+            webrequest.Enqueue($"{API}/state", json, (c, r) => { }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+        }
+
+        object MakePlayer(BasePlayer p, bool on)
+        {
+            var s = GetStats(p.UserIDString);
+            return new
             {
-                hostname = ConVar.Server.hostname,
-                port = ConVar.Server.port,
-                online = BasePlayer.activePlayerList.Count,
-                max_players = ConVar.Server.maxplayers,
-                players = players
+                steam_id = p.UserIDString, name = p.displayName, ip = on ? GetIP(p) : "", ping = on ? Network.Net.sv.GetAveragePing(p.Connection) : 0,
+                online = on, position = p.transform.position.ToString(), server = ConVar.Server.hostname,
+                stats = new { kills = s.k, deaths = s.d, headshots = s.hs, bodyshots = s.bs, limbshots = s.ls, playtime_hours = Math.Round(GetPlaytime(p.UserIDString) / 3600, 2), reports_count = s.rp, kd = s.d > 0 ? Math.Round((double)s.k / s.d, 2) : s.k }
             };
-
-            var json = JsonConvert.SerializeObject(payload);
-            webrequest.Enqueue($"{API_URL}/state", json, (code, response) =>
-            {
-                if (code != 200) Puts($"API Error: {code} - {response}");
-            }, this, Oxide.Core.Libraries.RequestMethod.POST, GetHeaders());
         }
 
-        private void SendChatMessages()
+        void SendChat()
         {
-            if (string.IsNullOrEmpty(_metaInfo.SecretKey)) return;
-            if (_chatQueue.Count == 0) return;
-
-            var messages = new List<ChatMessageDto>(_chatQueue);
-            _chatQueue.Clear();
-
-            var payload = new { messages = messages, server = ConVar.Server.hostname };
-            var json = JsonConvert.SerializeObject(payload);
-
-            webrequest.Enqueue($"{API_URL}/chat", json, (code, response) =>
-            {
-                if (code != 200)
-                {
-                    Puts($"Chat API Error: {code} - {response}");
-                    _chatQueue.AddRange(messages);
-                }
-            }, this, Oxide.Core.Libraries.RequestMethod.POST, GetHeaders());
+            if (string.IsNullOrEmpty(_meta.Key) || _chatQueue.Count == 0) return;
+            var msgs = new List<ChatMsg>(_chatQueue); _chatQueue.Clear();
+            var json = JsonConvert.SerializeObject(new { messages = msgs, server = ConVar.Server.hostname });
+            webrequest.Enqueue($"{API}/chat", json, (c, r) => { if (c != 200) _chatQueue.AddRange(msgs); }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
         }
 
-        private void SendKillsData()
+        void SendKills()
         {
-            if (string.IsNullOrEmpty(_metaInfo.SecretKey)) return;
-            if (_killsQueue.Count == 0) return;
-
-            var kills = new List<KillEventDto>(_killsQueue);
-            _killsQueue.Clear();
-
-            var payload = new { kills = kills, server = ConVar.Server.hostname };
-            var json = JsonConvert.SerializeObject(payload);
-
-            webrequest.Enqueue($"{API_URL}/kills", json, (code, response) =>
-            {
-                if (code != 200)
-                {
-                    Puts($"Kills API Error: {code} - {response}");
-                    _killsQueue.AddRange(kills);
-                }
-            }, this, Oxide.Core.Libraries.RequestMethod.POST, GetHeaders());
+            if (string.IsNullOrEmpty(_meta.Key) || _killsQueue.Count == 0) return;
+            var kills = new List<KillDto>(_killsQueue); _killsQueue.Clear();
+            var json = JsonConvert.SerializeObject(new { kills, server = ConVar.Server.hostname });
+            webrequest.Enqueue($"{API}/kills", json, (c, r) => { if (c != 200) _killsQueue.AddRange(kills); }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
         }
 
-        private void FetchCommands()
+        void FetchCmd()
         {
-            if (string.IsNullOrEmpty(_metaInfo.SecretKey)) return;
-
-            webrequest.Enqueue($"{API_URL}/commands", null, (code, response) =>
+            if (string.IsNullOrEmpty(_meta.Key)) return;
+            webrequest.Enqueue($"{API}/commands", null, (c, r) =>
             {
-                if (code != 200) return;
-
+                if (c != 200) return;
                 try
                 {
-                    var data = JsonConvert.DeserializeObject<CommandsResponse>(response);
-                    if (data?.commands == null) return;
-
-                    foreach (var cmd in data.commands)
+                    var d = JsonConvert.DeserializeObject<CmdResp>(r);
+                    if (d?.commands == null) return;
+                    foreach (var cmd in d.commands)
                     {
-                        ProcessCommand(cmd);
+                        if (cmd.type != "chat_message") continue;
+                        if (cmd.is_global) { foreach (var p in BasePlayer.activePlayerList) SendReply(p, $"<color=#84cc16>[Админ]</color> {cmd.message}"); }
+                        else { var t = BasePlayer.Find(cmd.target_steam_id); if (t?.IsConnected == true) SendReply(t, $"<color=#84cc16>[ЛС]</color> {cmd.message}"); }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Puts($"Commands parse error: {ex.Message}");
-                }
-            }, this, Oxide.Core.Libraries.RequestMethod.GET, GetHeaders());
+                } catch { }
+            }, this, Oxide.Core.Libraries.RequestMethod.GET, Headers());
         }
 
-        private void ProcessCommand(CommandDto cmd)
-        {
-            if (cmd.type == "chat_message")
-            {
-                if (cmd.is_global)
-                {
-                    foreach (var player in BasePlayer.activePlayerList)
-                    {
-                        SendReply(player, $"<color=#84cc16>[Админ]</color> {cmd.message}");
-                    }
-                }
-                else if (!string.IsNullOrEmpty(cmd.target_steam_id))
-                {
-                    var target = BasePlayer.Find(cmd.target_steam_id);
-                    if (target != null && target.IsConnected)
-                    {
-                        SendReply(target, $"<color=#84cc16>[ЛС от Админа]</color> {cmd.message}");
-                    }
-                }
-            }
-        }
-
-        private Dictionary<string, string> GetHeaders()
-        {
-            return new Dictionary<string, string>
-            {
-                ["Content-Type"] = "application/json",
-                ["Authorization"] = $"Bearer {_metaInfo.SecretKey}"
-            };
-        }
-
-        private class CommandsResponse
-        {
-            public List<CommandDto> commands;
-        }
-
-        private class CommandDto
-        {
-            public string id;
-            public string type;
-            public string target_steam_id;
-            public string message;
-            public bool is_global;
-        }
+        class CmdResp { public List<Cmd> commands; }
+        class Cmd { public string type, target_steam_id, message; public bool is_global; }
         #endregion
 
-        #region Console Commands
+        #region Console
         [ConsoleCommand("panrust.pair")]
-        private void CmdPair(ConsoleSystem.Arg args)
+        void CmdPair(ConsoleSystem.Arg a)
         {
-            if (args.Connection != null) return;
-
-            if (args.Args == null || args.Args.Length == 0)
-            {
-                Puts("Использование: panrust.pair ВАШ_SECRET_KEY");
-                return;
-            }
-
-            var secretKey = args.Args[0];
-            _metaInfo.SecretKey = secretKey;
-            MetaInfo.Write(_metaInfo);
-
-            Puts("PanRust: Secret Key сохранён! Перезагрузите плагин: oxide.reload PanRust");
+            if (a.Connection != null || a.Args?.Length == 0) return;
+            _meta.Key = a.Args[0]; MetaInfo.Write(_meta);
+            Puts("Key saved! oxide.reload PanRust");
         }
 
         [ConsoleCommand("panrust.status")]
-        private void CmdStatus(ConsoleSystem.Arg args)
+        void CmdStatus(ConsoleSystem.Arg a)
         {
-            if (args.Connection != null) return;
-
-            if (string.IsNullOrEmpty(_metaInfo.SecretKey))
-            {
-                Puts("PanRust: Не подключен. Используйте panrust.pair SECRET_KEY");
-            }
-            else
-            {
-                Puts($"PanRust: Подключен | API: {API_URL}");
-                Puts($"Игроков в базе: {_statsData.players.Count}");
-            }
-        }
-
-        [ConsoleCommand("panrust.reset")]
-        private void CmdReset(ConsoleSystem.Arg args)
-        {
-            if (args.Connection != null) return;
-            _metaInfo.SecretKey = "";
-            MetaInfo.Write(_metaInfo);
-            Puts("PanRust: Настройки сброшены.");
-        }
-
-        [ConsoleCommand("panrust.sync")]
-        private void CmdSync(ConsoleSystem.Arg args)
-        {
-            if (args.Connection != null) return;
-            if (string.IsNullOrEmpty(_metaInfo.SecretKey))
-            {
-                Puts("PanRust: Сначала подключитесь через panrust.pair SECRET_KEY");
-                return;
-            }
-            SyncAllPlayers();
-            Puts("PanRust: Синхронизация запущена");
-        }
-
-        [ConsoleCommand("panrust.stats")]
-        private void CmdStats(ConsoleSystem.Arg args)
-        {
-            if (args.Connection != null) return;
-            
-            if (args.Args == null || args.Args.Length == 0)
-            {
-                Puts("Использование: panrust.stats <steam_id>");
-                return;
-            }
-
-            var steamId = args.Args[0];
-            if (_statsData.players.TryGetValue(steamId, out var stats))
-            {
-                Puts($"Статистика игрока {steamId}:");
-                Puts($"  Убийств: {stats.kills}");
-                Puts($"  Смертей: {stats.deaths}");
-                Puts($"  K/D: {(stats.deaths > 0 ? Math.Round((double)stats.kills / stats.deaths, 2) : stats.kills)}");
-                Puts($"  Хедшотов: {stats.headshots}");
-                Puts($"  В тело: {stats.bodyshots}");
-                Puts($"  В конечности: {stats.limbshots}");
-                Puts($"  Время на сервере: {Math.Round(GetCurrentPlaytime(steamId) / 3600, 2)} ч.");
-                Puts($"  Репортов: {stats.reports_count}");
-            }
-            else
-            {
-                Puts($"Статистика для {steamId} не найдена");
-            }
-        }
-
-        [ConsoleCommand("panrust.resetstats")]
-        private void CmdResetStats(ConsoleSystem.Arg args)
-        {
-            if (args.Connection != null) return;
-            _statsData = new PlayerStatsData();
-            PlayerStatsData.Write(_statsData);
-            Puts("PanRust: Статистика сброшена");
+            if (a.Connection != null) return;
+            Puts(string.IsNullOrEmpty(_meta.Key) ? "Not connected" : $"Connected | Players: {_stats.p.Count}");
         }
         #endregion
     }

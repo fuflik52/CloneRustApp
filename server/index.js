@@ -788,7 +788,7 @@ app.get('/api/player/:steamId/kills', (req, res) => {
   res.json(kills);
 });
 
-// Plugin sends kills data
+// Plugin sends kills data (supports both short and full field names from PanRust.cs)
 app.post('/api/kills', (req, res) => {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
@@ -805,7 +805,40 @@ app.post('/api/kills', (req, res) => {
   
   const db = loadPlayersDB();
   
-  for (const kill of kills) {
+  // Helper to map short field names from PanRust.cs to full names
+  const mapKill = (k) => ({
+    killer_steam_id: k.ki || k.killer_steam_id,
+    victim_steam_id: k.vi || k.victim_steam_id,
+    weapon: k.wp || k.weapon,
+    bone: k.bn || k.bone,
+    distance: k.ds || k.distance || 0,
+    is_headshot: k.hs || k.is_headshot || false,
+    timestamp: k.ts || k.timestamp || Date.now(),
+    hit_history: (k.h || k.hit_history || []).map(h => ({
+      time: h.t ?? h.time ?? 0,
+      attacker_steam_id: h.asi || h.attacker_steam_id || '',
+      target_steam_id: h.tsi || h.target_steam_id || '',
+      attacker: h.a || h.attacker || '',
+      target: h.tg || h.target || '',
+      weapon: h.wp || h.weapon || '',
+      ammo: h.am || h.ammo || '',
+      bone: h.bn || h.bone || '',
+      distance: h.ds || h.distance || 0,
+      hp_old: h.ho ?? h.hp_old ?? 0,
+      hp_new: h.hn ?? h.hp_new ?? 0,
+      info: h.inf || h.info || '',
+      proj_hits: h.ph || h.proj_hits || 0,
+      proj_integrity: h.pi || h.proj_integrity || 0,
+      proj_travel: h.pt || h.proj_travel || 0,
+      proj_mismatch: h.pm || h.proj_mismatch || 0,
+      desync: h.dy || h.desync || 0,
+      attacker_dead: h.ad || h.attacker_dead || false
+    }))
+  });
+  
+  for (const rawKill of kills) {
+    const kill = mapKill(rawKill);
+    
     // Обновляем статистику убийцы
     if (kill.killer_steam_id && db.players[kill.killer_steam_id]) {
       const killer = db.players[kill.killer_steam_id];
