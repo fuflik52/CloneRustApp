@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
+import { useServer } from '../App'
 
 interface ChatMessage {
   id: string
@@ -25,6 +26,7 @@ interface Player {
 }
 
 interface MuteInfo {
+  id?: string
   steam_id: string
   reason: string
   duration: string
@@ -33,6 +35,7 @@ interface MuteInfo {
 }
 
 export default function Chat() {
+  const { serverId } = useServer()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
@@ -139,17 +142,17 @@ export default function Chat() {
   }
 
   const fetchMessages = async () => {
+    if (!serverId) return
     try {
       const url = playerSteamId 
-        ? `/api/chat/player/${playerSteamId}?limit=200`
-        : '/api/chat?limit=200'
+        ? `/api/servers/${serverId}/chat?player=${playerSteamId}&limit=200`
+        : `/api/servers/${serverId}/chat?limit=200`
       const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
-        const newMessages = playerSteamId ? data : data.messages
-        if (JSON.stringify(newMessages) !== JSON.stringify(messagesRef.current)) {
-          messagesRef.current = newMessages
-          setMessages(newMessages)
+        if (JSON.stringify(data) !== JSON.stringify(messagesRef.current)) {
+          messagesRef.current = data
+          setMessages(data)
         }
       }
     } catch {}
@@ -159,13 +162,14 @@ export default function Chat() {
     fetchMessages()
     const interval = setInterval(fetchMessages, 1000)
     return () => clearInterval(interval)
-  }, [playerSteamId])
+  }, [playerSteamId, serverId])
 
   // Загружаем список замьюченных игроков
   useEffect(() => {
     const fetchMutes = async () => {
+      if (!serverId) return
       try {
-        const res = await fetch('/api/mutes')
+        const res = await fetch(`/api/servers/${serverId}/mutes`)
         if (res.ok) {
           const data = await res.json()
           const mutesMap: Record<string, MuteInfo> = {}
@@ -177,7 +181,7 @@ export default function Chat() {
     fetchMutes()
     const interval = setInterval(fetchMutes, 10000)
     return () => clearInterval(interval)
-  }, [])
+  }, [serverId])
 
   useEffect(() => {
     scrollToBottom()
@@ -222,38 +226,63 @@ export default function Chat() {
   }
 
   const submitMute = async () => {
-    if (!muteModal || !muteReason.trim()) return
+    if (!muteModal || !muteReason.trim() || !serverId) return
     try {
-      const res = await fetch('/api/mutes', {
+      const res = await fetch(`/api/servers/${serverId}/mutes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           steam_id: muteModal.steamId,
+          name: muteModal.name,
           reason: muteReason,
-          duration: muteDuration,
-          broadcast: true
+          duration: parseDuration(muteDuration)
         })
       })
       if (res.ok) {
         showToast('Мут выдан')
         setMuteModal(null)
+        setMuteReason('')
         // Обновляем список мутов
-        const mutesRes = await fetch('/api/mutes')
+        const mutesRes = await fetch(`/api/servers/${serverId}/mutes`)
         if (mutesRes.ok) {
           const data = await mutesRes.json()
           const mutesMap: Record<string, MuteInfo> = {}
           data.forEach((m: MuteInfo) => { mutesMap[m.steam_id] = m })
           setMutedPlayers(mutesMap)
         }
+        // Отправляем команду на сервер
+        await fetch(`/api/servers/${serverId}/cmd`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'mute',
+            steam_id: muteModal.steamId,
+            reason: muteReason,
+            duration: parseDuration(muteDuration)
+          })
+        })
       }
     } catch {
       showToast('Ошибка', 'error')
     }
   }
 
+  const parseDuration = (dur: string): number => {
+    const match = dur.match(/^(\d+)([mhd])$/)
+    if (!match) return dur === '0' ? 0 : 3600
+    const val = parseInt(match[1])
+    const unit = match[2]
+    if (unit === 'm') return val * 60
+    if (unit === 'h') return val * 3600
+    if (unit === 'd') return val * 86400
+    return 3600
+  }
+
   const handleUnmute = async (steamId: string) => {
+    if (!serverId) return
     try {
-      const res = await fetch(`/api/mutes/${steamId}`, { method: 'DELETE' })
+      const mute = mutedPlayers[steamId]
+      const res = await fetch(`/api/servers/${serverId}/mutes/${mute?.id || steamId}`, { method: 'DELETE' })
       if (res.ok) {
         showToast('Мут снят')
         setMutedPlayers(prev => {
@@ -294,20 +323,20 @@ export default function Chat() {
 
   // Поиск игроков из БД при вводе или открытии модалки
   useEffect(() => {
-    if (!showPlayerSearch) return
+    if (!showPlayerSearch || !serverId) return
     
     const searchPlayers = async () => {
       setLoadingPlayers(true)
       try {
         // Загружаем онлайн игроков чтобы знать кто в сети
-        const onlineRes = await fetch('/api/players')
+        const onlineRes = await fetch(`/api/servers/${serverId}/players`)
         const onlinePlayers = onlineRes.ok ? await onlineRes.json() : []
         const onlineIds = new Set(onlinePlayers.map((p: any) => p.steam_id))
         
         // Если есть запрос - ищем, если нет - загружаем всех
         const url = playerSearchQuery.trim() 
-          ? `/api/players/search?q=${encodeURIComponent(playerSearchQuery)}`
-          : '/api/players/all'
+          ? `/api/servers/${serverId}/players/search?q=${encodeURIComponent(playerSearchQuery)}`
+          : `/api/servers/${serverId}/players/all`
         const res = await fetch(url)
         if (res.ok) {
           const data = await res.json()
@@ -325,7 +354,7 @@ export default function Chat() {
     
     const debounce = setTimeout(searchPlayers, 300)
     return () => clearTimeout(debounce)
-  }, [playerSearchQuery, showPlayerSearch])
+  }, [playerSearchQuery, showPlayerSearch, serverId])
 
   // Фильтрация сообщений
   const filteredMessages = messages.filter(msg => {

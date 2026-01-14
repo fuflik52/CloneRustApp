@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useToast } from '../components/Toast'
+import { useServer } from '../App'
 
 interface PlayerStats {
   kills: number
@@ -89,6 +90,7 @@ interface CombatLogEntry {
 }
 
 export default function Players() {
+  const { serverId } = useServer()
   const [search, setSearch] = useState('')
   const [allPlayers, setAllPlayers] = useState<Player[]>([])
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
@@ -247,13 +249,15 @@ export default function Players() {
 
   useEffect(() => {
     const fetchPlayers = async () => {
+      if (!serverId) return
+      
       try {
-        // Загружаем всех игроков из базы (включая офлайн)
-        const res = await fetch('/api/players/all')
+        // Загружаем всех игроков из базы сервера (включая офлайн)
+        const res = await fetch(`/api/servers/${serverId}/players/all`)
         if (res.ok) {
           const dbPlayers = await res.json()
           // Также загружаем онлайн игроков чтобы знать кто сейчас в игре
-          const onlineRes = await fetch('/api/players')
+          const onlineRes = await fetch(`/api/servers/${serverId}/players`)
           const onlinePlayers = onlineRes.ok ? await onlineRes.json() : []
           const onlineIds = new Set(onlinePlayers.map((p: Player) => p.steam_id))
           
@@ -281,7 +285,7 @@ export default function Players() {
     fetchPlayers()
     const interval = setInterval(fetchPlayers, 60000)
     return () => clearInterval(interval)
-  }, [])
+  }, [serverId])
 
   const players = allPlayers.filter(p => 
     p.name.toLowerCase().includes(search.toLowerCase()) ||
