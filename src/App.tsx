@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useParams, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useParams, useLocation, useNavigate } from 'react-router-dom'
 import Sidebar from './components/Sidebar'
 import SearchModal from './components/SearchModal'
 import { ToastProvider, useToast } from './components/Toast'
@@ -33,6 +33,7 @@ export const useServer = () => useContext(ServerContext)
 // Компонент с сайдбаром для страниц проекта
 function ProjectLayout() {
   const { serverSlug } = useParams()
+  const navigate = useNavigate()
   const [searchOpen, setSearchOpen] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => 
@@ -41,6 +42,7 @@ function ProjectLayout() {
   const [serverName, setServerName] = useState<string | null>(null)
   const [serverLogo, setServerLogo] = useState<string | null>(null)
   const [serverId, setServerId] = useState<string | null>(null)
+  const [serverNotFound, setServerNotFound] = useState(false)
   const { showToast } = useToast()
 
   // Загружаем имя сервера
@@ -52,18 +54,30 @@ function ProjectLayout() {
           const servers = await res.json()
           const server = servers.find((s: any) => 
             s.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') === serverSlug ||
+            s.slug === serverSlug ||
             s.id === serverSlug
           )
           if (server) {
             setServerName(server.name)
             setServerLogo(server.logo || null)
             setServerId(server.id)
+            setServerNotFound(false)
+          } else {
+            setServerNotFound(true)
           }
         }
       } catch {}
     }
     if (serverSlug) fetchServer()
   }, [serverSlug])
+
+  // Редирект если проект не найден
+  useEffect(() => {
+    if (serverNotFound) {
+      showToast('Проект не найден', 'error')
+      navigate('/profile')
+    }
+  }, [serverNotFound, navigate, showToast])
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
