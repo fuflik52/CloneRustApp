@@ -126,8 +126,6 @@ export default function Servers() {
                 <div className="server-stats">
                   {server.status === 'online' ? (
                     <>
-                      <span>{server.hostname}:{server.port}</span>
-                      <span className="sep">•</span>
                       <span>{server.online}/{server.maxPlayers} игроков</span>
                       <span className="sep">•</span>
                       <span>Обновлено: {server.lastUpdate}</span>
@@ -146,6 +144,27 @@ export default function Servers() {
                     </>
                   )}
                 </div>
+                {server.status === 'online' && server.hostname && server.port > 0 && (
+                  <div className="server-connect">
+                    <code onClick={() => { 
+                      const cmd = `client.connect ${server.hostname}:${server.port}`
+                      if (navigator.clipboard && navigator.clipboard.writeText) {
+                        navigator.clipboard.writeText(cmd)
+                      } else {
+                        const textarea = document.createElement('textarea')
+                        textarea.value = cmd
+                        document.body.appendChild(textarea)
+                        textarea.select()
+                        document.execCommand('copy')
+                        document.body.removeChild(textarea)
+                      }
+                      showToast('Команда скопирована')
+                    }}>
+                      client.connect {server.hostname}:{server.port}
+                    </code>
+                    <CopyIcon />
+                  </div>
+                )}
               </div>
               <div className="server-actions">
                 <button className="key-btn" onClick={() => copyKey(server.secretKey)} title="Копировать ключ">
