@@ -106,8 +106,8 @@ export default function Profile() {
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        showToast('Файл слишком большой (макс 10MB)', 'error')
+      if (file.size > 1 * 1024 * 1024) {
+        showToast('Файл слишком большой (макс 1MB)', 'error')
         return
       }
       const reader = new FileReader()
@@ -240,7 +240,7 @@ export default function Profile() {
                 </div>
                 <div className="upload-text">
                   <p className="upload-title">Загрузите логотип проекта</p>
-                  <span className="upload-subtitle">PNG, JPEG или GIF (не более 10MB)</span>
+                  <span className="upload-subtitle">PNG, JPEG или GIF (не более 1MB)</span>
                 </div>
                 <input 
                   type="file" 
