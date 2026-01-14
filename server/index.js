@@ -35,8 +35,37 @@ const saveData = (data) => fs.writeFileSync(DATA_FILE, JSON.stringify(data, null
 
 // Проекты
 const loadProjects = () => {
-  try { return JSON.parse(fs.readFileSync(PROJECTS_FILE, 'utf8')); }
-  catch { return { projects: [] }; }
+  try { 
+    const data = JSON.parse(fs.readFileSync(PROJECTS_FILE, 'utf8'));
+    // Если нет проектов, создаём дефолтный
+    if (!data.projects || data.projects.length === 0) {
+      data.projects = [{
+        id: 'default-panrust',
+        name: 'PAN RUST',
+        slug: 'panrust',
+        website: '',
+        logo: 'https://s3.rustapp.io/avatar-project/1755276829361-35f5b20e8642407589c95dc2.png',
+        createdAt: Date.now()
+      }];
+      fs.writeFileSync(PROJECTS_FILE, JSON.stringify(data, null, 2));
+    }
+    return data;
+  }
+  catch { 
+    // Создаём файл с дефолтным проектом
+    const defaultData = {
+      projects: [{
+        id: 'default-panrust',
+        name: 'PAN RUST',
+        slug: 'panrust',
+        website: '',
+        logo: 'https://s3.rustapp.io/avatar-project/1755276829361-35f5b20e8642407589c95dc2.png',
+        createdAt: Date.now()
+      }]
+    };
+    fs.writeFileSync(PROJECTS_FILE, JSON.stringify(defaultData, null, 2));
+    return defaultData;
+  }
 };
 const saveProjects = (data) => fs.writeFileSync(PROJECTS_FILE, JSON.stringify(data, null, 2));
 

@@ -86,8 +86,14 @@ export default function Profile() {
         setProjectLogo(null)
         // Переходим в новый проект
         navigate(`/${newProject.slug}/welcome`)
+      } else {
+        const err = await res.json()
+        alert(err.error || 'Ошибка создания проекта')
       }
-    } catch {}
+    } catch (e) {
+      console.error('Create project error:', e)
+      alert('Ошибка создания проекта')
+    }
     setCreating(false)
   }
 
