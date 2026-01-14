@@ -164,13 +164,9 @@ namespace Oxide.Plugins
 
             var json = JsonConvert.SerializeObject(payload);
             
-            Puts($"PanRust: Автосинхронизация при запуске - {allPlayers.Count} игроков ({BasePlayer.activePlayerList.Count} онлайн, {BasePlayer.sleepingPlayerList.Count} спящих)");
-
             webrequest.Enqueue($"{API_URL}/sync", json, (code, response) =>
             {
-                if (code == 200)
-                    Puts($"PanRust: Синхронизация завершена!");
-                else
+                if (code != 200)
                     Puts($"PanRust: Ошибка синхронизации: {code} - {response}");
             }, this, Oxide.Core.Libraries.RequestMethod.POST, new Dictionary<string, string>
             {
@@ -370,7 +366,6 @@ namespace Oxide.Plugins
                     {
                         SendReply(player, $"<color=#84cc16>[Админ]</color> {cmd.message}");
                     }
-                    Puts($"PanRust: Отправлено глобальное сообщение: {cmd.message}");
                 }
                 else if (!string.IsNullOrEmpty(cmd.target_steam_id))
                 {
@@ -379,7 +374,6 @@ namespace Oxide.Plugins
                     if (target != null && target.IsConnected)
                     {
                         SendReply(target, $"<color=#84cc16>[ЛС от Админа]</color> {cmd.message}");
-                        Puts($"PanRust: Отправлено ЛС игроку {target.displayName}: {cmd.message}");
                     }
                 }
             }
