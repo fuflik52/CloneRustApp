@@ -1328,3 +1328,41 @@
   background-image: url("data:image/svg+xml,%3Csvg width='5' height='5' viewBox='0 0 5 5' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M2.5 1.5v2M1.5 2.5h2' stroke='rgba(255,255,255,0.08)' stroke-width='0.4' fill='none'/%3E%3C/svg%3E");
   background-size: 5px 5px;
 }
+
+
+/* Combatlog Empty State */
+.combatlog-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 12px;
+}
+
+.combatlog-empty-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 80px;
+  height: 80px;
+  background: #272727;
+  border-radius: 16px;
+  margin-bottom: 8px;
+}
+
+.combatlog-empty-icon svg {
+  opacity: 0.6;
+}
+
+.combatlog-empty-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.combatlog-empty-desc {
+  color: #666;
+  font-size: 13px;
+  text-align: center;
+}
