@@ -22,6 +22,7 @@ namespace Oxide.Plugins
         readonly Dictionary<ulong, HitData> _wounds = new Dictionary<ulong, HitData>();
         readonly Dictionary<ulong, float> _sessions = new Dictionary<ulong, float>();
         readonly Dictionary<ulong, List<HitRecord>> _hitHistory = new Dictionary<ulong, List<HitRecord>>();
+        readonly Dictionary<ulong, MuteData> _mutes = new Dictionary<ulong, MuteData>();
 
         #region Data
         
@@ -107,6 +108,13 @@ namespace Oxide.Plugins
         }
 
         class ChatMsg { public string si, n, m; public bool t; public long ts; }
+
+        class MuteData
+        {
+            public string reason;
+            public long expired_at;
+            public long created_at;
+        }
 
         #endregion
 
@@ -305,6 +313,23 @@ namespace Oxide.Plugins
         {
             if (string.IsNullOrEmpty(_meta.Key) || string.IsNullOrEmpty(m)) return;
             if (c != ConVar.Chat.ChatChannel.Team && c != ConVar.Chat.ChatChannel.Global) return;
+            
+            // Проверяем мут
+            if (_mutes.TryGetValue(p.userID, out var mute))
+            {
+                var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                if (mute.expired_at == 0 || mute.expired_at > now)
+                {
+                    var leftTime = mute.expired_at == 0 ? "навсегда" : GetTimeLeft(mute.expired_at - now);
+                    SendReply(p, $"<color=#ef4444>Вы замьючены!</color>\n<size=12>Причина: {mute.reason}\nОсталось: {leftTime}</size>");
+                    return;
+                }
+                else
+                {
+                    _mutes.Remove(p.userID);
+                }
+            }
+            
             _chatQueue.Add(new ChatMsg { si = p.UserIDString, n = p.displayName, m = m, t = c == ConVar.Chat.ChatChannel.Team, ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
         }
 
@@ -373,6 +398,18 @@ namespace Oxide.Plugins
         void Save() => StatsData.Write(_stats);
         string GetIP(BasePlayer p) { var ip = p.Connection?.ipaddress; if (string.IsNullOrEmpty(ip)) return ""; var i = ip.IndexOf(':'); return i > 0 ? ip.Substring(0, i) : ip; }
         Dictionary<string, string> Headers() => new Dictionary<string, string> { ["Content-Type"] = "application/json", ["Authorization"] = $"Bearer {_meta.Key}" };
+        
+        string GetTimeLeft(long ms)
+        {
+            if (ms <= 0) return "0 сек";
+            var ts = TimeSpan.FromMilliseconds(ms);
+            var parts = new List<string>();
+            if (ts.Days > 0) parts.Add($"{ts.Days} дн");
+            if (ts.Hours > 0) parts.Add($"{ts.Hours} ч");
+            if (ts.Minutes > 0) parts.Add($"{ts.Minutes} мин");
+            if (ts.Seconds > 0 && ts.Days == 0) parts.Add($"{ts.Seconds} сек");
+            return string.Join(" ", parts);
+        }
         #endregion
 
         #region API
@@ -433,16 +470,71 @@ namespace Oxide.Plugins
                     if (d?.commands == null) return;
                     foreach (var cmd in d.commands)
                     {
-                        if (cmd.type != "chat_message") continue;
-                        if (cmd.is_global) { foreach (var p in BasePlayer.activePlayerList) SendReply(p, $"<color=#84cc16>[Админ]</color> {cmd.message}"); }
-                        else { var t = BasePlayer.Find(cmd.target_steam_id); if (t?.IsConnected == true) SendReply(t, $"<color=#84cc16>[ЛС]</color> {cmd.message}"); }
+                        switch (cmd.type)
+                        {
+                            case "chat_message":
+                                if (cmd.is_global) 
+                                { 
+                                    foreach (var p in BasePlayer.activePlayerList) 
+                                        SendReply(p, $"<color=#84cc16>[Админ]</color> {cmd.message}"); 
+                                }
+                                else 
+                                { 
+                                    var t = BasePlayer.Find(cmd.target_steam_id); 
+                                    if (t?.IsConnected == true) 
+                                        SendReply(t, $"<color=#84cc16>[ЛС]</color> {cmd.message}"); 
+                                }
+                                break;
+                                
+                            case "mute":
+                                if (!string.IsNullOrEmpty(cmd.target_steam_id) && ulong.TryParse(cmd.target_steam_id, out var muteId))
+                                {
+                                    _mutes[muteId] = new MuteData
+                                    {
+                                        reason = cmd.reason ?? "Нарушение правил чата",
+                                        expired_at = cmd.expired_at,
+                                        created_at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
+                                    };
+                                    var target = BasePlayer.Find(cmd.target_steam_id);
+                                    if (target?.IsConnected == true)
+                                    {
+                                        var duration = cmd.expired_at == 0 ? "навсегда" : GetTimeLeft(cmd.expired_at - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+                                        SendReply(target, $"<color=#ef4444>Вы получили мут в чате!</color>\n<size=12>Причина: {cmd.reason}\nДлительность: {duration}</size>");
+                                    }
+                                    if (cmd.broadcast)
+                                    {
+                                        foreach (var p in BasePlayer.activePlayerList)
+                                            SendReply(p, $"<color=#ef4444>[Мут]</color> Игрок <color=#fcd34d>{target?.displayName ?? cmd.target_steam_id}</color> замьючен. Причина: {cmd.reason}");
+                                    }
+                                    Puts($"[Mute] {cmd.target_steam_id} - {cmd.reason}");
+                                }
+                                break;
+                                
+                            case "unmute":
+                                if (!string.IsNullOrEmpty(cmd.target_steam_id) && ulong.TryParse(cmd.target_steam_id, out var unmuteId))
+                                {
+                                    if (_mutes.Remove(unmuteId))
+                                    {
+                                        var target = BasePlayer.Find(cmd.target_steam_id);
+                                        if (target?.IsConnected == true)
+                                            SendReply(target, "<color=#22c55e>Ваш мут в чате снят!</color>");
+                                        Puts($"[Unmute] {cmd.target_steam_id}");
+                                    }
+                                }
+                                break;
+                        }
                     }
                 } catch { }
             }, this, Oxide.Core.Libraries.RequestMethod.GET, Headers());
         }
 
         class CmdResp { public List<Cmd> commands; }
-        class Cmd { public string type, target_steam_id, message; public bool is_global; }
+        class Cmd 
+        { 
+            public string type, target_steam_id, message, reason; 
+            public bool is_global, broadcast; 
+            public long expired_at;
+        }
         #endregion
 
         #region Console

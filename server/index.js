@@ -990,12 +990,20 @@ app.get('/api/chat', (req, res) => {
 
 // Очередь команд для плагина (сообщения админа в игру)
 const COMMANDS_QUEUE_FILE = './commands_queue.json';
+const MUTES_FILE = './mutes.json';
 
 const loadCommandsQueue = () => {
   try { return JSON.parse(fs.readFileSync(COMMANDS_QUEUE_FILE, 'utf8')); }
   catch { return { commands: [] }; }
 };
 const saveCommandsQueue = (data) => fs.writeFileSync(COMMANDS_QUEUE_FILE, JSON.stringify(data, null, 2));
+
+// Муты
+const loadMutes = () => {
+  try { return JSON.parse(fs.readFileSync(MUTES_FILE, 'utf8')); }
+  catch { return { mutes: {} }; }
+};
+const saveMutes = (data) => fs.writeFileSync(MUTES_FILE, JSON.stringify(data, null, 2));
 
 // Send message to player (admin -> player)
 app.post('/api/chat/send', (req, res) => {
@@ -1185,6 +1193,132 @@ setInterval(() => {
   });
   if (changed) saveData(data);
 }, 10000);
+
+// === MUTES API ===
+
+// Get all active mutes
+app.get('/api/mutes', (req, res) => {
+  const mutes = loadMutes();
+  const now = Date.now();
+  const db = loadPlayersDB();
+  
+  // Фильтруем только активные муты
+  const activeMutes = Object.entries(mutes.mutes)
+    .filter(([_, m]) => m.expired_at === 0 || m.expired_at > now)
+    .map(([steamId, m]) => {
+      const player = db.players[steamId];
+      return {
+        ...m,
+        steam_id: steamId,
+        name: player?.steam_name || m.name || 'Unknown',
+        avatar: player?.avatar || ''
+      };
+    });
+  
+  res.json(activeMutes);
+});
+
+// Get mute for specific player
+app.get('/api/mutes/:steamId', (req, res) => {
+  const mutes = loadMutes();
+  const mute = mutes.mutes[req.params.steamId];
+  const now = Date.now();
+  
+  if (!mute || (mute.expired_at !== 0 && mute.expired_at < now)) {
+    return res.json({ muted: false });
+  }
+  
+  res.json({ muted: true, ...mute });
+});
+
+// Create mute
+app.post('/api/mutes', (req, res) => {
+  const { steam_id, reason, duration, comment, broadcast } = req.body;
+  
+  if (!steam_id || !reason) {
+    return res.status(400).json({ error: 'steam_id and reason required' });
+  }
+  
+  const mutes = loadMutes();
+  const db = loadPlayersDB();
+  const player = db.players[steam_id];
+  const now = Date.now();
+  
+  // Парсим duration (например: "1h", "30m", "7d", "0" для перманента)
+  let expiredAt = 0;
+  if (duration && duration !== '0' && duration !== 'perm') {
+    const match = duration.match(/^(\d+)([smhd])$/);
+    if (match) {
+      const value = parseInt(match[1]);
+      const unit = match[2];
+      const multipliers = { s: 1000, m: 60000, h: 3600000, d: 86400000 };
+      expiredAt = now + value * multipliers[unit];
+    }
+  }
+  
+  mutes.mutes[steam_id] = {
+    reason,
+    duration: duration || '0',
+    expired_at: expiredAt,
+    created_at: now,
+    comment: comment || '',
+    name: player?.steam_name || ''
+  };
+  
+  saveMutes(mutes);
+  
+  // Добавляем команду в очередь для плагина
+  const queue = loadCommandsQueue();
+  queue.commands.push({
+    id: crypto.randomUUID(),
+    type: 'mute',
+    steam_id,
+    reason,
+    duration: duration || '0',
+    expired_at: expiredAt,
+    broadcast: broadcast || false,
+    timestamp: now
+  });
+  saveCommandsQueue(queue);
+  
+  addActivityLog('player_muted', {
+    steam_id,
+    name: player?.steam_name || 'Unknown',
+    reason,
+    duration: duration || 'permanent'
+  });
+  
+  res.json({ success: true });
+});
+
+// Delete mute (unmute)
+app.delete('/api/mutes/:steamId', (req, res) => {
+  const mutes = loadMutes();
+  const db = loadPlayersDB();
+  const player = db.players[req.params.steamId];
+  
+  if (mutes.mutes[req.params.steamId]) {
+    delete mutes.mutes[req.params.steamId];
+    saveMutes(mutes);
+    
+    // Добавляем команду в очередь для плагина
+    const queue = loadCommandsQueue();
+    queue.commands.push({
+      id: crypto.randomUUID(),
+      type: 'unmute',
+      steam_id: req.params.steamId,
+      timestamp: Date.now()
+    });
+    saveCommandsQueue(queue);
+    
+    addActivityLog('player_unmuted', {
+      steam_id: req.params.steamId,
+      name: player?.steam_name || 'Unknown'
+    });
+  }
+  
+  res.json({ success: true });
+});
 
 // SPA fallback
 app.get('*', (req, res) => {

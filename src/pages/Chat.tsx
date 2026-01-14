@@ -23,12 +23,24 @@ interface Player {
   role?: string
 }
 
+interface MuteInfo {
+  steam_id: string
+  reason: string
+  duration: string
+  expired_at: number
+  created_at: number
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{id: string, x: number, y: number} | null>(null)
+  const [mutedPlayers, setMutedPlayers] = useState<Record<string, MuteInfo>>({})
+  const [muteModal, setMuteModal] = useState<{steamId: string, name: string} | null>(null)
+  const [muteReason, setMuteReason] = useState('')
+  const [muteDuration, setMuteDuration] = useState('1h')
   const { showToast } = useToast()
   const chatEndRef = useRef<HTMLDivElement>(null)
   const messagesRef = useRef<ChatMessage[]>([])
@@ -131,6 +143,24 @@ export default function Chat() {
     return () => clearInterval(interval)
   }, [playerSteamId])
 
+  // Загружаем список замьюченных игроков
+  useEffect(() => {
+    const fetchMutes = async () => {
+      try {
+        const res = await fetch('/api/mutes')
+        if (res.ok) {
+          const data = await res.json()
+          const mutesMap: Record<string, MuteInfo> = {}
+          data.forEach((m: MuteInfo) => { mutesMap[m.steam_id] = m })
+          setMutedPlayers(mutesMap)
+        }
+      } catch {}
+    }
+    fetchMutes()
+    const interval = setInterval(fetchMutes, 10000)
+    return () => clearInterval(interval)
+  }, [])
+
   useEffect(() => {
     scrollToBottom()
   }, [messages])
@@ -164,6 +194,59 @@ export default function Chat() {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text)
     showToast('Скопировано')
+  }
+
+  const handleMute = async (steamId: string, name: string) => {
+    setMuteModal({ steamId, name })
+    setMuteReason('')
+    setMuteDuration('1h')
+    setContextMenu(null)
+  }
+
+  const submitMute = async () => {
+    if (!muteModal || !muteReason.trim()) return
+    try {
+      const res = await fetch('/api/mutes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steam_id: muteModal.steamId,
+          reason: muteReason,
+          duration: muteDuration,
+          broadcast: true
+        })
+      })
+      if (res.ok) {
+        showToast('Мут выдан')
+        setMuteModal(null)
+        // Обновляем список мутов
+        const mutesRes = await fetch('/api/mutes')
+        if (mutesRes.ok) {
+          const data = await mutesRes.json()
+          const mutesMap: Record<string, MuteInfo> = {}
+          data.forEach((m: MuteInfo) => { mutesMap[m.steam_id] = m })
+          setMutedPlayers(mutesMap)
+        }
+      }
+    } catch {
+      showToast('Ошибка', 'error')
+    }
+  }
+
+  const handleUnmute = async (steamId: string) => {
+    try {
+      const res = await fetch(`/api/mutes/${steamId}`, { method: 'DELETE' })
+      if (res.ok) {
+        showToast('Мут снят')
+        setMutedPlayers(prev => {
+          const copy = { ...prev }
+          delete copy[steamId]
+          return copy
+        })
+      }
+    } catch {
+      showToast('Ошибка', 'error')
+    }
   }
 
   const formatTime = (ts: number) => new Date(ts).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })
@@ -476,9 +559,15 @@ export default function Chat() {
                     <button className="action-btn" title="Открыть профиль" onClick={() => handlePlayerClick(msg.steam_id)}>
                       <ProfileIcon />
                     </button>
-                    <button className="action-btn destructive" title="Выдать мут">
-                      <MuteIcon />
-                    </button>
+                    {mutedPlayers[msg.steam_id] ? (
+                      <button className="action-btn success" title="Снять мут" onClick={() => handleUnmute(msg.steam_id)}>
+                        <UnmuteIcon />
+                      </button>
+                    ) : (
+                      <button className="action-btn destructive" title="Выдать мут" onClick={() => handleMute(msg.steam_id, msg.name)}>
+                        <MuteIcon />
+                      </button>
+                    )}
                     <button className="action-btn" title="Меню" onClick={(e) => handleContextMenu(e, msg.id)}>
                       <MoreGridIcon />
                     </button>
@@ -488,6 +577,11 @@ export default function Chat() {
                 <span className="message-content">
                   {msg.is_team && <span className="team-badge">[TEAM]</span>}
                   {msg.avatar && <img src={msg.avatar} alt="" className="message-avatar" onClick={() => handlePlayerClick(msg.steam_id)} />}
+                  {mutedPlayers[msg.steam_id] && (
+                    <span className="muted-icon" title={`Мут: ${mutedPlayers[msg.steam_id].reason}`}>
+                      <MutedMicIcon />
+                    </span>
+                  )}
                   <button className={`message-author ${msg.is_admin ? 'admin' : ''}`} onClick={() => handlePlayerClick(msg.steam_id)}>
                     {highlightText(msg.name, textFilter)}
                   </button>
@@ -515,7 +609,13 @@ export default function Chat() {
           <button onClick={() => { const m = messages.find(x => x.id === contextMenu.id); if (m) handlePlayerClick(m.steam_id) }}>Открыть профиль</button>
           <button onClick={() => { const m = messages.find(x => x.id === contextMenu.id); if (m) copyToClipboard(m.steam_id) }}>Скопировать SteamID</button>
           <button onClick={() => { const m = messages.find(x => x.id === contextMenu.id); if (m) setSearchParams({ player: m.steam_id }) }}>Все сообщения</button>
-          <button className="destructive">Выдать мут</button>
+          {(() => {
+            const m = messages.find(x => x.id === contextMenu.id)
+            if (m && mutedPlayers[m.steam_id]) {
+              return <button className="success" onClick={() => { handleUnmute(m.steam_id); setContextMenu(null) }}>Снять мут</button>
+            }
+            return <button className="destructive" onClick={() => { const m = messages.find(x => x.id === contextMenu.id); if (m) handleMute(m.steam_id, m.name) }}>Выдать мут</button>
+          })()}
         </div>
       )}
 
@@ -610,6 +710,58 @@ export default function Chat() {
           </div>
         </div>
       )}
+
+      {/* Модальное окно мута */}
+      {muteModal && (
+        <div className="chat-modal-overlay" onClick={() => setMuteModal(null)}>
+          <div className="mute-modal" onClick={e => e.stopPropagation()}>
+            <div className="mute-modal-icon">
+              <MutedMicIcon />
+            </div>
+            <div className="mute-modal-content">
+              <div className="mute-modal-header">
+                <span>Выдать мут</span>
+                <button className="close-btn" onClick={() => setMuteModal(null)}>×</button>
+              </div>
+              <div className="mute-modal-player">
+                <span>Игрок: <strong>{muteModal.name}</strong></span>
+              </div>
+              <div className="mute-modal-body">
+                <div className="mute-field">
+                  <label>Причина</label>
+                  <input 
+                    type="text"
+                    placeholder="Введите причину мута"
+                    value={muteReason}
+                    onChange={e => setMuteReason(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="mute-field">
+                  <label>Длительность</label>
+                  <select value={muteDuration} onChange={e => setMuteDuration(e.target.value)}>
+                    <option value="5m">5 минут</option>
+                    <option value="15m">15 минут</option>
+                    <option value="30m">30 минут</option>
+                    <option value="1h">1 час</option>
+                    <option value="3h">3 часа</option>
+                    <option value="6h">6 часов</option>
+                    <option value="12h">12 часов</option>
+                    <option value="1d">1 день</option>
+                    <option value="3d">3 дня</option>
+                    <option value="7d">7 дней</option>
+                    <option value="30d">30 дней</option>
+                    <option value="0">Навсегда</option>
+                  </select>
+                </div>
+                <button className="mute-submit-btn" onClick={submitMute} disabled={!muteReason.trim()}>
+                  Выдать мут
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -617,6 +769,8 @@ export default function Chat() {
 function ChatEmptyIcon() { return <svg width="64" height="64" viewBox="0 0 24 24" fill="#444"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg> }
 function ProfileIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4ZM12 14C8.67 14 2 15.67 2 19V20C2 20.55 2.45 21 3 21H21C21.55 21 22 20.55 22 20V19C22 15.67 15.33 14 12 14Z"/></svg> }
 function MuteIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 11C17 11.53 16.92 12.04 16.76 12.52L8.11 3.86C9.02 2.73 10.43 2 12 2C14.76 2 17 4.24 17 7V11Z"/><path d="M2.29 2.29C2.68 1.9 3.32 1.9 3.71 2.29L21.71 20.29C22.1 20.68 22.1 21.32 21.71 21.71C21.32 22.1 20.68 22.1 20.29 21.71L17.04 18.46C15.96 19.2 14.62 19.78 13 19.95V21C13 21.55 12.55 22 12 22C11.45 22 11 21.55 11 21V19.95C7.45 19.58 5.3 17.28 4.18 15.54C3.87 15.08 4.01 14.46 4.47 14.16C4.93 13.86 5.55 13.99 5.85 14.46C6.89 16.06 8.8 18 12 18C13.46 18 14.65 17.6 15.6 17.01L14.12 15.53C13.47 15.83 12.76 16 12 16C9.24 16 7 13.76 7 11V8.41L2.29 3.71C1.9 3.32 1.9 2.68 2.29 2.29Z"/></svg> }
+function UnmuteIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C14.76 2 17 4.24 17 7V11C17 13.76 14.76 16 12 16C9.24 16 7 13.76 7 11V7C7 4.24 9.24 2 12 2ZM13 19.95V21C13 21.55 12.55 22 12 22C11.45 22 11 21.55 11 21V19.95C7.45 19.58 5.3 17.28 4.18 15.54C3.87 15.08 4.01 14.46 4.47 14.16C4.93 13.86 5.55 13.99 5.85 14.46C6.89 16.06 8.8 18 12 18C15.2 18 17.11 16.06 18.15 14.46C18.45 13.99 19.07 13.86 19.53 14.16C19.99 14.46 20.13 15.08 19.82 15.54C18.7 17.28 16.55 19.58 13 19.95Z"/></svg> }
+function MutedMicIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 11C17 11.53 16.92 12.04 16.76 12.52L8.11 3.86C9.02 2.73 10.43 2 12 2C14.76 2 17 4.24 17 7V11Z"/><path d="M2.29 2.29C2.68 1.9 3.32 1.9 3.71 2.29L21.71 20.29C22.1 20.68 22.1 21.32 21.71 21.71C21.32 22.1 20.68 22.1 20.29 21.71L17.04 18.46C15.96 19.2 14.62 19.78 13 19.95V21C13 21.55 12.55 22 12 22C11.45 22 11 21.55 11 21V19.95C7.45 19.58 5.3 17.28 4.18 15.54C3.87 15.08 4.01 14.46 4.47 14.16C4.93 13.86 5.55 13.99 5.85 14.46C6.89 16.06 8.8 18 12 18C13.46 18 14.65 17.6 15.6 17.01L14.12 15.53C13.47 15.83 12.76 16 12 16C9.24 16 7 13.76 7 11V8.41L2.29 3.71C1.9 3.32 1.9 2.68 2.29 2.29Z"/></svg> }
 function MoreGridIcon() { return <svg viewBox="0 0 24 25" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M3 5.5C3 4.4 3.9 3.5 5 3.5C6.1 3.5 7 4.4 7 5.5C7 6.6 6.1 7.5 5 7.5C3.9 7.5 3 6.6 3 5.5ZM10 5.5C10 4.4 10.9 3.5 12 3.5C13.1 3.5 14 4.4 14 5.5C14 6.6 13.1 7.5 12 7.5C10.9 7.5 10 6.6 10 5.5ZM17 5.5C17 4.4 17.9 3.5 19 3.5C20.1 3.5 21 4.4 21 5.5C21 6.6 20.1 7.5 19 7.5C17.9 7.5 17 6.6 17 5.5ZM3 12.5C3 11.4 3.9 10.5 5 10.5C6.1 10.5 7 11.4 7 12.5C7 13.6 6.1 14.5 5 14.5C3.9 14.5 3 13.6 3 12.5ZM10 12.5C10 11.4 10.9 10.5 12 10.5C13.1 10.5 14 11.4 14 12.5C14 13.6 13.1 14.5 12 14.5C10.9 14.5 10 13.6 10 12.5ZM17 12.5C17 11.4 17.9 10.5 19 10.5C20.1 10.5 21 11.4 21 12.5C21 13.6 20.1 14.5 19 14.5C17.9 14.5 17 13.6 17 12.5ZM3 19.5C3 18.4 3.9 17.5 5 17.5C6.1 17.5 7 18.4 7 19.5C7 20.6 6.1 21.5 5 21.5C3.9 21.5 3 20.6 3 19.5ZM10 19.5C10 18.4 10.9 17.5 12 17.5C13.1 17.5 14 18.4 14 19.5C14 20.6 13.1 21.5 12 21.5C10.9 21.5 10 20.6 10 19.5ZM17 19.5C17 18.4 17.9 17.5 19 17.5C20.1 17.5 21 18.4 21 19.5C21 20.6 20.1 21.5 19 21.5C17.9 21.5 17 20.6 17 19.5Z"/></svg> }
 function SendIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg> }
 
