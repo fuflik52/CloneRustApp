@@ -1418,6 +1418,14 @@
   background: rgba(239, 68, 68, 0.15);
 }
 
+.context-menu-item.success {
+  color: #22c55e;
+}
+
+.context-menu-item.success:hover {
+  background: rgba(34, 197, 94, 0.15);
+}
+
 .context-menu-divider {
   height: 1px;
   background: #333;
@@ -1611,4 +1619,128 @@
 .action-modal-footer .btn-action:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* ==================== IMPROVED MUTE MODAL ==================== */
+.action-modal.mute-modal {
+  width: 420px;
+}
+
+.action-modal-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #252525 0%, #1f1f1f 100%);
+  border-radius: 10px;
+  border: 1px solid #333;
+}
+
+.action-modal-player img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  border: 2px solid #333;
+}
+
+.action-modal-player .player-info-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.action-modal-player .player-name {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.action-modal-player .player-steamid {
+  color: #666;
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.custom-select-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.custom-select-wrapper select {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px 40px 12px 14px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.custom-select-wrapper select:hover {
+  border-color: #444;
+  background: #252525;
+}
+
+.custom-select-wrapper select:focus {
+  border-color: #555;
+  outline: none;
+}
+
+.custom-select-wrapper svg {
+  position: absolute;
+  right: 12px;
+  pointer-events: none;
+  color: #666;
+  transition: color 0.15s;
+}
+
+.custom-select-wrapper:hover svg {
+  color: #888;
+}
+
+.custom-select-wrapper select option {
+  background: #1e1e1e;
+  color: #fff;
+  padding: 10px;
+}
+
+.action-input-group input {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 14px;
+  transition: all 0.15s;
+}
+
+.action-input-group input:hover {
+  border-color: #444;
+  background: #252525;
+}
+
+.action-input-group input:focus {
+  border-color: #555;
+  outline: none;
+  background: #252525;
+}
+
+.action-input-group input::placeholder {
+  color: #555;
+}
+
+.action-modal-footer .btn-action.destructive {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.action-modal-footer .btn-action.destructive:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }

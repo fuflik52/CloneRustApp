@@ -118,6 +118,8 @@ export default function Players() {
   const [banReason, setBanReason] = useState('')
   const [banDuration, setBanDuration] = useState('')
   const [kickReason, setKickReason] = useState('')
+  const [mutedPlayers, setMutedPlayers] = useState<Record<string, { id?: string, reason: string, expires?: number }>>({})
+  const [bannedPlayers, setBannedPlayers] = useState<Record<string, { id?: string, reason: string, expires?: number }>>({})
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const { showToast } = useToast()
 
@@ -209,6 +211,84 @@ export default function Players() {
   const goToPlayerChat = () => {
     if (!selectedPlayer || !serverSlug) return
     navigate(`/${serverSlug}/chat?player=${selectedPlayer.steam_id}`)
+    setContextMenu(null)
+  }
+
+  // Загружаем муты и баны
+  useEffect(() => {
+    const fetchMutesAndBans = async () => {
+      if (!serverId) return
+      try {
+        const [mutesRes, bansRes] = await Promise.all([
+          fetch(`/api/servers/${serverId}/mutes`),
+          fetch(`/api/servers/${serverId}/bans`)
+        ])
+        if (mutesRes.ok) {
+          const mutes = await mutesRes.json()
+          const mutesMap: Record<string, { id?: string, reason: string, expires?: number }> = {}
+          mutes.forEach((m: any) => { mutesMap[m.steam_id] = { id: m.id, reason: m.reason, expires: m.expires } })
+          setMutedPlayers(mutesMap)
+        }
+        if (bansRes.ok) {
+          const bans = await bansRes.json()
+          const bansMap: Record<string, { id?: string, reason: string, expires?: number }> = {}
+          bans.forEach((b: any) => { bansMap[b.steam_id] = { id: b.id, reason: b.reason, expires: b.expires } })
+          setBannedPlayers(bansMap)
+        }
+      } catch {}
+    }
+    fetchMutesAndBans()
+    const interval = setInterval(fetchMutesAndBans, 10000)
+    return () => clearInterval(interval)
+  }, [serverId])
+
+  const handleUnmute = async () => {
+    if (!selectedPlayer || !serverId) return
+    try {
+      const mute = mutedPlayers[selectedPlayer.steam_id]
+      const res = await fetch(`/api/servers/${serverId}/mutes/${mute?.id || selectedPlayer.steam_id}`, { method: 'DELETE' })
+      if (res.ok) {
+        showToast('Мут снят')
+        setMutedPlayers(prev => {
+          const copy = { ...prev }
+          delete copy[selectedPlayer.steam_id]
+          return copy
+        })
+        // Отправляем команду unmute на игровой сервер
+        await fetch(`/api/servers/${serverId}/cmd`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'unmute', steam_id: selectedPlayer.steam_id })
+        })
+      }
+    } catch {
+      showToast('Ошибка', 'error')
+    }
+    setContextMenu(null)
+  }
+
+  const handleUnban = async () => {
+    if (!selectedPlayer || !serverId) return
+    try {
+      const ban = bannedPlayers[selectedPlayer.steam_id]
+      const res = await fetch(`/api/servers/${serverId}/bans/${ban?.id || selectedPlayer.steam_id}`, { method: 'DELETE' })
+      if (res.ok) {
+        showToast('Бан снят')
+        setBannedPlayers(prev => {
+          const copy = { ...prev }
+          delete copy[selectedPlayer.steam_id]
+          return copy
+        })
+        // Отправляем команду unban на игровой сервер
+        await fetch(`/api/servers/${serverId}/cmd`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'unban', steam_id: selectedPlayer.steam_id })
+        })
+      }
+    } catch {
+      showToast('Ошибка', 'error')
+    }
     setContextMenu(null)
   }
 
@@ -930,7 +1010,7 @@ export default function Players() {
       {/* Mute Modal */}
       {showMuteModal && selectedPlayer && (
         <div className="action-modal-overlay" onClick={() => setShowMuteModal(false)}>
-          <div className="action-modal" onClick={e => e.stopPropagation()}>
+          <div className="action-modal mute-modal" onClick={e => e.stopPropagation()}>
             <div className="action-modal-header">
               <span>Выдать мут</span>
               <button className="action-modal-close" onClick={() => setShowMuteModal(false)}><CloseIcon /></button>
@@ -938,7 +1018,10 @@ export default function Players() {
             <div className="action-modal-content">
               <div className="action-modal-player">
                 <img src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
-                <span>{selectedPlayer.name}</span>
+                <div className="player-info-col">
+                  <span className="player-name">{selectedPlayer.name}</span>
+                  <span className="player-steamid">{selectedPlayer.steam_id}</span>
+                </div>
               </div>
               <div className="action-input-group">
                 <label>Причина</label>
@@ -946,15 +1029,18 @@ export default function Players() {
               </div>
               <div className="action-input-group">
                 <label>Длительность</label>
-                <select value={muteDuration} onChange={e => setMuteDuration(e.target.value)}>
-                  <option value="10m">10 минут</option>
-                  <option value="30m">30 минут</option>
-                  <option value="1h">1 час</option>
-                  <option value="6h">6 часов</option>
-                  <option value="1d">1 день</option>
-                  <option value="7d">7 дней</option>
-                  <option value="0">Навсегда</option>
-                </select>
+                <div className="custom-select-wrapper">
+                  <select value={muteDuration} onChange={e => setMuteDuration(e.target.value)}>
+                    <option value="10m">10 минут</option>
+                    <option value="30m">30 минут</option>
+                    <option value="1h">1 час</option>
+                    <option value="6h">6 часов</option>
+                    <option value="1d">1 день</option>
+                    <option value="7d">7 дней</option>
+                    <option value="0">Навсегда</option>
+                  </select>
+                  <ChevronDownIcon />
+                </div>
               </div>
             </div>
             <div className="action-modal-footer">
@@ -1045,15 +1131,27 @@ export default function Players() {
             <NoteIcon /> Добавить заметку
           </button>
           <div className="context-menu-divider" />
-          <button className="context-menu-item destructive" onClick={() => { setShowMuteModal(true); setContextMenu(null) }}>
-            <MutesIcon /> Выдать мут
-          </button>
+          {mutedPlayers[selectedPlayer.steam_id] ? (
+            <button className="context-menu-item success" onClick={handleUnmute}>
+              <UnmuteIcon /> Снять мут
+            </button>
+          ) : (
+            <button className="context-menu-item destructive" onClick={() => { setShowMuteModal(true); setContextMenu(null) }}>
+              <MutesIcon /> Выдать мут
+            </button>
+          )}
           <button className="context-menu-item destructive" onClick={() => { setShowKickModal(true); setContextMenu(null) }}>
             <KickIcon /> Кикнуть
           </button>
-          <button className="context-menu-item destructive" onClick={() => { setShowBanModal(true); setContextMenu(null) }}>
-            <BansIcon /> Заблокировать
-          </button>
+          {bannedPlayers[selectedPlayer.steam_id] ? (
+            <button className="context-menu-item success" onClick={handleUnban}>
+              <UnbanIcon /> Снять бан
+            </button>
+          ) : (
+            <button className="context-menu-item destructive" onClick={() => { setShowBanModal(true); setContextMenu(null) }}>
+              <BansIcon /> Заблокировать
+            </button>
+          )}
         </div>
       )}
     </div>
@@ -1154,6 +1252,18 @@ function ChatIcon() {
 
 function KickIcon() {
   return <svg viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM9.70711 8.29289C9.31658 7.90237 8.68342 7.90237 8.29289 8.29289C7.90237 8.68342 7.90237 9.31658 8.29289 9.70711L10.5858 12L8.29289 14.2929C7.90237 14.6834 7.90237 15.3166 8.29289 15.7071C8.68342 16.0976 9.31658 16.0976 9.70711 15.7071L12 13.4142L14.2929 15.7071C14.6834 16.0976 15.3166 16.0976 15.7071 15.7071C16.0976 15.3166 16.0976 14.6834 15.7071 14.2929L13.4142 12L15.7071 9.70711C16.0976 9.31658 16.0976 8.68342 15.7071 8.29289C15.3166 7.90237 14.6834 7.90237 14.2929 8.29289L12 10.5858L9.70711 8.29289Z" /></svg>
+}
+
+function UnmuteIcon() {
+  return <svg viewBox="0 0 24 24"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/></svg>
+}
+
+function UnbanIcon() {
+  return <svg viewBox="0 0 24 24"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6zm9 14H6V10h12v10zm-6-3c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2z"/></svg>
+}
+
+function ChevronDownIcon() {
+  return <svg viewBox="0 0 24 24" width="18" height="18"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" fill="currentColor"/></svg>
 }
 
 function CheckIcon() {
