@@ -17,9 +17,9 @@ namespace Oxide.Plugins
         private class Configuration
         {
             [JsonProperty("API URL")]
-            public string ApiUrl = "http://localhost:3001/api";
+            public string ApiUrl = "http://app.bublickrust.ru/api";
             
-            [JsonProperty("API Secret Key")]
+            [JsonProperty("API Secret Key (получить в панели при создании сервера)")]
             public string SecretKey = "";
             
             [JsonProperty("Update Interval (seconds)")]
