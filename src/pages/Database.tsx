@@ -64,6 +64,16 @@ export default function Database() {
     if (isAuthed) fetchData()
   }, [isAuthed, tab])
 
+  // Открываем игрока из URL
+  useEffect(() => {
+    if (!isAuthed) return
+    const params = new URLSearchParams(window.location.search)
+    const playerId = params.get('player')
+    if (playerId) {
+      loadPlayerDetails(playerId)
+    }
+  }, [isAuthed])
+
   const checkAuth = () => {
     if (password === SECRET_PASSWORD) {
       setIsAuthed(true)
@@ -101,10 +111,25 @@ export default function Database() {
   }
 
   const loadPlayerDetails = async (steamId: string) => {
+    setLoading(true)
     try {
       const res = await fetch(`/api/players/db/${steamId}`)
-      if (res.ok) setSelectedPlayer(await res.json())
+      if (res.ok) {
+        setSelectedPlayer(await res.json())
+        // Обновляем URL
+        const url = new URL(window.location.href)
+        url.searchParams.set('player', steamId)
+        window.history.pushState({}, '', url.toString())
+      }
     } catch {}
+    setLoading(false)
+  }
+
+  const closePlayerDetails = () => {
+    setSelectedPlayer(null)
+    const url = new URL(window.location.href)
+    url.searchParams.delete('player')
+    window.history.pushState({}, '', url.toString())
   }
 
   const addNote = async () => {
@@ -216,147 +241,116 @@ export default function Database() {
         <button className="db-logout" onClick={() => { setIsAuthed(false); localStorage.removeItem('db_auth') }}><LogoutIcon /></button>
       </div>
 
-      {tab === 'players' && (
-        <div className="db-players-layout">
-          <div className="db-players-list">
-            <div className="db-search">
-              <SearchIcon />
-              <input placeholder="Поиск по имени, SteamID, IP..." value={search}
-                onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchPlayers()} />
-              {search && <button className="db-search-clear" onClick={() => { setSearch(''); fetchData() }}><CloseIcon /></button>}
-            </div>
-            <div className="db-list">
-              {loading ? <div className="db-loading"><SpinnerIcon />Загрузка...</div> :
-               players.length === 0 ? <div className="db-empty">Нет игроков</div> :
-               players.map(p => (
-                <div key={p.steam_id} className={`db-player-item ${selectedPlayer?.steam_id === p.steam_id ? 'active' : ''}`} 
-                     onClick={() => loadPlayerDetails(p.steam_id)}>
-                  <img src={p.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
-                  <div className="db-player-item-info">
-                    <span className="db-player-item-name">{p.steam_name}</span>
-                    <span className="db-player-item-meta">{p.total_connections} подкл. · {p.playtime_hours || 0}ч · {timeAgo(p.last_seen)}</span>
-                  </div>
-                  {p.countryCode && <img className="db-player-item-flag" src={`https://hatscripts.github.io/circle-flags/flags/${p.countryCode}.svg`} alt="" />}
+      {tab === 'players' && !selectedPlayer && (
+        <div className="db-players-page">
+          <div className="db-search">
+            <SearchIcon />
+            <input placeholder="Поиск по имени, SteamID, IP..." value={search}
+              onChange={e => setSearch(e.target.value)} onKeyDown={e => e.key === 'Enter' && searchPlayers()} />
+            {search && <button className="db-search-clear" onClick={() => { setSearch(''); fetchData() }}><CloseIcon /></button>}
+          </div>
+          <div className="db-players-grid">
+            {loading ? <div className="db-loading"><SpinnerIcon /></div> :
+             players.length === 0 ? <div className="db-empty">Нет игроков</div> :
+             players.map(p => (
+              <div key={p.steam_id} className="db-player-card" onClick={() => loadPlayerDetails(p.steam_id)}>
+                <img src={p.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                <div className="db-player-card-info">
+                  <span className="db-player-card-name">{p.steam_name}</span>
+                  <span className="db-player-card-meta">{p.total_connections} подкл. · {p.playtime_hours || 0}ч</span>
                 </div>
-              ))}
+                {p.countryCode && <img className="db-player-card-flag" src={`https://hatscripts.github.io/circle-flags/flags/${p.countryCode}.svg`} alt="" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tab === 'players' && selectedPlayer && (
+        <div className="db-player-fullpage">
+          <div className="db-player-fullpage-header">
+            <button className="db-back-btn" onClick={closePlayerDetails}><BackIcon /> Назад к списку</button>
+          </div>
+          
+          <div className="db-player-profile">
+            <img className="db-player-avatar" src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+            <div className="db-player-profile-info">
+              <h2>{selectedPlayer.steam_name}</h2>
+              <div className="db-steamid" onClick={() => copyToClipboard(selectedPlayer.steam_id)}>
+                {selectedPlayer.steam_id} <CopyIcon />
+              </div>
+              <div className="db-player-links">
+                <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}`} target="_blank" className="db-link-btn"><SteamIcon /> Steam</a>
+                <a href={`https://rustcheatcheck.ru/panel/player/${selectedPlayer.steam_id}`} target="_blank" className="db-link-btn"><RccIcon /> RCC</a>
+              </div>
             </div>
           </div>
 
-          {selectedPlayer ? (
-            <div className="db-player-details">
-              <div className="db-details-header">
-                <img src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
-                <div className="db-details-header-info">
-                  <h3>{selectedPlayer.steam_name}</h3>
-                  <div className="db-details-steamid" onClick={() => copyToClipboard(selectedPlayer.steam_id)}>
-                    {selectedPlayer.steam_id} <CopyIcon />
-                  </div>
-                </div>
-                <button className="db-details-close" onClick={() => setSelectedPlayer(null)}><CloseIcon /></button>
-              </div>
+          <div className="db-player-stats-grid">
+            <div className="db-stat-box"><span>Первый визит</span><strong>{formatDate(selectedPlayer.first_seen)}</strong></div>
+            <div className="db-stat-box"><span>Последний визит</span><strong>{formatDate(selectedPlayer.last_seen)}</strong></div>
+            <div className="db-stat-box"><span>Подключений</span><strong>{selectedPlayer.total_connections}</strong></div>
+            <div className="db-stat-box"><span>Время игры</span><strong>{formatTime(selectedPlayer.total_playtime_seconds)}</strong></div>
+            <div className="db-stat-box"><span>Страна, город</span><strong>{selectedPlayer.countryCode && <img src={`https://hatscripts.github.io/circle-flags/flags/${selectedPlayer.countryCode}.svg`} alt="" />}{selectedPlayer.country || '—'} {selectedPlayer.city}</strong></div>
+            <div className="db-stat-box"><span>Провайдер</span><strong>{selectedPlayer.provider || '—'}</strong></div>
+          </div>
 
-              <div className="db-details-grid">
-                <div className="db-details-card">
-                  <span className="db-details-label">Первый визит</span>
-                  <span className="db-details-value">{formatDate(selectedPlayer.first_seen)}</span>
-                </div>
-                <div className="db-details-card">
-                  <span className="db-details-label">Последний визит</span>
-                  <span className="db-details-value">{formatDate(selectedPlayer.last_seen)}</span>
-                </div>
-                <div className="db-details-card">
-                  <span className="db-details-label">Подключений</span>
-                  <span className="db-details-value">{selectedPlayer.total_connections}</span>
-                </div>
-                <div className="db-details-card">
-                  <span className="db-details-label">Время игры</span>
-                  <span className="db-details-value">{formatTime(selectedPlayer.total_playtime_seconds)}</span>
-                </div>
-                <div className="db-details-card">
-                  <span className="db-details-label">Страна, город</span>
-                  <span className="db-details-value">
-                    {selectedPlayer.countryCode && <img src={`https://hatscripts.github.io/circle-flags/flags/${selectedPlayer.countryCode}.svg`} alt="" />}
-                    {selectedPlayer.country || '—'} {selectedPlayer.city}
-                  </span>
-                </div>
-                <div className="db-details-card">
-                  <span className="db-details-label">Провайдер</span>
-                  <span className="db-details-value">{selectedPlayer.provider || '—'}</span>
-                </div>
-              </div>
-
-              <div className="db-details-section">
-                <div className="db-details-section-header"><TagIcon /> Теги</div>
-                <div className="db-tags-list">
-                  {selectedPlayer.tags?.map(t => (
-                    <span key={t} className="db-tag">{t} <button onClick={() => removeTag(t)}><CloseIcon /></button></span>
-                  ))}
-                  <div className="db-tag-add">
-                    <input placeholder="Новый тег" value={tagText} onChange={e => setTagText(e.target.value)} 
-                           onKeyDown={e => e.key === 'Enter' && addTag()} />
-                    <button onClick={addTag}><PlusIcon /></button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="db-details-section">
-                <div className="db-details-section-header"><HistoryIcon /> История никнеймов ({selectedPlayer.names_history?.length || 0})</div>
-                <div className="db-history-list">
-                  {selectedPlayer.names_history?.map((h, i) => (
-                    <div key={i} className="db-history-item">
-                      <span className="db-history-name">{h.name}</span>
-                      <span className="db-history-date">{formatDate(h.date)}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="db-details-section">
-                <div className="db-details-section-header"><GlobeIcon /> История IP ({selectedPlayer.ips_history?.length || 0})</div>
-                <div className="db-history-list">
-                  {selectedPlayer.ips_history?.map((h, i) => (
-                    <div key={i} className="db-history-item db-ip-item">
-                      <div className="db-ip-main">
-                        <span className="db-ip-address" onClick={() => copyToClipboard(h.ip)}>{h.ip} <CopyIcon /></span>
-                        <span className="db-ip-geo">{h.country} {h.city}</span>
-                      </div>
-                      <span className="db-ip-provider">{h.provider}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="db-details-section">
-                <div className="db-details-section-header"><NoteIcon /> Заметки ({selectedPlayer.notes?.length || 0})</div>
-                <div className="db-notes-list">
-                  {selectedPlayer.notes?.map(n => (
-                    <div key={n.id} className="db-note-item">
-                      <p>{n.text}</p>
-                      <span>{n.author} · {formatDate(n.date)}</span>
-                    </div>
-                  ))}
-                  <div className="db-note-add">
-                    <textarea placeholder="Добавить заметку..." value={noteText} onChange={e => setNoteText(e.target.value)} />
-                    <button onClick={addNote}><PlusIcon /> Добавить</button>
-                  </div>
-                </div>
-              </div>
-
-              <div className="db-details-section">
-                <div className="db-details-section-header"><ServerIcon /> Серверы</div>
-                <div className="db-servers-list">
-                  {selectedPlayer.servers_played?.map((s, i) => (
-                    <span key={i} className="db-server-tag">{s}</span>
-                  ))}
+          <div className="db-player-sections">
+            <div className="db-section">
+              <div className="db-section-title"><TagIcon /> Теги</div>
+              <div className="db-tags-list">
+                {selectedPlayer.tags?.map(t => (
+                  <span key={t} className="db-tag">{t} <button onClick={() => removeTag(t)}><CloseIcon /></button></span>
+                ))}
+                <div className="db-tag-add">
+                  <input placeholder="Новый тег" value={tagText} onChange={e => setTagText(e.target.value)} onKeyDown={e => e.key === 'Enter' && addTag()} />
+                  <button onClick={addTag}><PlusIcon /></button>
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="db-player-empty">
-              <UsersIcon />
-              <p>Выберите игрока из списка</p>
+
+            <div className="db-section">
+              <div className="db-section-title"><HistoryIcon /> История никнеймов ({selectedPlayer.names_history?.length || 0})</div>
+              <div className="db-history-list">
+                {selectedPlayer.names_history?.map((h, i) => (
+                  <div key={i} className="db-history-item"><span>{h.name}</span><span>{formatDate(h.date)}</span></div>
+                ))}
+              </div>
             </div>
-          )}
+
+            <div className="db-section">
+              <div className="db-section-title"><GlobeIcon /> История IP ({selectedPlayer.ips_history?.length || 0})</div>
+              <div className="db-history-list">
+                {selectedPlayer.ips_history?.map((h, i) => (
+                  <div key={i} className="db-history-item db-ip-row">
+                    <span className="db-ip" onClick={() => copyToClipboard(h.ip)}>{h.ip} <CopyIcon /></span>
+                    <span>{h.country} {h.city}</span>
+                    <span className="db-ip-provider">{h.provider}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="db-section">
+              <div className="db-section-title"><NoteIcon /> Заметки ({selectedPlayer.notes?.length || 0})</div>
+              <div className="db-notes-list">
+                {selectedPlayer.notes?.map(n => (
+                  <div key={n.id} className="db-note"><p>{n.text}</p><span>{n.author} · {formatDate(n.date)}</span></div>
+                ))}
+                <div className="db-note-add">
+                  <textarea placeholder="Добавить заметку..." value={noteText} onChange={e => setNoteText(e.target.value)} />
+                  <button onClick={addNote}><PlusIcon /> Добавить</button>
+                </div>
+              </div>
+            </div>
+
+            <div className="db-section">
+              <div className="db-section-title"><ServerIcon /> Серверы</div>
+              <div className="db-servers-list">
+                {selectedPlayer.servers_played?.map((s, i) => <span key={i} className="db-server-tag">{s}</span>)}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -421,3 +415,6 @@ function LogIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d
 function OnlineIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2Z"/></svg> }
 function ServerIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2 6C2 4.9 2.9 4 4 4H20C21.1 4 22 4.9 22 6V10H2V6ZM6 7.5C6 8.05 5.55 8.5 5 8.5C4.45 8.5 4 8.05 4 7.5C4 6.95 4.45 6.5 5 6.5C5.55 6.5 6 6.95 6 7.5ZM2 12H22V16C22 17.1 21.1 18 20 18H4C2.9 18 2 17.1 2 16V12ZM6 14.5C6 15.05 5.55 15.5 5 15.5C4.45 15.5 4 15.05 4 14.5C4 13.95 4.45 13.5 5 13.5C5.55 13.5 6 13.95 6 14.5Z"/></svg> }
 function CalendarIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 4H18V2H16V4H8V2H6V4H5C3.89 4 3 4.9 3 6V20C3 21.1 3.89 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20ZM19 8H5V6H19V8Z"/></svg> }
+function BackIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z"/></svg> }
+function SteamIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3l-.5 3H13v6.95c5.05-.5 9-4.76 9-9.95 0-5.52-4.48-10-10-10z"/></svg> }
+function RccIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> }

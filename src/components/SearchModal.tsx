@@ -67,7 +67,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
             subtitle: p.country ? `${p.country}` : 'Игрок',
             avatar: p.avatar,
             online: false,
-            url: `/players?player=${p.steam_id}`
+            url: `/secret-db-panel?player=${p.steam_id}`
           }))
           setResults(prev => [...prev.filter(r => r.type === 'page'), ...filtered].slice(0, 10))
         }
