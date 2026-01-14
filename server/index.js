@@ -898,7 +898,7 @@ app.post('/api/kills', (req, res) => {
 
 // === CHAT API ===
 
-// Plugin sends chat messages
+// Plugin sends chat messages (supports both short and full field names from PanRust.cs)
 app.post('/api/chat', (req, res) => {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
@@ -917,17 +917,24 @@ app.post('/api/chat', (req, res) => {
   const db = loadPlayersDB();
   
   for (const msg of messages) {
-    const player = db.players[msg.steam_id];
+    // Map short field names from PanRust.cs to full names
+    const steamId = msg.si || msg.steam_id;
+    const name = msg.n || msg.name;
+    const message = msg.m || msg.message;
+    const isTeam = msg.t || msg.is_team || false;
+    const timestamp = msg.ts || msg.timestamp || Date.now();
+    
+    const player = db.players[steamId];
     chatLog.messages.push({
       id: crypto.randomUUID(),
-      steam_id: msg.steam_id,
-      name: msg.name,
+      steam_id: steamId,
+      name: name,
       avatar: player?.avatar || '',
-      message: msg.message,
-      is_team: msg.is_team || false,
+      message: message,
+      is_team: isTeam,
       server: serverName || server.name,
-      timestamp: msg.timestamp || Date.now(),
-      date: new Date(msg.timestamp || Date.now()).toISOString()
+      timestamp: timestamp,
+      date: new Date(timestamp).toISOString()
     });
   }
   
