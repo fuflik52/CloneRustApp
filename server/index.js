@@ -602,7 +602,7 @@ app.get('/api/servers/:serverId/chat', (req, res) => {
   res.json(messages);
 });
 
-// Plugin sends chat message
+// Plugin sends chat message (supports both single message and batch from PanRust)
 app.post('/api/chat', (req, res) => {
   const auth = req.headers.authorization;
   if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
@@ -612,21 +612,38 @@ app.post('/api/chat', (req, res) => {
   const server = Object.values(data.servers).find(s => s.secretKey === key);
   if (!server) return res.status(401).json({ error: 'Invalid key' });
   
-  const { steam_id, name, message, team, avatar } = req.body;
-  
   const chat = loadServerChat(server.id);
-  chat.messages.push({
-    id: crypto.randomUUID(),
-    steam_id,
-    name,
-    message,
-    team: team || false,
-    avatar: avatar || '',
-    timestamp: Date.now(),
-    server: server.name
-  });
-  saveServerChat(server.id, chat);
   
+  // Support batch messages from PanRust plugin: { messages: [...], server: ... }
+  if (req.body.messages && Array.isArray(req.body.messages)) {
+    for (const msg of req.body.messages) {
+      chat.messages.push({
+        id: crypto.randomUUID(),
+        steam_id: msg.si || msg.steam_id,
+        name: msg.n || msg.name,
+        message: msg.m || msg.message,
+        team: msg.t || msg.team || false,
+        avatar: msg.avatar || '',
+        timestamp: msg.ts || Date.now(),
+        server: server.name
+      });
+    }
+  } else {
+    // Single message format
+    const { steam_id, name, message, team, avatar } = req.body;
+    chat.messages.push({
+      id: crypto.randomUUID(),
+      steam_id,
+      name,
+      message,
+      team: team || false,
+      avatar: avatar || '',
+      timestamp: Date.now(),
+      server: server.name
+    });
+  }
+  
+  saveServerChat(server.id, chat);
   res.json({ success: true });
 });
 
