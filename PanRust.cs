@@ -197,7 +197,7 @@ namespace Oxide.Plugins
                 targetType = "player";
                 targetSteamId = targetPlayer.UserIDString;
             }
-            else if (entity is BaseNpc || entity is HTNPlayer || entity is ScientistNPC || entity is NPCPlayer)
+            else if (entity is BaseNpc || entity is ScientistNPC || entity is NPCPlayer)
             {
                 targetId = entity.net?.ID.Value ?? 0;
                 targetType = entity.ShortPrefabName ?? "npc";
