@@ -41,6 +41,23 @@ export default function Chat() {
   const [muteModal, setMuteModal] = useState<{steamId: string, name: string} | null>(null)
   const [muteReason, setMuteReason] = useState('')
   const [muteDuration, setMuteDuration] = useState('1h')
+  const [durationDropdownOpen, setDurationDropdownOpen] = useState(false)
+
+  const durationOptions = [
+    { value: '5m', label: '5 минут' },
+    { value: '15m', label: '15 минут' },
+    { value: '30m', label: '30 минут' },
+    { value: '1h', label: '1 час' },
+    { value: '3h', label: '3 часа' },
+    { value: '6h', label: '6 часов' },
+    { value: '12h', label: '12 часов' },
+    { value: '1d', label: '1 день' },
+    { value: '3d', label: '3 дня' },
+    { value: '7d', label: '7 дней' },
+    { value: '30d', label: '30 дней' },
+    { value: '0', label: 'Навсегда' }
+  ]
+
   const { showToast } = useToast()
   const chatEndRef = useRef<HTMLDivElement>(null)
   const messagesRef = useRef<ChatMessage[]>([])
@@ -715,9 +732,6 @@ export default function Chat() {
       {muteModal && (
         <div className="chat-modal-overlay" onClick={() => setMuteModal(null)}>
           <div className="mute-modal" onClick={e => e.stopPropagation()}>
-            <div className="mute-modal-icon">
-              <MutedMicIcon />
-            </div>
             <div className="mute-modal-content">
               <div className="mute-modal-header">
                 <span>Выдать мут</span>
@@ -739,20 +753,34 @@ export default function Chat() {
                 </div>
                 <div className="mute-field">
                   <label>Длительность</label>
-                  <select value={muteDuration} onChange={e => setMuteDuration(e.target.value)}>
-                    <option value="5m">5 минут</option>
-                    <option value="15m">15 минут</option>
-                    <option value="30m">30 минут</option>
-                    <option value="1h">1 час</option>
-                    <option value="3h">3 часа</option>
-                    <option value="6h">6 часов</option>
-                    <option value="12h">12 часов</option>
-                    <option value="1d">1 день</option>
-                    <option value="3d">3 дня</option>
-                    <option value="7d">7 дней</option>
-                    <option value="30d">30 дней</option>
-                    <option value="0">Навсегда</option>
-                  </select>
+                  <div className="duration-select-wrapper">
+                    <div 
+                      className={`duration-select-trigger ${durationDropdownOpen ? 'open' : ''}`}
+                      onClick={() => setDurationDropdownOpen(!durationDropdownOpen)}
+                    >
+                      <span>{durationOptions.find(o => o.value === muteDuration)?.label}</span>
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M6 9l6 6 6-6"/>
+                      </svg>
+                    </div>
+                    {durationDropdownOpen && (
+                      <div className="duration-select-dropdown">
+                        {durationOptions.map(option => (
+                          <div 
+                            key={option.value}
+                            className={`duration-option ${muteDuration === option.value ? 'selected' : ''}`}
+                            onClick={() => {
+                              setMuteDuration(option.value)
+                              setDurationDropdownOpen(false)
+                            }}
+                          >
+                            <div className="duration-option-icon"></div>
+                            {option.label}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <button className="mute-submit-btn" onClick={submitMute} disabled={!muteReason.trim()}>
                   Выдать мут
