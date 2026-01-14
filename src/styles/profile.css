@@ -400,3 +400,231 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+
+/* Create Project Modal - New Design */
+.create-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+}
+
+.create-modal {
+  background: #1a1a1a;
+  border-radius: 16px;
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.create-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.create-modal-header span {
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.create-modal-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.create-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.create-input-group label {
+  font-size: 14px;
+  color: #888;
+}
+
+.create-input-group input {
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.create-input-group input::placeholder {
+  color: #555;
+}
+
+.create-input-group input:focus {
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.create-input-group input.error {
+  border-color: #ef4444;
+  color: #ef4444;
+}
+
+.input-error {
+  font-size: 12px;
+  color: #ef4444;
+  margin-top: 4px;
+}
+
+.create-input-group .input-with-prefix {
+  display: flex;
+  align-items: center;
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.create-input-group .input-with-prefix.error {
+  border-color: #ef4444;
+}
+
+.create-input-group .input-with-prefix .prefix {
+  padding: 12px 0 12px 14px;
+  color: #666;
+  font-size: 14px;
+  white-space: nowrap;
+  background: transparent;
+}
+
+.create-input-group .input-with-prefix input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 12px 14px 12px 0;
+  border-radius: 0;
+}
+
+.create-input-group .input-with-prefix input:focus {
+  border: none;
+}
+
+/* Upload Logo Area */
+.upload-logo-area {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border: 2px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.upload-logo-area:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.upload-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #2a2a2a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.upload-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.upload-preview svg {
+  width: 28px;
+  height: 28px;
+  color: #666;
+}
+
+.upload-text {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.upload-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  margin: 0;
+}
+
+.upload-subtitle {
+  font-size: 12px;
+  color: #666;
+}
+
+/* Modal Footer */
+.create-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 16px 24px;
+}
+
+.btn-cancel {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: #aaa;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-cancel:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.btn-create {
+  background: #3a3a3a;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  color: #888;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-create:not(:disabled) {
+  background: #0099ff;
+  color: #fff;
+  font-weight: 500;
+}
+
+.btn-create:not(:disabled):hover {
+  background: #0088e6;
+}
+
+.btn-create:disabled {
+  cursor: not-allowed;
+}

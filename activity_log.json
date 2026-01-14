@@ -1,0 +1,24 @@
+{
+  "logs": [
+    {
+      "id": "35117a9d-0e1b-43f8-9dc0-7f636ff5f5b7",
+      "type": "server_deleted",
+      "data": {
+        "id": "fbaee8a0-e6e5-4572-9f4c-08943f1d5c7a",
+        "name": "123"
+      },
+      "timestamp": 1768428841060,
+      "date": "2026-01-14T22:14:01.060Z"
+    },
+    {
+      "id": "44718d21-a6dc-477b-b224-648ce5e217ac",
+      "type": "server_created",
+      "data": {
+        "id": "f9a9f711-4dec-4554-9541-9d5321fa34a1",
+        "name": "123"
+      },
+      "timestamp": 1768428844112,
+      "date": "2026-01-14T22:14:04.112Z"
+    }
+  ]
+}

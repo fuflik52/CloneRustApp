@@ -16,7 +16,11 @@ export default function Profile() {
   const [servers, setServers] = useState<Server[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [serverName, setServerName] = useState('')
+  const [serverSlug, setServerSlug] = useState('')
+  const [serverWebsite, setServerWebsite] = useState('')
+  const [serverLogo, setServerLogo] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [errors, setErrors] = useState<{name?: string, slug?: string, website?: string}>({})
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -40,23 +44,38 @@ export default function Profile() {
   }
 
   const handleCreateServer = async () => {
-    if (!serverName.trim()) return
+    // Валидация
+    const newErrors: {name?: string, slug?: string, website?: string} = {}
+    
+    if (!serverName.trim() || serverName.length < 6 || serverName.length > 32) {
+      newErrors.name = 'Длина от 6 до 32 символов'
+    }
+    
+    if (!serverSlug.trim() || !/^[a-z0-9-]+$/.test(serverSlug)) {
+      newErrors.slug = 'Только строчные латинские буквы'
+    }
+    
+    if (serverWebsite && !serverWebsite.startsWith('http')) {
+      newErrors.website = 'Должно быть ссылкой'
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors)
+      return
+    }
     
     setCreating(true)
     try {
       const res = await fetch('/api/servers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: serverName })
+        body: JSON.stringify({ name: serverName, slug: serverSlug, website: serverWebsite, logo: serverLogo })
       })
       if (res.ok) {
         const newServer = await res.json()
         setServers([...servers, newServer])
-        setShowCreateModal(false)
-        setServerName('')
-        // Переходим в новый проект
-        const slug = newServer.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-        navigate(`/${slug}/welcome`)
+        closeModal()
+        navigate(`/${serverSlug}/welcome`)
       } else {
         const err = await res.json()
         alert(err.error || 'Ошибка создания проекта')
@@ -71,6 +90,30 @@ export default function Profile() {
   const closeModal = () => {
     setShowCreateModal(false)
     setServerName('')
+    setServerSlug('')
+    setServerWebsite('')
+    setServerLogo(null)
+    setErrors({})
+  }
+
+  const handleNameChange = (value: string) => {
+    setServerName(value)
+    setErrors({})
+  }
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert('Файл слишком большой (макс 10MB)')
+        return
+      }
+      const reader = new FileReader()
+      reader.onload = () => {
+        setServerLogo(reader.result as string)
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
   // Генерируем slug для отображения
@@ -134,49 +177,92 @@ export default function Profile() {
       </div>
 
       {/* Модальное окно создания проекта */}
-      {showCreateModal && (
-        <div className="modal-overlay" onClick={closeModal}>
-          <div className="create-project-modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
+      {showCreateModal ? (
+        <div className="create-modal-overlay" onClick={closeModal}>
+          <div className="create-modal" onClick={e => e.stopPropagation()}>
+            <div className="create-modal-header">
               <span>Новый проект</span>
             </div>
-            <div className="modal-content">
-              <div className="input-group">
+            
+            <div className="create-modal-content">
+              {/* Название проекта */}
+              <div className="create-input-group">
                 <label>Название проекта</label>
                 <input 
                   type="text"
-                  placeholder="My Rust Server"
+                  placeholder="Null Rust"
                   value={serverName}
-                  onChange={e => setServerName(e.target.value)}
-                  autoFocus
+                  onChange={e => handleNameChange(e.target.value)}
+                  className={errors.name ? 'error' : ''}
                 />
+                {errors.name && <span className="input-error">{errors.name}</span>}
               </div>
-              <div className="input-group">
+
+              {/* Ссылка */}
+              <div className="create-input-group">
                 <label>Ссылка</label>
                 <div className="input-with-prefix">
-                  <span className="input-prefix">app.bublickrust.ru/</span>
+                  <span className="prefix">app.bublickrust.ru/</span>
                   <input 
                     type="text"
-                    placeholder="myserver"
-                    value={getSlug(serverName)}
-                    disabled
+                    placeholder="nullrust"
+                    value={serverSlug}
+                    onChange={e => { setServerSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '')); setErrors({}) }}
+                    className={errors.slug ? 'error' : ''}
                   />
                 </div>
+                {errors.slug && <span className="input-error">{errors.slug}</span>}
+              </div>
+
+              {/* Сайт проекта */}
+              <div className="create-input-group">
+                <label>Сайт проекта</label>
+                <input 
+                  type="text"
+                  placeholder="https://nullrust.com"
+                  value={serverWebsite}
+                  onChange={e => { setServerWebsite(e.target.value); setErrors({}) }}
+                  className={errors.website ? 'error' : ''}
+                />
+                {errors.website && <span className="input-error">{errors.website}</span>}
+              </div>
+
+              {/* Загрузка логотипа */}
+              <div className="upload-logo-area" onClick={() => document.getElementById('logo-input')?.click()}>
+                <div className="upload-preview">
+                  {serverLogo ? (
+                    <img src={serverLogo} alt="" />
+                  ) : (
+                    <CameraIcon />
+                  )}
+                </div>
+                <div className="upload-text">
+                  <p className="upload-title">Загрузите логотип проекта</p>
+                  <span className="upload-subtitle">PNG, JPEG или GIF (не более 10MB)</span>
+                </div>
+                <input 
+                  type="file" 
+                  id="logo-input"
+                  accept="image/*"
+                  onChange={handleLogoUpload}
+                  style={{ display: 'none' }}
+                />
               </div>
             </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={closeModal}>Закрыть</button>
+
+            <div className="create-modal-footer">
+              <button className="btn-cancel" onClick={closeModal}>Закрыть</button>
               <button 
-                className="btn-primary" 
+                className="btn-create" 
                 onClick={handleCreateServer}
-                disabled={!serverName.trim() || creating}
+                disabled={creating}
               >
                 {creating ? 'Создание...' : 'Создать'}
               </button>
             </div>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   )
 }
@@ -228,3 +314,5 @@ function CameraIcon() {
     </svg>
   )
 }
+
+

@@ -39,7 +39,6 @@ const loadProjects = () => {
   catch { return { projects: [] }; }
 };
 const saveProjects = (data) => fs.writeFileSync(PROJECTS_FILE, JSON.stringify(data, null, 2));
-const saveProjects = (data) => fs.writeFileSync(PROJECTS_FILE, JSON.stringify(data, null, 2));
 
 // База данных игроков (все кто когда-либо заходил)
 const loadPlayersDB = () => {
