@@ -107,12 +107,37 @@ export default function Players() {
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
-        const res = await fetch('/api/players')
-        if (res.ok) setAllPlayers(await res.json())
+        // Загружаем всех игроков из базы (включая офлайн)
+        const res = await fetch('/api/players/all')
+        if (res.ok) {
+          const dbPlayers = await res.json()
+          // Также загружаем онлайн игроков чтобы знать кто сейчас в игре
+          const onlineRes = await fetch('/api/players')
+          const onlinePlayers = onlineRes.ok ? await onlineRes.json() : []
+          const onlineIds = new Set(onlinePlayers.map((p: Player) => p.steam_id))
+          
+          // Преобразуем данные из базы в формат Player
+          const players = dbPlayers.map((p: any) => ({
+            steam_id: p.steam_id,
+            name: p.steam_name,
+            ip: p.ips_history?.[p.ips_history.length - 1]?.ip || '',
+            ping: 0,
+            online: onlineIds.has(p.steam_id),
+            position: '',
+            server: p.servers_played?.[p.servers_played.length - 1] || '',
+            serverName: p.servers_played?.[p.servers_played.length - 1] || '',
+            country: p.country || p.ips_history?.[p.ips_history.length - 1]?.country || '',
+            countryCode: p.countryCode || '',
+            city: p.city || p.ips_history?.[p.ips_history.length - 1]?.city || '',
+            provider: p.provider || p.ips_history?.[p.ips_history.length - 1]?.provider || '',
+            avatar: p.avatar || ''
+          }))
+          setAllPlayers(players)
+        }
       } catch {}
     }
     fetchPlayers()
-    const interval = setInterval(fetchPlayers, 5000)
+    const interval = setInterval(fetchPlayers, 10000)
     return () => clearInterval(interval)
   }, [])
 
@@ -153,7 +178,7 @@ export default function Players() {
 
       <div className="players-list">
         {players.length === 0 ? (
-          <div className="players-empty"><p>Нет игроков онлайн</p></div>
+          <div className="players-empty"><p>Нет игроков</p></div>
         ) : (
           players.map(player => (
             <div key={player.steam_id} className="player-row" onClick={() => handleSelectPlayer(player)}>

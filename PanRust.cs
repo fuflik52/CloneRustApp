@@ -14,7 +14,7 @@ namespace Oxide.Plugins
         private static Configuration _config;
         private static MetaInfo _metaInfo;
 
-        private const string API_URL = "http://localhost:3001/api";
+        private const string API_URL = "http://app.bublickrust.ru/api";
 
         #region Meta (хранит секретный ключ)
         private class MetaInfo
