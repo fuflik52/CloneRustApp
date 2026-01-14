@@ -1424,6 +1424,21 @@
   margin: 6px 0;
 }
 
+.context-menu-item.has-submenu {
+  justify-content: flex-start;
+}
+
+.context-menu-item.has-submenu .arrow-right {
+  margin-left: auto;
+  width: 14px;
+  height: 14px;
+  fill: #666;
+}
+
+.context-menu-item.has-submenu:hover .arrow-right {
+  fill: #888;
+}
+
 /* ==================== ACTION MODALS ==================== */
 .action-modal-overlay {
   position: fixed;

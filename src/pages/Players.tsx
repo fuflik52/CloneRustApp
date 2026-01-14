@@ -1028,11 +1028,21 @@ export default function Players() {
           className="player-context-menu"
           style={{ left: contextMenu.x, top: contextMenu.y }}
         >
+          <button className="context-menu-item" onClick={() => { showToast('Функция в разработке'); setContextMenu(null) }}>
+            <CheckIcon /> Начать проверку
+          </button>
           <button className="context-menu-item" onClick={() => { copyToClipboard(selectedPlayer.steam_id); setContextMenu(null) }}>
             <CopySmallIcon /> Скопировать SteamID
           </button>
           <button className="context-menu-item" onClick={goToPlayerChat}>
             <ChatIcon /> Сообщения
+          </button>
+          <button className="context-menu-item has-submenu" onClick={() => { showToast('Функция в разработке'); setContextMenu(null) }}>
+            <ReportsIcon /> Репорты
+            <ArrowRightIcon />
+          </button>
+          <button className="context-menu-item" onClick={() => { showToast('Функция в разработке'); setContextMenu(null) }}>
+            <NoteIcon /> Добавить заметку
           </button>
           <div className="context-menu-divider" />
           <button className="context-menu-item destructive" onClick={() => { setShowMuteModal(true); setContextMenu(null) }}>
@@ -1144,6 +1154,18 @@ function ChatIcon() {
 
 function KickIcon() {
   return <svg viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM9.70711 8.29289C9.31658 7.90237 8.68342 7.90237 8.29289 8.29289C7.90237 8.68342 7.90237 9.31658 8.29289 9.70711L10.5858 12L8.29289 14.2929C7.90237 14.6834 7.90237 15.3166 8.29289 15.7071C8.68342 16.0976 9.31658 16.0976 9.70711 15.7071L12 13.4142L14.2929 15.7071C14.6834 16.0976 15.3166 16.0976 15.7071 15.7071C16.0976 15.3166 16.0976 14.6834 15.7071 14.2929L13.4142 12L15.7071 9.70711C16.0976 9.31658 16.0976 8.68342 15.7071 8.29289C15.3166 7.90237 14.6834 7.90237 14.2929 8.29289L12 10.5858L9.70711 8.29289Z" /></svg>
+}
+
+function CheckIcon() {
+  return <svg viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM16.7071 9.70711C17.0976 9.31658 17.0976 8.68342 16.7071 8.29289C16.3166 7.90237 15.6834 7.90237 15.2929 8.29289L10 13.5858L8.70711 12.2929C8.31658 11.9024 7.68342 11.9024 7.29289 12.2929C6.90237 12.6834 6.90237 13.3166 7.29289 13.7071L9.29289 15.7071C9.68342 16.0976 10.3166 16.0976 10.7071 15.7071L16.7071 9.70711Z" /></svg>
+}
+
+function NoteIcon() {
+  return <svg viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M4 4C4 2.89543 4.89543 2 6 2H14C14.2652 2 14.5196 2.10536 14.7071 2.29289L19.7071 7.29289C19.8946 7.48043 20 7.73478 20 8V20C20 21.1046 19.1046 22 18 22H6C4.89543 22 4 21.1046 4 20V4ZM6 4H13V8C13 8.55228 13.4477 9 14 9H18V20H6V4ZM15 4.41421L17.5858 7H15V4.41421ZM8 12C8 11.4477 8.44772 11 9 11H15C15.5523 11 16 11.4477 16 12C16 12.5523 15.5523 13 15 13H9C8.44772 13 8 12.5523 8 12ZM9 15C8.44772 15 8 15.4477 8 16C8 16.5523 8.44772 17 9 17H13C13.5523 17 14 16.5523 14 16C14 15.4477 13.5523 15 13 15H9Z" /></svg>
+}
+
+function ArrowRightIcon() {
+  return <svg viewBox="0 0 24 24" className="arrow-right"><path fillRule="evenodd" clipRule="evenodd" d="M9.29289 7.29289C9.68342 6.90237 10.3166 6.90237 10.7071 7.29289L14.1768 10.7626C14.8602 11.446 14.8602 12.554 14.1768 13.2374L10.7071 16.7071C10.3166 17.0976 9.68342 17.0976 9.29289 16.7071C8.90237 16.3166 8.90237 15.6834 9.29289 15.2929L12.5858 12L9.29289 8.70711C8.90237 8.31658 8.90237 7.68342 9.29289 7.29289Z" /></svg>
 }
 
 function CopySmallIcon() {
