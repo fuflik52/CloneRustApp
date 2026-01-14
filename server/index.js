@@ -748,6 +748,43 @@ app.get('/api/player/:steamId/stats', (req, res) => {
   res.json(stats);
 });
 
+// Get player kills
+app.get('/api/player/:steamId/kills', (req, res) => {
+  const { steamId } = req.params;
+  const { limit = 50 } = req.query;
+  const logs = loadActivityLog();
+  const db = loadPlayersDB();
+  
+  // Ищем убийства где игрок был убийцей или жертвой
+  const kills = logs.logs
+    .filter(l => l.type === 'player_kill' && 
+      (l.data?.killer_steam_id === steamId || l.data?.victim_steam_id === steamId))
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, Number(limit))
+    .map(l => {
+      const killerPlayer = db.players[l.data.killer_steam_id];
+      const victimPlayer = db.players[l.data.victim_steam_id];
+      return {
+        id: l.id,
+        timestamp: l.timestamp,
+        killer_steam_id: l.data.killer_steam_id,
+        killer_name: killerPlayer?.steam_name || 'Unknown',
+        victim_steam_id: l.data.victim_steam_id,
+        victim_name: victimPlayer?.steam_name || 'Unknown',
+        weapon: l.data.weapon || 'unknown',
+        ammo: l.data.ammo || 'unknown',
+        bone: l.data.bone || 'body',
+        distance: l.data.distance || 0,
+        old_hp: l.data.old_hp || 100,
+        new_hp: l.data.new_hp || 0,
+        is_headshot: l.data.is_headshot || false,
+        server: l.data.server || ''
+      };
+    });
+  
+  res.json(kills);
+});
+
 // Plugin sends kills data
 app.post('/api/kills', (req, res) => {
   const auth = req.headers.authorization;

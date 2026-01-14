@@ -47,6 +47,38 @@ interface SteamInfo {
   communityBanned: boolean
 }
 
+interface KillEvent {
+  id: string
+  timestamp: number
+  killer_steam_id: string
+  killer_name: string
+  victim_steam_id: string
+  victim_name: string
+  weapon: string
+  ammo?: string
+  bone: string
+  distance: number
+  old_hp?: number
+  new_hp?: number
+  is_headshot: boolean
+  server: string
+}
+
+interface CombatLogEntry {
+  time: string
+  attacker: string
+  attacker_id: string
+  target: string
+  target_id: string
+  weapon: string
+  ammo: string
+  bone: string
+  distance: number
+  old_hp: number
+  new_hp: number
+  info: string
+}
+
 export default function Players() {
   const [search, setSearch] = useState('')
   const [allPlayers, setAllPlayers] = useState<Player[]>([])
@@ -59,6 +91,11 @@ export default function Players() {
   const [statsPeriod, setStatsPeriod] = useState('7d')
   const [playerStats, setPlayerStats] = useState<PlayerStats | null>(null)
   const [statsLoading, setStatsLoading] = useState(false)
+  const [showDemoStats, setShowDemoStats] = useState(false)
+  const [playerKills, setPlayerKills] = useState<KillEvent[]>([])
+  const [killsLoading, setKillsLoading] = useState(false)
+  const [combatLogOpen, setCombatLogOpen] = useState(false)
+  const [selectedKillForCombat, setSelectedKillForCombat] = useState<KillEvent | null>(null)
   const { showToast } = useToast()
 
   const copyToClipboard = (text: string) => {
@@ -126,6 +163,60 @@ export default function Players() {
       }
     } catch {}
     setStatsLoading(false)
+  }
+
+  const loadPlayerKills = async (steamId: string) => {
+    setKillsLoading(true)
+    try {
+      const res = await fetch(`/api/player/${steamId}/kills`)
+      if (res.ok) {
+        const data = await res.json()
+        setPlayerKills(data)
+      }
+    } catch {}
+    setKillsLoading(false)
+  }
+
+  // Демо данные для статистики
+  const demoStats: PlayerStats = {
+    kills: 156,
+    deaths: 89,
+    headshots: 67,
+    bodyshots: 54,
+    limbshots: 35,
+    playtime_hours: 247,
+    reports_count: 3,
+    kd: 1.75
+  }
+
+  // Демо данные для убийств
+  const demoKills: KillEvent[] = [
+    { id: '1', timestamp: Date.now() - 3600000, killer_steam_id: selectedPlayer?.steam_id || '', killer_name: selectedPlayer?.name || 'Player', victim_steam_id: '76561198012345678', victim_name: 'дед бом-бом', weapon: 'ak47u', ammo: 'riflebullet', bone: 'head', distance: 23, old_hp: 59.32, new_hp: 0, is_headshot: true, server: 'Main' },
+    { id: '2', timestamp: Date.now() - 7200000, killer_steam_id: '76561198087654321', killer_name: 'RustKing', victim_steam_id: selectedPlayer?.steam_id || '', victim_name: selectedPlayer?.name || 'Player', weapon: 'lr300', ammo: 'riflebullet', bone: 'chest', distance: 45, old_hp: 100, new_hp: 0, is_headshot: false, server: 'Main' },
+    { id: '3', timestamp: Date.now() - 10800000, killer_steam_id: selectedPlayer?.steam_id || '', killer_name: selectedPlayer?.name || 'Player', victim_steam_id: '76561198111222333', victim_name: 'ShadowHunter', weapon: 'bolt', ammo: 'riflebullet', bone: 'head', distance: 156, old_hp: 80, new_hp: 0, is_headshot: true, server: 'Main' },
+    { id: '4', timestamp: Date.now() - 14400000, killer_steam_id: selectedPlayer?.steam_id || '', killer_name: selectedPlayer?.name || 'Player', victim_steam_id: '76561198444555666', victim_name: 'NightWolf', weapon: 'mp5', ammo: 'pistolbullet', bone: 'stomach', distance: 12, old_hp: 45, new_hp: 0, is_headshot: false, server: 'Main' },
+  ]
+
+  // Демо данные для комбатлога
+  const demoCombatLog: CombatLogEntry[] = [
+    { time: '1.01', attacker: selectedPlayer?.name || 'Player', attacker_id: selectedPlayer?.steam_id || '', target: 'дед бом-бом', target_id: '76561198012345678', weapon: 'ak47u', ammo: 'riflebullet', bone: 'head', distance: 23, old_hp: 59.32, new_hp: 0, info: 'killed' },
+    { time: '0.85', attacker: selectedPlayer?.name || 'Player', attacker_id: selectedPlayer?.steam_id || '', target: 'дед бом-бом', target_id: '76561198012345678', weapon: 'ak47u', ammo: 'riflebullet', bone: 'chest', distance: 24, old_hp: 78.50, new_hp: 59.32, info: 'hit' },
+    { time: '0.62', attacker: selectedPlayer?.name || 'Player', attacker_id: selectedPlayer?.steam_id || '', target: 'дед бом-бом', target_id: '76561198012345678', weapon: 'ak47u', ammo: 'riflebullet', bone: 'stomach', distance: 25, old_hp: 100, new_hp: 78.50, info: 'hit' },
+  ]
+
+  const getDisplayStats = () => {
+    if (showDemoStats) return demoStats
+    return playerStats || selectedPlayer?.stats || null
+  }
+
+  const getDisplayKills = () => {
+    if (showDemoStats) return demoKills
+    return playerKills
+  }
+
+  const openCombatLog = (kill: KillEvent) => {
+    setSelectedKillForCombat(kill)
+    setCombatLogOpen(true)
   }
 
   const handleCloseModal = () => {
@@ -461,106 +552,234 @@ export default function Players() {
                     <div className="stats-header">
                       <div className="stats-tabs">
                         <button className={`stats-tab ${statsTab === 'main' ? 'active' : ''}`} onClick={() => setStatsTab('main')}>Основное</button>
-                        <button className={`stats-tab ${statsTab === 'kills' ? 'active' : ''}`} onClick={() => setStatsTab('kills')}>Убийства</button>
+                        <button className={`stats-tab ${statsTab === 'kills' ? 'active' : ''}`} onClick={() => { setStatsTab('kills'); if (selectedPlayer && !showDemoStats) loadPlayerKills(selectedPlayer.steam_id) }}>Убийства</button>
                       </div>
-                      <div className="stats-period-select">
-                        <select value={statsPeriod} onChange={(e) => setStatsPeriod(e.target.value)}>
-                          <option value="7d">7 дней</option>
-                          <option value="30d">30 дней</option>
-                          <option value="all">Всё время</option>
-                        </select>
+                      <div className="stats-header-actions">
+                        <button className={`demo-btn ${showDemoStats ? 'active' : ''}`} onClick={() => setShowDemoStats(!showDemoStats)}>
+                          {showDemoStats ? 'Скрыть демо' : 'Показать демо'}
+                        </button>
+                        <div className="stats-period-select">
+                          <select value={statsPeriod} onChange={(e) => setStatsPeriod(e.target.value)}>
+                            <option value="7d">7 дней</option>
+                            <option value="30d">30 дней</option>
+                            <option value="all">Всё время</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
 
-                    {statsLoading ? (
-                      <div className="stats-loading">
-                        <div className="steam-spinner"></div>
-                        <span>Загрузка статистики...</span>
-                      </div>
-                    ) : (
+                    {statsTab === 'main' && (
                       <>
-                        <div className="stats-cards-row">
-                          <div className="stats-card">
-                            <span className="stats-card-title">K/D</span>
-                            <span className="stats-card-value">{playerStats?.kd?.toFixed(2) || selectedPlayer?.stats?.kd?.toFixed(2) || '0.00'}</span>
+                        {statsLoading && !showDemoStats ? (
+                          <div className="stats-loading">
+                            <div className="steam-spinner"></div>
+                            <span>Загрузка статистики...</span>
                           </div>
-                          <div className="stats-card">
-                            <span className="stats-card-title">На проекте</span>
-                            <span className="stats-card-value">{playerStats?.playtime_hours?.toFixed(0) || selectedPlayer?.stats?.playtime_hours?.toFixed(0) || '0'} ч.</span>
-                          </div>
-                          <div className="stats-card">
-                            <span className="stats-card-title">Репортов</span>
-                            <span className="stats-card-value">{playerStats?.reports_count || selectedPlayer?.stats?.reports_count || '0'}</span>
-                          </div>
-                        </div>
+                        ) : (
+                          <>
+                            <div className="stats-cards-row">
+                              <div className="stats-card">
+                                <span className="stats-card-title">K/D</span>
+                                <span className="stats-card-value">{getDisplayStats()?.kd?.toFixed(2) || '0.00'}</span>
+                              </div>
+                              <div className="stats-card">
+                                <span className="stats-card-title">На проекте</span>
+                                <span className="stats-card-value">{getDisplayStats()?.playtime_hours?.toFixed(0) || '0'} ч.</span>
+                              </div>
+                              <div className="stats-card">
+                                <span className="stats-card-title">Репортов</span>
+                                <span className="stats-card-value">{getDisplayStats()?.reports_count || '0'}</span>
+                              </div>
+                            </div>
 
-                        <div className="stats-charts-row">
-                          <div className="stats-chart-card">
-                            <div className="stats-chart-info">
-                              <div className="stats-chart-legend">
-                                <div className="legend-item">
-                                  <span className="legend-dot kills"></span>
-                                  <span className="legend-label">Убийств</span>
+                            <div className="stats-charts-row">
+                              <div className="stats-chart-card">
+                                <div className="stats-chart-info">
+                                  <div className="stats-chart-legend">
+                                    <div className="legend-item">
+                                      <span className="legend-dot kills"></span>
+                                      <span className="legend-label">Убийств</span>
+                                    </div>
+                                    <div className="legend-value">{getDisplayStats()?.kills || 0}</div>
+                                  </div>
+                                  <div className="stats-chart-legend">
+                                    <div className="legend-item">
+                                      <span className="legend-dot deaths"></span>
+                                      <span className="legend-label">Смертей</span>
+                                    </div>
+                                    <div className="legend-value">{getDisplayStats()?.deaths || 0}</div>
+                                  </div>
                                 </div>
-                                <div className="legend-value">{playerStats?.kills || selectedPlayer?.stats?.kills || 0}</div>
-                              </div>
-                              <div className="stats-chart-legend">
-                                <div className="legend-item">
-                                  <span className="legend-dot deaths"></span>
-                                  <span className="legend-label">Смертей</span>
+                                <div className="stats-donut-chart">
+                                  <DonutChart 
+                                    kills={getDisplayStats()?.kills || 0} 
+                                    deaths={getDisplayStats()?.deaths || 0} 
+                                  />
                                 </div>
-                                <div className="legend-value">{playerStats?.deaths || selectedPlayer?.stats?.deaths || 0}</div>
                               </div>
-                            </div>
-                            <div className="stats-donut-chart">
-                              <DonutChart 
-                                kills={playerStats?.kills || selectedPlayer?.stats?.kills || 0} 
-                                deaths={playerStats?.deaths || selectedPlayer?.stats?.deaths || 0} 
-                              />
-                            </div>
-                          </div>
 
-                          <div className="stats-chart-card">
-                            <div className="stats-chart-info">
-                              <div className="stats-chart-legend">
-                                <div className="legend-item">
-                                  <span className="legend-dot headshot"></span>
-                                  <span className="legend-label">В голову</span>
+                              <div className="stats-chart-card">
+                                <div className="stats-chart-info">
+                                  <div className="stats-chart-legend">
+                                    <div className="legend-item">
+                                      <span className="legend-dot headshot"></span>
+                                      <span className="legend-label">В голову</span>
+                                    </div>
+                                    <div className="legend-value">{getDisplayStats()?.headshots || 0}</div>
+                                  </div>
+                                  <div className="stats-chart-legend">
+                                    <div className="legend-item">
+                                      <span className="legend-dot bodyshot"></span>
+                                      <span className="legend-label">В туловище</span>
+                                    </div>
+                                    <div className="legend-value">{getDisplayStats()?.bodyshots || 0}</div>
+                                  </div>
+                                  <div className="stats-chart-legend">
+                                    <div className="legend-item">
+                                      <span className="legend-dot limbshot"></span>
+                                      <span className="legend-label">В конечности</span>
+                                    </div>
+                                    <div className="legend-value">{getDisplayStats()?.limbshots || 0}</div>
+                                  </div>
                                 </div>
-                                <div className="legend-value">{playerStats?.headshots || selectedPlayer?.stats?.headshots || 0}</div>
-                              </div>
-                              <div className="stats-chart-legend">
-                                <div className="legend-item">
-                                  <span className="legend-dot bodyshot"></span>
-                                  <span className="legend-label">В туловище</span>
+                                <div className="stats-donut-chart">
+                                  <BodyPartsChart 
+                                    headshots={getDisplayStats()?.headshots || 0}
+                                    bodyshots={getDisplayStats()?.bodyshots || 0}
+                                    limbshots={getDisplayStats()?.limbshots || 0}
+                                  />
                                 </div>
-                                <div className="legend-value">{playerStats?.bodyshots || selectedPlayer?.stats?.bodyshots || 0}</div>
-                              </div>
-                              <div className="stats-chart-legend">
-                                <div className="legend-item">
-                                  <span className="legend-dot limbshot"></span>
-                                  <span className="legend-label">В конечности</span>
-                                </div>
-                                <div className="legend-value">{playerStats?.limbshots || selectedPlayer?.stats?.limbshots || 0}</div>
                               </div>
                             </div>
-                            <div className="stats-donut-chart">
-                              <BodyPartsChart 
-                                headshots={playerStats?.headshots || selectedPlayer?.stats?.headshots || 0}
-                                bodyshots={playerStats?.bodyshots || selectedPlayer?.stats?.bodyshots || 0}
-                                limbshots={playerStats?.limbshots || selectedPlayer?.stats?.limbshots || 0}
-                              />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="stats-info-tip">
-                          <div className="tip-gradient"></div>
-                          <InfoIcon />
-                          <span>В графике отображаются только завершённые сессии, поэтому время, проведённое в активной сессии, отображено не будет.</span>
-                        </div>
+                          </>
+                        )}
                       </>
                     )}
+
+                    {statsTab === 'kills' && (
+                      <div className="kills-tab">
+                        {killsLoading && !showDemoStats ? (
+                          <div className="stats-loading">
+                            <div className="steam-spinner"></div>
+                            <span>Загрузка убийств...</span>
+                          </div>
+                        ) : (
+                          <>
+                            <div className="kills-table-header">
+                              <div className="kills-col date">Дата</div>
+                              <div className="kills-col killer">Убийца</div>
+                              <div className="kills-col target">Цель</div>
+                              <div className="kills-col weapon">Оружие</div>
+                              <div className="kills-col combatlog">Combatlog</div>
+                            </div>
+                            <div className="kills-list">
+                              {getDisplayKills().length === 0 ? (
+                                <div className="kills-empty">
+                                  <span>Нет данных об убийствах</span>
+                                </div>
+                              ) : (
+                                getDisplayKills().map(kill => (
+                                  <div key={kill.id} className="kills-row">
+                                    <div className="kills-col date">
+                                      <span className="kill-date">{new Date(kill.timestamp).toLocaleDateString('ru', { day: '2-digit', month: '2-digit', year: '2-digit' })}</span>
+                                      <span className="kill-time">{new Date(kill.timestamp).toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                                    </div>
+                                    <div className="kills-col killer">
+                                      <span className={`killer-name ${kill.killer_steam_id === selectedPlayer?.steam_id ? 'is-player' : ''}`}>
+                                        {kill.killer_name.length > 12 ? kill.killer_name.slice(0, 12) + '...' : kill.killer_name}
+                                      </span>
+                                    </div>
+                                    <div className="kills-col target">
+                                      <span className={`target-name ${kill.victim_steam_id === selectedPlayer?.steam_id ? 'is-player' : ''}`}>
+                                        {kill.victim_name.length > 12 ? kill.victim_name.slice(0, 12) + '...' : kill.victim_name}
+                                      </span>
+                                    </div>
+                                    <div className="kills-col weapon">
+                                      <span className="weapon-name">{kill.weapon}</span>
+                                      <span className="weapon-info">{kill.distance.toFixed(0)} м. | <span className={kill.is_headshot ? 'headshot' : ''}>{kill.bone}</span></span>
+                                    </div>
+                                    <div className="kills-col combatlog">
+                                      <button className="combatlog-btn" onClick={() => openCombatLog(kill)}>
+                                        <CombatLogIcon />
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Combat Log Modal */}
+                {combatLogOpen && (
+                  <div className="combatlog-modal-overlay" onClick={() => setCombatLogOpen(false)}>
+                    <div className="combatlog-modal" onClick={e => e.stopPropagation()}>
+                      <div className="combatlog-header">
+                        <span className="combatlog-title">Комбатлог</span>
+                        <button className="combatlog-close" onClick={() => setCombatLogOpen(false)}>
+                          <CloseIcon />
+                        </button>
+                      </div>
+                      <div className="combatlog-content">
+                        <div className="combatlog-table-container">
+                          <table className="combatlog-table">
+                            <thead>
+                              <tr>
+                                <th>Time</th>
+                                <th>Attacker</th>
+                                <th>Target</th>
+                                <th>Weapon</th>
+                                <th>Ammo</th>
+                                <th>Bone</th>
+                                <th>Distance</th>
+                                <th>Old_hp</th>
+                                <th>New_hp</th>
+                                <th>Info</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {demoCombatLog.map((entry, idx) => (
+                                <tr key={idx}>
+                                  <td>{entry.time}</td>
+                                  <td>{entry.attacker}</td>
+                                  <td className="target-cell">{entry.target}</td>
+                                  <td>{entry.weapon}</td>
+                                  <td>{entry.ammo}</td>
+                                  <td className={entry.bone === 'head' ? 'bone-head' : ''}>{entry.bone}</td>
+                                  <td>{entry.distance.toFixed(2)}</td>
+                                  <td>{entry.old_hp.toFixed(2)}</td>
+                                  <td>{entry.new_hp.toFixed(2)}</td>
+                                  <td>{entry.info}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="combatlog-divider">
+                          <div className="divider-line"></div>
+                          <span className="divider-text">Участники файта</span>
+                          <div className="divider-line"></div>
+                        </div>
+                        <div className="combatlog-players">
+                          <div className="combatlog-player">
+                            <div className="combatlog-player-avatar">
+                              <img src={selectedPlayer?.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                            </div>
+                            <div className="combatlog-player-info">
+                              <span className="combatlog-player-name">{selectedPlayer?.name}</span>
+                              <span className="combatlog-player-id">{selectedPlayer?.steam_id}</span>
+                            </div>
+                          </div>
+                          <div className="combatlog-player-empty"></div>
+                          <div className="combatlog-player-empty"></div>
+                          <div className="combatlog-player-empty"></div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -707,6 +926,14 @@ function BoxIcon() {
       <path d="M87.97 63.2997V83.2997C84.73 82.9697 81.66 82.3497 78.74 81.4397C75.82 80.5197 73.21 79.3997 70.92 78.0797C64.35 74.2897 61.06 69.7297 61.03 64.4097V44.4097C61.05 48.0997 62.64 51.4197 65.8 54.3697C67.2 55.6797 68.91 56.9097 70.92 58.0797C72.36 58.9097 73.93 59.6597 75.62 60.3297C76.61 60.7297 77.66 61.0997 78.74 61.4397C81.66 62.3497 84.73 62.9697 87.97 63.2997Z"/>
     </svg>
   )
+}
+
+function CombatLogIcon() {
+  return <svg viewBox="0 0 24 24" width="17" height="17"><path fillRule="evenodd" clipRule="evenodd" d="M7 2C5.34315 2 4 3.34315 4 5V19C4 20.6569 5.34315 22 7 22H17C18.6569 22 20 20.6569 20 19V5C20 3.34315 18.6569 2 17 2H7ZM6 19C6 19.5523 6.44772 20 7 20H17C17.5523 20 18 19.5523 18 19V17.8293C17.6872 17.9398 17.3506 18 17 18H7C6.44772 18 6 18.4477 6 19ZM9 6C8.44772 6 8 6.44772 8 7C8 7.55228 8.44772 8 9 8H15C15.5523 8 16 7.55228 16 7C16 6.44772 15.5523 6 15 6H9ZM8 11C8 10.4477 8.44772 10 9 10H12C12.5523 10 13 10.4477 13 11C13 11.5523 12.5523 12 12 12H9C8.44772 12 8 11.5523 8 11Z" fill="currentColor"/></svg>
+}
+
+function CloseIcon() {
+  return <svg viewBox="0 0 24 24" width="18" height="18"><path fillRule="evenodd" clipRule="evenodd" d="M4.29289 4.29289C4.68342 3.90237 5.31658 3.90237 5.70711 4.29289L12 10.5858L18.2929 4.29289C18.6834 3.90237 19.3166 3.90237 19.7071 4.29289C20.0976 4.68342 20.0976 5.31658 19.7071 5.70711L13.4142 12L19.7071 18.2929C20.0976 18.6834 20.0976 19.3166 19.7071 19.7071C19.3166 20.0976 18.6834 20.0976 18.2929 19.7071L12 13.4142L5.70711 19.7071C5.31658 20.0976 4.68342 20.0976 4.29289 19.7071C3.90237 19.3166 3.90237 18.6834 4.29289 18.2929L10.5858 12L4.29289 5.70711C3.90237 5.31658 3.90237 4.68342 4.29289 4.29289Z" fill="currentColor"/></svg>
 }
 
 // Компонент для круговой диаграммы убийств/смертей
