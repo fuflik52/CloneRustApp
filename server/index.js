@@ -307,7 +307,9 @@ app.post('/api/state', async (req, res) => {
   
   const previousPlayers = new Set((server.players || []).map(p => p.steam_id));
   
-  server.hostname = req.body.hostname || server.name;
+  // hostname = IP адрес, name = название сервера
+  server.hostname = req.body.hostname || server.hostname || '';
+  if (req.body.name) server.name = req.body.name;
   server.port = req.body.port || 0;
   server.online = req.body.online || 0;
   server.maxPlayers = req.body.max_players || 0;
