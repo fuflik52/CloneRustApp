@@ -12,16 +12,34 @@ namespace Oxide.Plugins
     {
         private static PanRust _instance;
         private static Configuration _config;
+        private static MetaInfo _metaInfo;
+
+        private const string API_URL = "http://app.bublickrust.ru/api";
+
+        #region Meta (хранит секретный ключ)
+        private class MetaInfo
+        {
+            public string SecretKey = "";
+
+            public static MetaInfo Read()
+            {
+                if (!Interface.Oxide.DataFileSystem.ExistsDatafile("PanRust_Meta"))
+                {
+                    return new MetaInfo();
+                }
+                return Interface.Oxide.DataFileSystem.ReadObject<MetaInfo>("PanRust_Meta");
+            }
+
+            public static void Write(MetaInfo meta)
+            {
+                Interface.Oxide.DataFileSystem.WriteObject("PanRust_Meta", meta);
+            }
+        }
+        #endregion
 
         #region Configuration
         private class Configuration
         {
-            [JsonProperty("API URL")]
-            public string ApiUrl = "http://app.bublickrust.ru/api";
-            
-            [JsonProperty("API Secret Key (получить в панели при создании сервера)")]
-            public string SecretKey = "";
-            
             [JsonProperty("Update Interval (seconds)")]
             public float UpdateInterval = 5f;
         }
@@ -64,7 +82,22 @@ namespace Oxide.Plugins
         private void OnServerInitialized()
         {
             _instance = this;
-            timer.Every(_config.UpdateInterval, () => SendStateUpdate());
+            _metaInfo = MetaInfo.Read();
+
+            if (string.IsNullOrEmpty(_metaInfo.SecretKey))
+            {
+                Puts("========================================");
+                Puts("PanRust: Сервер не подключен!");
+                Puts("1. Создайте сервер в панели: http://app.bublickrust.ru");
+                Puts("2. Скопируйте Secret Key");
+                Puts("3. Введите в консоль: panrust.pair ВАШ_SECRET_KEY");
+                Puts("========================================");
+            }
+            else
+            {
+                Puts("PanRust: Подключен к панели");
+                timer.Every(_config.UpdateInterval, () => SendStateUpdate());
+            }
         }
 
         private void OnPlayerConnected(BasePlayer player) => timer.Once(1f, () => SendStateUpdate());
@@ -74,10 +107,62 @@ namespace Oxide.Plugins
         private void Unload() => _instance = null;
         #endregion
 
+        #region Commands
+        [ConsoleCommand("panrust.pair")]
+        private void CmdPair(ConsoleSystem.Arg args)
+        {
+            if (args.Connection != null) return; // Только из серверной консоли
+
+            if (args.Args == null || args.Args.Length == 0)
+            {
+                Puts("Использование: panrust.pair ВАШ_SECRET_KEY");
+                Puts("Secret Key можно получить в панели при создании сервера");
+                return;
+            }
+
+            var secretKey = args.Args[0];
+            
+            _metaInfo.SecretKey = secretKey;
+            MetaInfo.Write(_metaInfo);
+
+            Puts("========================================");
+            Puts("PanRust: Secret Key сохранён!");
+            Puts("Перезагрузите плагин: oxide.reload PanRust");
+            Puts("========================================");
+        }
+
+        [ConsoleCommand("panrust.status")]
+        private void CmdStatus(ConsoleSystem.Arg args)
+        {
+            if (args.Connection != null) return;
+
+            if (string.IsNullOrEmpty(_metaInfo.SecretKey))
+            {
+                Puts("PanRust: Не подключен. Используйте panrust.pair SECRET_KEY");
+            }
+            else
+            {
+                Puts($"PanRust: Подключен");
+                Puts($"API: {API_URL}");
+                Puts($"Интервал обновления: {_config.UpdateInterval} сек");
+            }
+        }
+
+        [ConsoleCommand("panrust.reset")]
+        private void CmdReset(ConsoleSystem.Arg args)
+        {
+            if (args.Connection != null) return;
+
+            _metaInfo.SecretKey = "";
+            MetaInfo.Write(_metaInfo);
+            Puts("PanRust: Настройки сброшены. Перезагрузите плагин.");
+        }
+        #endregion
+
         #region API Methods
         private void SendStateUpdate()
         {
-            if (string.IsNullOrEmpty(_config.SecretKey)) return;
+            if (string.IsNullOrEmpty(_metaInfo.SecretKey)) return;
 
             var payload = new StatePayload();
             foreach (var player in BasePlayer.activePlayerList)
@@ -95,13 +180,13 @@ namespace Oxide.Plugins
             }
 
             var json = JsonConvert.SerializeObject(payload);
-            webrequest.Enqueue($"{_config.ApiUrl}/state", json, (code, response) =>
+            webrequest.Enqueue($"{API_URL}/state", json, (code, response) =>
             {
-                if (code != 200) Puts($"API Error: {code}");
+                if (code != 200) Puts($"API Error: {code} - {response}");
             }, this, Oxide.Core.Libraries.RequestMethod.POST, new Dictionary<string, string>
             {
                 ["Content-Type"] = "application/json",
-                ["Authorization"] = $"Bearer {_config.SecretKey}"
+                ["Authorization"] = $"Bearer {_metaInfo.SecretKey}"
             });
         }
 
