@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 
 interface ChatMessage {
@@ -15,105 +15,21 @@ interface ChatMessage {
   date: string
 }
 
-interface Player {
-  steam_id: string
-  steam_name: string
-  avatar: string
-  country?: string
-  countryCode?: string
-  city?: string
-  provider?: string
-  ips_history?: { ip: string; country?: string; city?: string }[]
-  servers_played?: string[]
-  first_seen?: number
-  last_seen?: number
-}
-
-interface SteamInfo {
-  privacy: string
-  isPrivate: boolean
-  accountCreated: string | null
-  rustHours: number | null
-  recentHours: number | null
-  vacBans: number
-  gameBans: number
-}
-
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
   const [hoveredMessage, setHoveredMessage] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{id: string, x: number, y: number} | null>(null)
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
-  const [steamInfo, setSteamInfo] = useState<SteamInfo | null>(null)
-  const [steamLoading, setSteamLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState('overview')
   const { showToast } = useToast()
   const chatEndRef = useRef<HTMLDivElement>(null)
   const messagesRef = useRef<ChatMessage[]>([])
   const playerSteamId = searchParams.get('player')
+  const navigate = useNavigate()
 
-
-  const scrollToBottom = () => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  const fetchMessages = async () => {
-    try {
-      const url = playerSteamId 
-        ? `/api/chat/player/${playerSteamId}?limit=200`
-        : '/api/chat?limit=200'
-      const res = await fetch(url)
-      if (res.ok) {
-        const data = await res.json()
-        const newMessages = playerSteamId ? data : data.messages
-        if (JSON.stringify(newMessages) !== JSON.stringify(messagesRef.current)) {
-          messagesRef.current = newMessages
-          setMessages(newMessages)
-        }
-      }
-    } catch {}
-  }
-
-  useEffect(() => {
-    fetchMessages()
-    const interval = setInterval(fetchMessages, 1000)
-    return () => clearInterval(interval)
-  }, [playerSteamId])
-
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
-
-  // Открыть профиль игрока в модалке
-  const handlePlayerClick = async (steamId: string) => {
-    try {
-      const res = await fetch(`/api/players/db/${steamId}`)
-      if (res.ok) {
-        const player = await res.json()
-        setSelectedPlayer(player)
-        setActiveTab('overview')
-        setSteamInfo(null)
-        setSteamLoading(true)
-        // Загружаем Steam инфо
-        try {
-          const steamRes = await fetch(`/api/player/${steamId}/steam`)
-          if (steamRes.ok) {
-            const data = await steamRes.json()
-            if (!data.error) setSteamInfo(data)
-          }
-        } catch {}
-        setSteamLoading(false)
-      }
-    } catch {
-      showToast('Игрок не найден', 'error')
-    }
-  }
-
-  const handleCloseModal = () => {
-    setSelectedPlayer(null)
-    setSteamInfo(null)
+  // Открыть профиль игрока - редирект на страницу Players
+  const handlePlayerClick = (steamId: string) => {
+    navigate(`/players?player=${steamId}`)
   }
 
   const handleSendMessage = async () => {
