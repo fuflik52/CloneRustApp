@@ -52,6 +52,8 @@ export default function Database() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(false)
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerDB | null>(null)
+  const [playerActivity, setPlayerActivity] = useState<ActivityLog[]>([])
+  const [playerStats, setPlayerStats] = useState<any>(null)
   const [noteText, setNoteText] = useState('')
   const [tagText, setTagText] = useState('')
   const { showToast } = useToast()
@@ -61,18 +63,58 @@ export default function Database() {
   }, [])
 
   useEffect(() => {
-    if (isAuthed) fetchData()
-  }, [isAuthed, tab])
+    if (isAuthed && !selectedPlayer) fetchData()
+  }, [isAuthed, tab, selectedPlayer])
 
-  // Открываем игрока из URL
+  // Открываем игрока из URL и читаем таб
   useEffect(() => {
     if (!isAuthed) return
     const params = new URLSearchParams(window.location.search)
     const playerId = params.get('player')
+    const urlTab = params.get('tab') as 'players' | 'activity' | 'stats' | null
+    if (urlTab && ['players', 'activity', 'stats'].includes(urlTab)) {
+      setTab(urlTab)
+    }
     if (playerId) {
       loadPlayerDetails(playerId)
     }
   }, [isAuthed])
+
+  // Обновляем URL при смене таба
+  const handleTabChange = (newTab: 'players' | 'activity' | 'stats') => {
+    setTab(newTab)
+    const url = new URL(window.location.href)
+    if (selectedPlayer) {
+      url.searchParams.set('tab', newTab)
+    } else {
+      url.searchParams.delete('tab')
+    }
+    window.history.pushState({}, '', url.toString())
+    
+    // Если выбран игрок, загружаем его данные для таба
+    if (selectedPlayer) {
+      if (newTab === 'activity') loadPlayerActivity(selectedPlayer.steam_id)
+      if (newTab === 'stats') loadPlayerStats(selectedPlayer.steam_id)
+    }
+  }
+
+  const loadPlayerActivity = async (steamId: string) => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/activity/player/${steamId}`)
+      if (res.ok) setPlayerActivity(await res.json())
+    } catch {}
+    setLoading(false)
+  }
+
+  const loadPlayerStats = async (steamId: string) => {
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/player/${steamId}/stats`)
+      if (res.ok) setPlayerStats(await res.json())
+    } catch {}
+    setLoading(false)
+  }
 
   const checkAuth = () => {
     if (password === SECRET_PASSWORD) {
@@ -112,14 +154,21 @@ export default function Database() {
 
   const loadPlayerDetails = async (steamId: string) => {
     setLoading(true)
+    setPlayerActivity([])
+    setPlayerStats(null)
     try {
       const res = await fetch(`/api/players/db/${steamId}`)
       if (res.ok) {
-        setSelectedPlayer(await res.json())
+        const player = await res.json()
+        setSelectedPlayer(player)
         // Обновляем URL
         const url = new URL(window.location.href)
         url.searchParams.set('player', steamId)
         window.history.pushState({}, '', url.toString())
+        
+        // Загружаем данные для текущего таба
+        if (tab === 'activity') loadPlayerActivity(steamId)
+        if (tab === 'stats') loadPlayerStats(steamId)
       }
     } catch {}
     setLoading(false)
@@ -127,9 +176,13 @@ export default function Database() {
 
   const closePlayerDetails = () => {
     setSelectedPlayer(null)
+    setPlayerActivity([])
+    setPlayerStats(null)
     const url = new URL(window.location.href)
     url.searchParams.delete('player')
+    url.searchParams.delete('tab')
     window.history.pushState({}, '', url.toString())
+    setTab('players')
   }
 
   const addNote = async () => {
@@ -224,11 +277,11 @@ export default function Database() {
   return (
     <div className="db-page">
       <div className="db-header">
-        <div className="db-title"><DatabaseIcon /><span>База данных</span></div>
+        <div className="db-title"><DatabaseIcon /><span>База данных</span>{selectedPlayer && <span className="db-title-player"> / {selectedPlayer.steam_name}</span>}</div>
         <div className="db-tabs">
-          <button className={tab === 'players' ? 'active' : ''} onClick={() => setTab('players')}><UsersIcon />Игроки</button>
-          <button className={tab === 'activity' ? 'active' : ''} onClick={() => setTab('activity')}><ActivityIcon />Активность</button>
-          <button className={tab === 'stats' ? 'active' : ''} onClick={() => setTab('stats')}><ChartIcon />Статистика</button>
+          <button className={tab === 'players' ? 'active' : ''} onClick={() => handleTabChange('players')}><UsersIcon />{selectedPlayer ? 'Профиль' : 'Игроки'}</button>
+          <button className={tab === 'activity' ? 'active' : ''} onClick={() => handleTabChange('activity')}><ActivityIcon />Активность</button>
+          <button className={tab === 'stats' ? 'active' : ''} onClick={() => handleTabChange('stats')}><ChartIcon />Статистика</button>
         </div>
         <button className="db-logout" onClick={() => { setIsAuthed(false); localStorage.removeItem('db_auth') }}><LogoutIcon /></button>
       </div>
@@ -348,9 +401,15 @@ export default function Database() {
 
       {tab === 'activity' && (
         <div className="db-activity">
+          {selectedPlayer && (
+            <div className="db-player-activity-header">
+              <button className="db-back-btn" onClick={closePlayerDetails}><BackIcon /> Назад к списку</button>
+              <span>Активность игрока: {selectedPlayer.steam_name}</span>
+            </div>
+          )}
           {loading ? <div className="db-loading"><SpinnerIcon />Загрузка...</div> :
-           activity.length === 0 ? <div className="db-empty">Нет логов</div> :
-           activity.map(log => (
+           (selectedPlayer ? playerActivity : activity).length === 0 ? <div className="db-empty">Нет логов</div> :
+           (selectedPlayer ? playerActivity : activity).map(log => (
             <div key={log.id} className={`db-log db-log-${log.type}`}>
               <div className="db-log-icon">{getActivityIcon(log.type)}</div>
               <div className="db-log-content">
@@ -362,16 +421,39 @@ export default function Database() {
         </div>
       )}
 
-      {tab === 'stats' && stats && (
+      {tab === 'stats' && (
         <div className="db-stats">
-          <div className="db-stat"><div className="db-stat-icon"><UsersIcon /></div><div className="db-stat-info"><span>Всего игроков</span><strong>{stats.totalPlayers}</strong></div></div>
-          <div className="db-stat online"><div className="db-stat-icon"><OnlineIcon /></div><div className="db-stat-info"><span>Сейчас онлайн</span><strong>{stats.onlinePlayers}</strong></div></div>
-          <div className="db-stat"><div className="db-stat-icon"><ServerIcon /></div><div className="db-stat-info"><span>Серверов</span><strong>{stats.totalServers}</strong></div></div>
-          <div className="db-stat online"><div className="db-stat-icon"><ServerIcon /></div><div className="db-stat-info"><span>Серверов онлайн</span><strong>{stats.onlineServers}</strong></div></div>
-          <div className="db-stat"><div className="db-stat-icon"><CalendarIcon /></div><div className="db-stat-info"><span>Игроков за день</span><strong>{stats.playersToday}</strong></div></div>
-          <div className="db-stat"><div className="db-stat-icon"><CalendarIcon /></div><div className="db-stat-info"><span>Игроков за неделю</span><strong>{stats.playersWeek}</strong></div></div>
-          <div className="db-stat new"><div className="db-stat-icon"><StarIcon /></div><div className="db-stat-info"><span>Новых за день</span><strong>{stats.newPlayersToday}</strong></div></div>
-          <div className="db-stat new"><div className="db-stat-icon"><StarIcon /></div><div className="db-stat-info"><span>Новых за неделю</span><strong>{stats.newPlayersWeek}</strong></div></div>
+          {selectedPlayer ? (
+            <>
+              <div className="db-player-activity-header">
+                <button className="db-back-btn" onClick={closePlayerDetails}><BackIcon /> Назад к списку</button>
+                <span>Статистика игрока: {selectedPlayer.steam_name}</span>
+              </div>
+              {loading ? <div className="db-loading"><SpinnerIcon />Загрузка...</div> : playerStats ? (
+                <>
+                  <div className="db-stat"><div className="db-stat-icon"><CrosshairIcon /></div><div className="db-stat-info"><span>Убийств</span><strong>{playerStats.kills || 0}</strong></div></div>
+                  <div className="db-stat"><div className="db-stat-icon"><SkullIcon /></div><div className="db-stat-info"><span>Смертей</span><strong>{playerStats.deaths || 0}</strong></div></div>
+                  <div className="db-stat online"><div className="db-stat-icon"><TargetIcon /></div><div className="db-stat-info"><span>K/D</span><strong>{playerStats.kd?.toFixed(2) || '0.00'}</strong></div></div>
+                  <div className="db-stat"><div className="db-stat-icon"><HeadIcon /></div><div className="db-stat-info"><span>В голову</span><strong>{playerStats.headshots || 0}</strong></div></div>
+                  <div className="db-stat"><div className="db-stat-icon"><BodyIcon /></div><div className="db-stat-info"><span>В туловище</span><strong>{playerStats.bodyshots || 0}</strong></div></div>
+                  <div className="db-stat"><div className="db-stat-icon"><LimbIcon /></div><div className="db-stat-info"><span>В конечности</span><strong>{playerStats.limbshots || 0}</strong></div></div>
+                  <div className="db-stat"><div className="db-stat-icon"><CalendarIcon /></div><div className="db-stat-info"><span>Часов на проекте</span><strong>{playerStats.playtime_hours?.toFixed(1) || '0'}</strong></div></div>
+                  <div className="db-stat new"><div className="db-stat-icon"><ReportIcon /></div><div className="db-stat-info"><span>Репортов</span><strong>{playerStats.reports_count || 0}</strong></div></div>
+                </>
+              ) : <div className="db-empty">Нет статистики</div>}
+            </>
+          ) : stats && (
+            <>
+              <div className="db-stat"><div className="db-stat-icon"><UsersIcon /></div><div className="db-stat-info"><span>Всего игроков</span><strong>{stats.totalPlayers}</strong></div></div>
+              <div className="db-stat online"><div className="db-stat-icon"><OnlineIcon /></div><div className="db-stat-info"><span>Сейчас онлайн</span><strong>{stats.onlinePlayers}</strong></div></div>
+              <div className="db-stat"><div className="db-stat-icon"><ServerIcon /></div><div className="db-stat-info"><span>Серверов</span><strong>{stats.totalServers}</strong></div></div>
+              <div className="db-stat online"><div className="db-stat-icon"><ServerIcon /></div><div className="db-stat-info"><span>Серверов онлайн</span><strong>{stats.onlineServers}</strong></div></div>
+              <div className="db-stat"><div className="db-stat-icon"><CalendarIcon /></div><div className="db-stat-info"><span>Игроков за день</span><strong>{stats.playersToday}</strong></div></div>
+              <div className="db-stat"><div className="db-stat-icon"><CalendarIcon /></div><div className="db-stat-info"><span>Игроков за неделю</span><strong>{stats.playersWeek}</strong></div></div>
+              <div className="db-stat new"><div className="db-stat-icon"><StarIcon /></div><div className="db-stat-info"><span>Новых за день</span><strong>{stats.newPlayersToday}</strong></div></div>
+              <div className="db-stat new"><div className="db-stat-icon"><StarIcon /></div><div className="db-stat-info"><span>Новых за неделю</span><strong>{stats.newPlayersWeek}</strong></div></div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -410,3 +492,10 @@ function CalendarIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><p
 function BackIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 11H7.83L13.42 5.41L12 4L4 12L12 20L13.41 18.59L7.83 13H20V11Z"/></svg> }
 function SteamIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3l-.5 3H13v6.95c5.05-.5 9-4.76 9-9.95 0-5.52-4.48-10-10-10z"/></svg> }
 function RccIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg> }
+function CrosshairIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17.93V17h-2v2.93c-3.94-.49-7-3.86-7-7.93h2.93v-2H4c0-4.07 3.06-7.44 7-7.93V5h2V2.07c3.94.49 7 3.86 7 7.93h-2.93v2H20c0 4.07-3.06 7.44-7 7.93zM12 8c-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4-1.79-4-4-4z"/></svg> }
+function SkullIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12v8c0 1.1.9 2 2 2h3v-6H5v-4c0-3.87 3.13-7 7-7s7 3.13 7 7v4h-2v6h3c1.1 0 2-.9 2-2v-8c0-5.52-4.48-10-10-10zM9 14c-.83 0-1.5-.67-1.5-1.5S8.17 11 9 11s1.5.67 1.5 1.5S9.83 14 9 14zm6 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5z"/></svg> }
+function TargetIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6zm0 10c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm0-6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/></svg> }
+function HeadIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z"/></svg> }
+function BodyIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-9h10v2H7z"/></svg> }
+function LimbIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/></svg> }
+function ReportIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg> }
