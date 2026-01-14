@@ -2882,96 +2882,63 @@ body {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
-  position: relative;
-  overflow: hidden;
-}
-
-.db-login::before {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(255, 119, 115, 0.2) 0%, transparent 50%),
-    radial-gradient(circle at 40% 40%, rgba(42, 157, 143, 0.2) 0%, transparent 40%);
-  animation: bgMove 20s ease-in-out infinite;
-}
-
-@keyframes bgMove {
-  0%, 100% { transform: translate(0, 0) rotate(0deg); }
-  25% { transform: translate(2%, 2%) rotate(1deg); }
-  50% { transform: translate(-1%, 3%) rotate(-1deg); }
-  75% { transform: translate(3%, -2%) rotate(2deg); }
+  background: #1a1a1a;
 }
 
 .db-login-box {
-  background: rgba(30, 30, 30, 0.8);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 40px;
+  background: #1E1E1E;
+  border: 1px solid #2a2a2a;
+  border-radius: 10px;
+  padding: 32px;
   text-align: center;
-  width: 360px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-  position: relative;
-  z-index: 1;
+  width: 340px;
 }
 
 .db-login-box h2 {
   color: #fff;
-  font-size: 20px;
-  margin-bottom: 24px;
-  font-weight: 600;
+  font-size: 16px;
+  margin-bottom: 20px;
+  font-weight: 500;
 }
 
 .db-login-box input {
   width: 100%;
-  background: rgba(20, 20, 20, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  padding: 14px 16px;
+  background: #141414;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 12px 14px;
   color: #fff;
-  font-size: 15px;
-  margin-bottom: 16px;
+  font-size: 14px;
+  margin-bottom: 12px;
   outline: none;
-  transition: all 0.3s ease;
 }
 
 .db-login-box input:focus {
-  border-color: rgba(120, 119, 198, 0.5);
-  background: rgba(20, 20, 20, 0.8);
-  box-shadow: 0 0 20px rgba(120, 119, 198, 0.2);
+  border-color: #444;
 }
 
 .db-login-box input::placeholder {
-  color: #666;
+  color: #555;
 }
 
 .db-login-box button {
   width: 100%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: #2a2a2a;
   border: none;
-  border-radius: 10px;
-  padding: 14px;
+  border-radius: 8px;
+  padding: 12px;
   color: #fff;
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background 0.2s;
 }
 
 .db-login-box button:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+  background: #333;
 }
 
 .db-page {
-  padding: 20px;
+  padding: 24px;
   max-width: 1400px;
   margin: 0 auto;
 }
@@ -2979,51 +2946,57 @@ body {
 .db-header {
   display: flex;
   align-items: center;
-  gap: 20px;
-  margin-bottom: 24px;
-  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #2a2a2a;
 }
 
 .db-header h1 {
   color: #fff;
-  font-size: 24px;
+  font-size: 18px;
+  font-weight: 500;
   margin: 0;
 }
 
 .db-tabs {
   display: flex;
-  gap: 8px;
+  gap: 4px;
+  background: #1E1E1E;
+  padding: 4px;
+  border-radius: 8px;
 }
 
 .db-tabs button {
-  background: #2a2a2a;
+  background: transparent;
   border: none;
-  border-radius: 8px;
-  padding: 10px 20px;
-  color: #888;
-  font-size: 14px;
+  border-radius: 6px;
+  padding: 8px 16px;
+  color: #666;
+  font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
 }
 
 .db-tabs button:hover {
-  background: #3a3a3a;
-  color: #ccc;
+  color: #999;
 }
 
 .db-tabs button.active {
-  background: #444;
+  background: #2a2a2a;
   color: #fff;
 }
 
 .db-logout {
   margin-left: auto;
-  background: #ef4444 !important;
-  color: #fff !important;
+  background: transparent !important;
+  color: #666 !important;
+  padding: 8px 12px !important;
 }
 
 .db-logout:hover {
-  background: #dc2626 !important;
+  color: #ef4444 !important;
+  background: transparent !important;
 }
 
 .db-search {
@@ -3034,47 +3007,71 @@ body {
 
 .db-search input {
   flex: 1;
-  background: #1a1a1a;
-  border: 1px solid #333;
+  background: #1E1E1E;
+  border: 1px solid #2a2a2a;
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   outline: none;
+}
+
+.db-search input:focus {
+  border-color: #333;
+}
+
+.db-search input::placeholder {
+  color: #555;
 }
 
 .db-search button {
   background: #2a2a2a;
   border: none;
   border-radius: 8px;
-  padding: 12px 20px;
-  color: #fff;
-  font-size: 14px;
+  padding: 10px 16px;
+  color: #888;
+  font-size: 13px;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.db-search button:hover {
+  background: #333;
+  color: #fff;
 }
 
 .db-content {
   display: flex;
-  gap: 20px;
+  gap: 16px;
 }
 
 .db-list {
   flex: 1;
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  max-height: 70vh;
+  background: #1E1E1E;
+  border-radius: 10px;
+  max-height: calc(100vh - 200px);
   overflow-y: auto;
+}
+
+.db-list p {
+  color: #555;
+  font-size: 13px;
+  padding: 20px;
+  text-align: center;
 }
 
 .db-player-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #2a2a2a;
+  padding: 12px 14px;
+  border-bottom: 1px solid #252525;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: background 0.15s;
+}
+
+.db-player-row:last-child {
+  border-bottom: none;
 }
 
 .db-player-row:hover {
@@ -3082,46 +3079,50 @@ body {
 }
 
 .db-player-row.selected {
-  background: #333;
+  background: #2a2a2a;
 }
 
 .db-player-row img {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 8px;
 }
 
 .db-player-info {
   flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  min-width: 0;
 }
 
 .db-player-name {
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .db-player-meta {
-  color: #666;
-  font-size: 12px;
+  color: #555;
+  font-size: 11px;
+  display: block;
+  margin-top: 2px;
 }
 
 .db-flag {
-  width: 24px !important;
-  height: 18px !important;
+  width: 20px !important;
+  height: 14px !important;
   border-radius: 2px !important;
+  opacity: 0.8;
 }
 
 .db-details {
-  width: 450px;
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
+  width: 420px;
+  background: #1E1E1E;
+  border-radius: 10px;
   padding: 16px;
-  max-height: 70vh;
+  max-height: calc(100vh - 200px);
   overflow-y: auto;
 }
 
@@ -3130,89 +3131,108 @@ body {
   align-items: center;
   gap: 12px;
   margin-bottom: 16px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #2a2a2a;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #252525;
 }
 
 .db-details-header img {
-  width: 56px;
-  height: 56px;
+  width: 48px;
+  height: 48px;
   border-radius: 10px;
+}
+
+.db-details-header > div {
+  flex: 1;
+  min-width: 0;
 }
 
 .db-details-header h3 {
   color: #fff;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: 500;
   margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .db-details-header p {
-  color: #666;
-  font-size: 12px;
+  color: #555;
+  font-size: 11px;
   margin: 4px 0 0;
 }
 
 .db-close {
-  margin-left: auto;
-  background: #2a2a2a;
+  background: transparent;
   border: none;
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
   border-radius: 6px;
-  color: #888;
-  font-size: 16px;
+  color: #555;
+  font-size: 14px;
   cursor: pointer;
+  transition: all 0.2s;
+}
+
+.db-close:hover {
+  background: #2a2a2a;
+  color: #fff;
 }
 
 .db-details-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: 8px;
   margin-bottom: 16px;
 }
 
 .db-details-grid > div {
   background: #252525;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 10px 12px;
 }
 
 .db-details-grid span {
   display: block;
-  color: #666;
-  font-size: 11px;
+  color: #555;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   margin-bottom: 4px;
 }
 
 .db-details-grid strong {
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 .db-section {
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .db-section h4 {
-  color: #888;
-  font-size: 12px;
+  color: #555;
+  font-size: 11px;
+  font-weight: 500;
   margin: 0 0 8px;
   text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .db-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
 }
 
 .db-tag {
-  background: #333;
-  color: #fff;
-  padding: 4px 10px;
-  border-radius: 6px;
-  font-size: 12px;
+  background: #2a2a2a;
+  color: #ccc;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3221,44 +3241,55 @@ body {
 .db-tag button {
   background: none;
   border: none;
-  color: #888;
+  color: #666;
   cursor: pointer;
   padding: 0;
-  font-size: 14px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.db-tag button:hover {
+  color: #ef4444;
 }
 
 .db-tags input {
   background: #252525;
   border: 1px solid #333;
-  border-radius: 6px;
-  padding: 6px 10px;
+  border-radius: 4px;
+  padding: 4px 8px;
   color: #fff;
-  font-size: 12px;
-  width: 100px;
+  font-size: 11px;
+  width: 80px;
   outline: none;
 }
 
 .db-tags > button {
   background: #2a2a2a;
   border: none;
-  border-radius: 6px;
-  padding: 6px 12px;
-  color: #fff;
+  border-radius: 4px;
+  padding: 4px 10px;
+  color: #888;
+  font-size: 12px;
   cursor: pointer;
+}
+
+.db-tags > button:hover {
+  color: #fff;
 }
 
 .db-history {
   background: #252525;
-  border-radius: 8px;
-  max-height: 150px;
+  border-radius: 6px;
+  max-height: 120px;
   overflow-y: auto;
 }
 
 .db-history > div {
   display: flex;
   justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid #333;
+  align-items: center;
+  padding: 8px 10px;
+  border-bottom: 1px solid #2a2a2a;
 }
 
 .db-history > div:last-child {
@@ -3266,141 +3297,194 @@ body {
 }
 
 .db-history span {
-  color: #fff;
-  font-size: 13px;
+  color: #ccc;
+  font-size: 12px;
 }
 
 .db-history small {
-  color: #666;
-  font-size: 11px;
+  color: #555;
+  font-size: 10px;
 }
 
 .db-notes {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .db-note {
   background: #252525;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 6px;
+  padding: 10px;
 }
 
 .db-note p {
-  color: #fff;
-  font-size: 13px;
+  color: #ccc;
+  font-size: 12px;
   margin: 0 0 4px;
+  line-height: 1.4;
 }
 
 .db-note small {
-  color: #666;
-  font-size: 11px;
+  color: #555;
+  font-size: 10px;
 }
 
 .db-note-add {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .db-note-add textarea {
   background: #252525;
   border: 1px solid #333;
-  border-radius: 8px;
+  border-radius: 6px;
   padding: 10px;
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
+  font-family: inherit;
   resize: vertical;
-  min-height: 60px;
+  min-height: 50px;
   outline: none;
+}
+
+.db-note-add textarea::placeholder {
+  color: #555;
 }
 
 .db-note-add button {
   background: #2a2a2a;
   border: none;
   border-radius: 6px;
-  padding: 10px;
-  color: #fff;
+  padding: 8px 14px;
+  color: #888;
+  font-size: 12px;
   cursor: pointer;
   align-self: flex-end;
+  transition: all 0.2s;
+}
+
+.db-note-add button:hover {
+  background: #333;
+  color: #fff;
 }
 
 .db-activity {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
-  max-height: 70vh;
+  background: #1E1E1E;
+  border-radius: 10px;
+  max-height: calc(100vh - 200px);
   overflow-y: auto;
 }
 
-.db-log {
-  display: flex;
-  gap: 12px;
-  padding: 12px 16px;
-  border-bottom: 1px solid #2a2a2a;
-}
-
-.db-log-icon {
-  font-size: 18px;
-}
-
-.db-log-content {
-  flex: 1;
-}
-
-.db-log-content p {
-  color: #fff;
+.db-activity p {
+  color: #555;
   font-size: 13px;
-  margin: 0 0 4px;
-}
-
-.db-log-content small {
-  color: #666;
-  font-size: 11px;
-}
-
-.db-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 16px;
-}
-
-.db-stat-card {
-  background: #1a1a1a;
-  border: 1px solid #2a2a2a;
-  border-radius: 12px;
   padding: 20px;
   text-align: center;
 }
 
+.db-log {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #252525;
+}
+
+.db-log:last-child {
+  border-bottom: none;
+}
+
+.db-log-icon {
+  font-size: 14px;
+  width: 20px;
+  text-align: center;
+}
+
+.db-log-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.db-log-content p {
+  color: #ccc;
+  font-size: 12px;
+  margin: 0 0 2px;
+  padding: 0;
+  text-align: left;
+}
+
+.db-log-content small {
+  color: #555;
+  font-size: 10px;
+}
+
+.db-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.db-stat-card {
+  background: #1E1E1E;
+  border-radius: 10px;
+  padding: 16px;
+}
+
 .db-stat-card span {
   display: block;
-  color: #666;
-  font-size: 13px;
-  margin-bottom: 8px;
+  color: #555;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
 }
 
 .db-stat-card strong {
   color: #fff;
-  font-size: 28px;
+  font-size: 24px;
+  font-weight: 500;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .db-content {
     flex-direction: column;
   }
   
   .db-details {
     width: 100%;
+    max-height: none;
+  }
+  
+  .db-list {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 600px) {
+  .db-page {
+    padding: 16px;
   }
   
   .db-header {
     flex-direction: column;
     align-items: flex-start;
+    gap: 12px;
   }
   
   .db-logout {
     margin-left: 0;
+  }
+  
+  .db-search {
+    flex-direction: column;
+  }
+  
+  .db-details-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .db-stats {
+    grid-template-columns: 1fr 1fr;
   }
 }
