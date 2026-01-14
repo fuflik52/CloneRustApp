@@ -21,6 +21,7 @@ interface Player {
   name: string
   avatar: string
   role?: string
+  online?: boolean
 }
 
 interface MuteInfo {
@@ -298,6 +299,11 @@ export default function Chat() {
     const searchPlayers = async () => {
       setLoadingPlayers(true)
       try {
+        // Загружаем онлайн игроков чтобы знать кто в сети
+        const onlineRes = await fetch('/api/players')
+        const onlinePlayers = onlineRes.ok ? await onlineRes.json() : []
+        const onlineIds = new Set(onlinePlayers.map((p: any) => p.steam_id))
+        
         // Если есть запрос - ищем, если нет - загружаем всех
         const url = playerSearchQuery.trim() 
           ? `/api/players/search?q=${encodeURIComponent(playerSearchQuery)}`
@@ -310,7 +316,7 @@ export default function Chat() {
             steam_id: p.steam_id,
             name: p.steam_name || p.name,
             avatar: p.avatar,
-            role: 'игрок'
+            online: onlineIds.has(p.steam_id)
           })))
         }
       } catch {}
@@ -675,11 +681,11 @@ export default function Chat() {
                     >
                       <div className="player-avatar-wrapper">
                         <img src={player.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
-                        <span className={`player-status ${player.role === 'офлайн' ? 'offline' : ''}`}></span>
+                        <span className={`player-status ${player.online ? 'online' : 'offline'}`}></span>
                       </div>
                       <div className="player-info">
                         <span className="player-name">{player.name}</span>
-                        <span className="player-role">{player.role || 'игрок'}</span>
+                        <span className="player-role">{player.online ? 'онлайн' : 'оффлайн'}</span>
                       </div>
                     </div>
                   ))
