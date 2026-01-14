@@ -63,11 +63,11 @@
 }
 
 .chat-message.admin {
-  background: rgba(132, 204, 22, 0.08);
+  background: rgba(170, 255, 85, 0.08);
 }
 
 .chat-message.admin:hover {
-  background: rgba(132, 204, 22, 0.12);
+  background: rgba(170, 255, 85, 0.12);
 }
 
 /* Message Actions (hover buttons) */
@@ -168,11 +168,11 @@
 }
 
 .message-author.admin {
-  color: #84cc16;
+  color: #AAFF55;
 }
 
 .message-author.admin:hover {
-  color: #a3e635;
+  color: #c4ff88;
 }
 
 /* Message Text */
