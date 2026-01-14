@@ -84,7 +84,16 @@ export default function Servers() {
   }
 
   const copyKey = (key: string) => {
-    navigator.clipboard.writeText(key)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(key)
+    } else {
+      const textarea = document.createElement('textarea')
+      textarea.value = key
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+    }
     setCopiedKey(key)
     showToast('Ключ скопирован')
     setTimeout(() => setCopiedKey(''), 2000)
