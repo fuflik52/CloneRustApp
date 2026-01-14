@@ -990,6 +990,83 @@ app.get('/api/players/all', async (req, res) => {
   res.json(Object.values(uniquePlayers).sort((a, b) => b.last_seen - a.last_seen));
 });
 
+// === WEB CHAT SEND (admin sends message to game) ===
+app.post('/api/chat/send', (req, res) => {
+  const { target_steam_id, message, is_global, server_id } = req.body;
+  
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+  
+  // Find server to send command to
+  const data = loadServers();
+  let targetServerId = server_id;
+  
+  // If no server specified, use first available server
+  if (!targetServerId) {
+    const servers = Object.values(data.servers);
+    if (servers.length === 0) {
+      return res.status(400).json({ error: 'No servers available' });
+    }
+    targetServerId = servers[0].id;
+  }
+  
+  const server = data.servers[targetServerId];
+  if (!server) {
+    return res.status(404).json({ error: 'Server not found' });
+  }
+  
+  // Add command to queue for plugin to fetch
+  const cmds = loadCommands(targetServerId);
+  const cmd = {
+    id: crypto.randomUUID(),
+    type: 'chat_message',
+    target_steam_id: target_steam_id || null,
+    message: message.trim(),
+    is_global: is_global !== false,
+    timestamp: Date.now(),
+    executed: false
+  };
+  
+  cmds.commands.push(cmd);
+  saveCommands(targetServerId, cmds);
+  
+  res.json({ success: true, command: cmd });
+});
+
+// === SERVERS CHAT SEND (per server) ===
+app.post('/api/servers/:serverId/chat/send', (req, res) => {
+  const { target_steam_id, message, is_global } = req.body;
+  const serverId = req.params.serverId;
+  
+  if (!message || !message.trim()) {
+    return res.status(400).json({ error: 'Message is required' });
+  }
+  
+  const data = loadServers();
+  const server = data.servers[serverId];
+  if (!server) {
+    return res.status(404).json({ error: 'Server not found' });
+  }
+  
+  // Add command to queue for plugin to fetch
+  const cmds = loadCommands(serverId);
+  const cmd = {
+    id: crypto.randomUUID(),
+    type: 'chat_message',
+    target_steam_id: target_steam_id || null,
+    message: message.trim(),
+    is_global: is_global !== false,
+    timestamp: Date.now(),
+    executed: false
+  };
+  
+  cmds.commands.push(cmd);
+  saveCommands(serverId, cmds);
+  
+  res.json({ success: true, command: cmd });
+});
+
 // SPA fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));

@@ -192,9 +192,9 @@ export default function Chat() {
   }
 
   const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return
+    if (!inputMessage.trim() || !serverId) return
     try {
-      const res = await fetch('/api/chat/send', {
+      const res = await fetch(`/api/servers/${serverId}/chat/send`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -207,9 +207,12 @@ export default function Chat() {
         setInputMessage('')
         showToast('Сообщение отправлено')
         fetchMessages()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        showToast(data.error || 'Ошибка отправки сообщения', 'error')
       }
-    } catch {
-      showToast('Ошибка отправки', 'error')
+    } catch (err) {
+      showToast('Ошибка соединения с сервером', 'error')
     }
   }
 
