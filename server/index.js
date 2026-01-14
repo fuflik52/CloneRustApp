@@ -21,6 +21,10 @@ const PLAYERS_DB_FILE = './players_db.json';
 const ACTIVITY_LOG_FILE = './activity_log.json';
 const CHAT_LOG_FILE = './chat_log.json';
 
+const STEAM_API_KEY = process.env.STEAM_API_KEY;
+const RUSTAPP_API_TOKEN = process.env.RUSTAPP_API_TOKEN;
+const RUSTAPP_API_URL = 'https://court.rustapp.io';
+
 // === DATA LOADERS ===
 const loadData = () => {
   try { return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); }
@@ -219,9 +223,68 @@ const markPlayerDisconnect = (steamId, serverName, reason) => {
   }
 };
 
-const STEAM_API_KEY = process.env.STEAM_API_KEY;
-
 // === API ROUTES ===
+
+// === RustApp Proxy API ===
+// Прокси к RustApp API для получения данных
+
+// Получить всех игроков с RustApp
+app.get('/api/rustapp/players', async (req, res) => {
+  if (!RUSTAPP_API_TOKEN) {
+    return res.status(500).json({ error: 'RUSTAPP_API_TOKEN not configured' });
+  }
+  
+  try {
+    const response = await fetch(`${RUSTAPP_API_URL}/plugin/players`, {
+      headers: {
+        'Authorization': `Bearer ${RUSTAPP_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!response.ok) {
+      return res.status(response.status).json({ error: 'RustApp API error' });
+    }
+    
+    const data = await response.json();
+    res.json(data);
+  } catch (err) {
+    console.error('RustApp proxy error:', err);
+    res.status(500).json({ error: 'Failed to fetch from RustApp' });
+  }
+});
+
+// Универсальный прокси к RustApp API
+app.all('/api/rustapp/*', async (req, res) => {
+  if (!RUSTAPP_API_TOKEN) {
+    return res.status(500).json({ error: 'RUSTAPP_API_TOKEN not configured' });
+  }
+  
+  const path = req.params[0]; // всё после /api/rustapp/
+  const url = `${RUSTAPP_API_URL}/${path}`;
+  
+  try {
+    const options = {
+      method: req.method,
+      headers: {
+        'Authorization': `Bearer ${RUSTAPP_API_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    };
+    
+    if (req.method !== 'GET' && req.method !== 'HEAD' && req.body) {
+      options.body = JSON.stringify(req.body);
+    }
+    
+    const response = await fetch(url, options);
+    const data = await response.json().catch(() => ({}));
+    
+    res.status(response.status).json(data);
+  } catch (err) {
+    console.error('RustApp proxy error:', err);
+    res.status(500).json({ error: 'Failed to fetch from RustApp' });
+  }
+});
 
 // Get all servers
 app.get('/api/servers', (req, res) => {
