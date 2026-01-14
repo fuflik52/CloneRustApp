@@ -1744,3 +1744,236 @@
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
+
+
+/* ==================== NEW MUTE MODAL (like chat) ==================== */
+.mute-modal-new {
+  display: flex;
+  flex-direction: column;
+  background: #161616;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  overflow: visible;
+  width: 380px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+.mute-modal-new .mute-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mute-modal-new .mute-modal-header span {
+  font-size: 15px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.mute-modal-new .mute-modal-header .close-btn {
+  background: none;
+  border: none;
+  color: #666;
+  font-size: 20px;
+  cursor: pointer;
+  transition: color 0.15s;
+  line-height: 1;
+  padding: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mute-modal-new .mute-modal-header .close-btn:hover {
+  color: #fff;
+}
+
+.mute-modal-new .mute-modal-player {
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 13px;
+  color: #666;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.mute-modal-new .mute-modal-player strong {
+  color: #fff;
+}
+
+.mute-modal-new .mute-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.mute-modal-new .mute-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mute-modal-new .mute-field label {
+  font-size: 13px;
+  color: #888;
+  font-weight: 400;
+}
+
+.mute-modal-new .mute-field input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.15s;
+}
+
+.mute-modal-new .mute-field input::placeholder {
+  color: #555;
+}
+
+.mute-modal-new .mute-field input:focus {
+  border-color: rgba(239, 68, 68, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+/* Custom Duration Select */
+.mute-modal-new .duration-select-wrapper {
+  position: relative;
+}
+
+.mute-modal-new .duration-select-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  width: 100%;
+}
+
+.mute-modal-new .duration-select-trigger:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.mute-modal-new .duration-select-trigger.open {
+  border-color: rgba(239, 68, 68, 0.5);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.mute-modal-new .duration-select-trigger svg {
+  width: 16px;
+  height: 16px;
+  color: #666;
+  transition: transform 0.2s;
+}
+
+.mute-modal-new .duration-select-trigger.open svg {
+  transform: rotate(180deg);
+}
+
+.mute-modal-new .duration-select-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  z-index: 100;
+}
+
+.mute-modal-new .duration-select-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.mute-modal-new .duration-select-dropdown::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.mute-modal-new .duration-select-dropdown::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.mute-modal-new .duration-option {
+  padding: 10px 14px;
+  color: #aaa;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mute-modal-new .duration-option:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.mute-modal-new .duration-option.selected {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.mute-modal-new .duration-option-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.mute-modal-new .duration-option.selected .duration-option-icon {
+  border-color: #ef4444;
+  background: #ef4444;
+}
+
+.mute-modal-new .duration-option.selected .duration-option-icon::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background: #fff;
+  border-radius: 50%;
+}
+
+.mute-modal-new .mute-submit-btn {
+  background: #ef4444;
+  border: none;
+  border-radius: 8px;
+  padding: 12px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 4px;
+}
+
+.mute-modal-new .mute-submit-btn:hover {
+  background: #dc2626;
+}
+
+.mute-modal-new .mute-submit-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -120,8 +120,19 @@ export default function Players() {
   const [kickReason, setKickReason] = useState('')
   const [mutedPlayers, setMutedPlayers] = useState<Record<string, { id?: string, reason: string, expires?: number }>>({})
   const [bannedPlayers, setBannedPlayers] = useState<Record<string, { id?: string, reason: string, expires?: number }>>({})
+  const [durationDropdownOpen, setDurationDropdownOpen] = useState(false)
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const { showToast } = useToast()
+
+  const durationOptions = [
+    { value: '10m', label: '10 минут' },
+    { value: '30m', label: '30 минут' },
+    { value: '1h', label: '1 час' },
+    { value: '6h', label: '6 часов' },
+    { value: '1d', label: '1 день' },
+    { value: '7d', label: '7 дней' },
+    { value: '0', label: 'Навсегда' }
+  ]
 
   const copyToClipboard = (text: string) => {
     if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -166,6 +177,11 @@ export default function Players() {
         showToast(`Игрок ${selectedPlayer.name} замьючен`)
         setShowMuteModal(false)
         setMuteReason('')
+        // Обновляем список мутов
+        setMutedPlayers(prev => ({
+          ...prev,
+          [selectedPlayer.steam_id]: { reason: muteReason }
+        }))
       } else {
         showToast('Ошибка выдачи мута', 'error')
       }
@@ -184,6 +200,11 @@ export default function Players() {
         showToast(`Игрок ${selectedPlayer.name} заблокирован`)
         setShowBanModal(false)
         setBanReason('')
+        // Обновляем список банов
+        setBannedPlayers(prev => ({
+          ...prev,
+          [selectedPlayer.steam_id]: { reason: banReason }
+        }))
       } else {
         showToast('Ошибка блокировки', 'error')
       }
@@ -1009,43 +1030,60 @@ export default function Players() {
 
       {/* Mute Modal */}
       {showMuteModal && selectedPlayer && (
-        <div className="action-modal-overlay" onClick={() => setShowMuteModal(false)}>
-          <div className="action-modal mute-modal" onClick={e => e.stopPropagation()}>
-            <div className="action-modal-header">
+        <div className="action-modal-overlay" onClick={() => { setShowMuteModal(false); setDurationDropdownOpen(false) }}>
+          <div className="mute-modal-new" onClick={e => e.stopPropagation()}>
+            <div className="mute-modal-header">
               <span>Выдать мут</span>
-              <button className="action-modal-close" onClick={() => setShowMuteModal(false)}><CloseIcon /></button>
+              <button className="close-btn" onClick={() => { setShowMuteModal(false); setDurationDropdownOpen(false) }}>×</button>
             </div>
-            <div className="action-modal-content">
-              <div className="action-modal-player">
-                <img src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
-                <div className="player-info-col">
-                  <span className="player-name">{selectedPlayer.name}</span>
-                  <span className="player-steamid">{selectedPlayer.steam_id}</span>
-                </div>
-              </div>
-              <div className="action-input-group">
+            <div className="mute-modal-player">
+              <span>Игрок: <strong>{selectedPlayer.name}</strong></span>
+            </div>
+            <div className="mute-modal-body">
+              <div className="mute-field">
                 <label>Причина</label>
-                <input type="text" placeholder="Нарушение правил чата" value={muteReason} onChange={e => setMuteReason(e.target.value)} />
+                <input 
+                  type="text"
+                  placeholder="Введите причину мута"
+                  value={muteReason}
+                  onChange={e => setMuteReason(e.target.value)}
+                  autoFocus
+                />
               </div>
-              <div className="action-input-group">
+              <div className="mute-field">
                 <label>Длительность</label>
-                <div className="custom-select-wrapper">
-                  <select value={muteDuration} onChange={e => setMuteDuration(e.target.value)}>
-                    <option value="10m">10 минут</option>
-                    <option value="30m">30 минут</option>
-                    <option value="1h">1 час</option>
-                    <option value="6h">6 часов</option>
-                    <option value="1d">1 день</option>
-                    <option value="7d">7 дней</option>
-                    <option value="0">Навсегда</option>
-                  </select>
-                  <ChevronDownIcon />
+                <div className="duration-select-wrapper">
+                  <div 
+                    className={`duration-select-trigger ${durationDropdownOpen ? 'open' : ''}`}
+                    onClick={() => setDurationDropdownOpen(!durationDropdownOpen)}
+                  >
+                    <span>{durationOptions.find(o => o.value === muteDuration)?.label}</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M6 9l6 6 6-6"/>
+                    </svg>
+                  </div>
+                  {durationDropdownOpen && (
+                    <div className="duration-select-dropdown">
+                      {durationOptions.map(option => (
+                        <div 
+                          key={option.value}
+                          className={`duration-option ${muteDuration === option.value ? 'selected' : ''}`}
+                          onClick={() => {
+                            setMuteDuration(option.value)
+                            setDurationDropdownOpen(false)
+                          }}
+                        >
+                          <div className="duration-option-icon"></div>
+                          {option.label}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            </div>
-            <div className="action-modal-footer">
-              <button className="btn-cancel" onClick={() => setShowMuteModal(false)}>Отмена</button>
-              <button className="btn-action destructive" onClick={handleMute} disabled={!muteReason}>Выдать мут</button>
+              <button className="mute-submit-btn" onClick={handleMute} disabled={!muteReason.trim()}>
+                Выдать мут
+              </button>
             </div>
           </div>
         </div>
