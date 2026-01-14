@@ -279,7 +279,7 @@ export default function Players() {
       } catch {}
     }
     fetchPlayers()
-    const interval = setInterval(fetchPlayers, 10000)
+    const interval = setInterval(fetchPlayers, 60000)
     return () => clearInterval(interval)
   }, [])
 
