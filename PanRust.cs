@@ -321,7 +321,7 @@ namespace Oxide.Plugins
                 if (mute.expired_at == 0 || mute.expired_at > now)
                 {
                     var leftTime = mute.expired_at == 0 ? "<color=#ff6b6b>навсегда</color>" : $"<color=#ffd93d>{GetTimeLeft(mute.expired_at - now)}</color>";
-                    SendReply(p, $"<size=16><color=#ef4444>🔇 ВЫ В МУТЕ</color></size>\n<size=12><color=#888>Причина:</color> <color=#fff>{mute.reason}</color>\n<color=#888>Осталось:</color> {leftTime}</size>");
+                    SendReply(p, $"<size=16><color=#ef4444>ВЫ В МУТЕ</color></size>\n<size=12><color=#888>Причина:</color> <color=#fff>{mute.reason}</color>\n<color=#888>Осталось:</color> {leftTime}</size>");
                     return;
                 }
                 else
@@ -499,13 +499,13 @@ namespace Oxide.Plugins
                                     if (target?.IsConnected == true)
                                     {
                                         var duration = cmd.expired_at == 0 ? "<color=#ff6b6b>навсегда</color>" : $"<color=#ffd93d>{GetTimeLeft(cmd.expired_at - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds())}</color>";
-                                        SendReply(target, $"<size=16><color=#ef4444>🔇 ВЫ ПОЛУЧИЛИ МУТ</color></size>\n<size=12><color=#888>Причина:</color> <color=#fff>{cmd.reason}</color>\n<color=#888>Длительность:</color> {duration}</size>");
+                                        SendReply(target, $"<size=16><color=#ef4444>ВЫ ПОЛУЧИЛИ МУТ</color></size>\n<size=12><color=#888>Причина:</color> <color=#fff>{cmd.reason}</color>\n<color=#888>Длительность:</color> {duration}</size>");
                                     }
                                     if (cmd.broadcast)
                                     {
                                         var durationText = cmd.expired_at == 0 ? "навсегда" : GetTimeLeft(cmd.expired_at - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                                         foreach (var p in BasePlayer.activePlayerList)
-                                            SendReply(p, $"<size=14><color=#ef4444>🔇</color> <color=#fcd34d>{target?.displayName ?? cmd.target_steam_id}</color> <color=#888>получил мут</color></size>\n<size=11><color=#666>Причина:</color> <color=#aaa>{cmd.reason}</color> <color=#666>•</color> <color=#666>Срок:</color> <color=#aaa>{durationText}</color></size>");
+                                            SendReply(p, $"<size=14><color=#ef4444>[МУТ]</color> <color=#fcd34d>{target?.displayName ?? cmd.target_steam_id}</color> <color=#888>получил мут</color></size>\n<size=11><color=#666>Причина:</color> <color=#aaa>{cmd.reason}</color> <color=#666>•</color> <color=#666>Срок:</color> <color=#aaa>{durationText}</color></size>");
                                     }
                                     Puts($"[Mute] {cmd.target_steam_id} - {cmd.reason}");
                                 }
@@ -518,7 +518,7 @@ namespace Oxide.Plugins
                                     {
                                         var target = BasePlayer.Find(cmd.target_steam_id);
                                         if (target?.IsConnected == true)
-                                            SendReply(target, "<size=16><color=#22c55e>🔊 МУТ СНЯТ</color></size>\n<size=12><color=#888>Теперь вы снова можете писать в чат</color></size>");
+                                            SendReply(target, "<size=16><color=#22c55e>МУТ СНЯТ</color></size>\n<size=12><color=#888>Теперь вы снова можете писать в чат</color></size>");
                                         Puts($"[Unmute] {cmd.target_steam_id}");
                                     }
                                 }
