@@ -941,3 +941,16 @@
   color: #555;
   margin: 0;
 }
+
+
+/* Search loading indicator */
+.search-loading-indicator {
+  color: #666;
+  font-size: 14px;
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}

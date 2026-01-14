@@ -45,6 +45,8 @@ export default function Chat() {
   const [showPlayerSearch, setShowPlayerSearch] = useState(false)
   const [playerSearchQuery, setPlayerSearchQuery] = useState('')
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState(0)
+  const [dbPlayers, setDbPlayers] = useState<Player[]>([])
+  const [loadingPlayers, setLoadingPlayers] = useState(false)
   const calendarRef = useRef<HTMLDivElement>(null)
   const playerSearchRef = useRef<HTMLDivElement>(null)
 
@@ -189,6 +191,35 @@ export default function Chat() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  // Поиск игроков из БД при вводе
+  useEffect(() => {
+    if (!playerSearchQuery.trim()) {
+      setDbPlayers([])
+      return
+    }
+    
+    const searchPlayers = async () => {
+      setLoadingPlayers(true)
+      try {
+        const res = await fetch(`/api/players/search?q=${encodeURIComponent(playerSearchQuery)}`)
+        if (res.ok) {
+          const data = await res.json()
+          setDbPlayers(data.slice(0, 20).map((p: any) => ({
+            id: p.steam_id,
+            steam_id: p.steam_id,
+            name: p.steam_name || p.name,
+            avatar: p.avatar,
+            role: 'офлайн'
+          })))
+        }
+      } catch {}
+      setLoadingPlayers(false)
+    }
+    
+    const debounce = setTimeout(searchPlayers, 300)
+    return () => clearTimeout(debounce)
+  }, [playerSearchQuery])
+
   // Фильтрация сообщений
   const filteredMessages = messages.filter(msg => {
     // Фильтр по тексту
@@ -230,17 +261,37 @@ export default function Chat() {
     return Array.from(uniquePlayers.values())
   }, [messages])
 
+  // Объединяем игроков из чата и из БД (без дубликатов)
+  const allPlayers = React.useMemo(() => {
+    const combined = new Map<string, Player>()
+    
+    // Сначала добавляем игроков из чата (они приоритетнее)
+    chatPlayers.forEach(p => combined.set(p.steam_id, p))
+    
+    // Добавляем игроков из БД (если их нет в чате)
+    dbPlayers.forEach(p => {
+      if (!combined.has(p.steam_id)) {
+        combined.set(p.steam_id, p)
+      }
+    })
+    
+    return Array.from(combined.values())
+  }, [chatPlayers, dbPlayers])
+
   // Фильтрация игроков по поиску
-  const filteredPlayers = chatPlayers.filter(p => 
-    p.name.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
-    p.steam_id.includes(playerSearchQuery)
-  )
+  const filteredPlayers = playerSearchQuery.trim() 
+    ? allPlayers 
+    : chatPlayers.filter(p => 
+        p.name.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
+        p.steam_id.includes(playerSearchQuery)
+      )
 
   // Навигация по списку игроков
   const handlePlayerSearchKeyDown = (e: React.KeyboardEvent) => {
+    const maxIndex = filteredPlayers.length - 1
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setSelectedPlayerIndex(i => Math.min(i + 1, filteredPlayers.length - 1))
+      setSelectedPlayerIndex(i => Math.min(i + 1, maxIndex))
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
       setSelectedPlayerIndex(i => Math.max(i - 1, 0))
@@ -506,30 +557,31 @@ export default function Chat() {
                   onKeyDown={handlePlayerSearchKeyDown}
                   autoFocus
                 />
+                {loadingPlayers && <span className="search-loading-indicator">...</span>}
               </div>
               <div className="player-search-list">
-                {chatPlayers.length === 0 ? (
+                {!playerSearchQuery.trim() && chatPlayers.length === 0 ? (
                   <div className="player-search-empty">
                     <EmptyListIcon />
-                    <span>Нет игроков в чате</span>
-                    <p>Игроки появятся когда напишут сообщение</p>
+                    <span>Введите ник для поиска</span>
+                    <p>Поиск по всем игрокам в базе данных</p>
                   </div>
-                ) : filteredPlayers.length === 0 ? (
+                ) : filteredPlayers.length === 0 && !loadingPlayers ? (
                   <div className="player-search-empty">
                     <SearchEmptyIcon />
                     <span>Ничего не найдено</span>
                     <p>Попробуйте изменить запрос</p>
                   </div>
                 ) : (
-                  filteredPlayers.slice(0, 10).map((player, idx) => (
+                  filteredPlayers.slice(0, 15).map((player, idx) => (
                     <div 
                       key={player.id}
                       className={`player-search-item ${idx === selectedPlayerIndex ? 'selected' : ''}`}
                       onClick={() => selectPlayer(player)}
                     >
                       <div className="player-avatar-wrapper">
-                        <img src={player.avatar || '/default-avatar.png'} alt="" />
-                        <span className="player-status offline"></span>
+                        <img src={player.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                        <span className={`player-status ${player.role === 'офлайн' ? 'offline' : ''}`}></span>
                       </div>
                       <div className="player-info">
                         <span className="player-name">{player.name}</span>
