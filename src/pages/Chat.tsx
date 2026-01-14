@@ -48,6 +48,60 @@ export default function Chat() {
   const calendarRef = useRef<HTMLDivElement>(null)
   const playerSearchRef = useRef<HTMLDivElement>(null)
 
+  // Календарь
+  const [calendarMonth, setCalendarMonth] = useState(new Date())
+  const [selectingDate, setSelectingDate] = useState<'from' | 'to'>('from')
+
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const days: (Date | null)[] = []
+    
+    // Добавляем пустые дни в начале (понедельник = 0)
+    let startDay = firstDay.getDay() - 1
+    if (startDay < 0) startDay = 6
+    for (let i = 0; i < startDay; i++) days.push(null)
+    
+    // Добавляем дни месяца
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      days.push(new Date(year, month, i))
+    }
+    return days
+  }
+
+  const isDateInRange = (date: Date) => {
+    if (!dateFrom || !dateTo) return false
+    return date >= dateFrom && date <= dateTo
+  }
+
+  const isDateSelected = (date: Date) => {
+    if (dateFrom && date.toDateString() === dateFrom.toDateString()) return true
+    if (dateTo && date.toDateString() === dateTo.toDateString()) return true
+    return false
+  }
+
+  const handleDateClick = (date: Date) => {
+    if (selectingDate === 'from') {
+      setDateFrom(date)
+      setDateTo(null)
+      setSelectingDate('to')
+    } else {
+      if (dateFrom && date < dateFrom) {
+        setDateFrom(date)
+        setDateTo(dateFrom)
+      } else {
+        setDateTo(date)
+      }
+      setSelectingDate('from')
+    }
+  }
+
+  const monthNames = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 
+                      'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+  const dayNames = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
+
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }
@@ -258,31 +312,43 @@ export default function Chat() {
             </button>
             {showCalendar && (
               <div className="calendar-dropdown">
-                <div className="calendar-header">
-                  <span>Период</span>
-                  {(dateFrom || dateTo) && (
-                    <button className="clear-btn" onClick={clearDateFilter}>Сбросить</button>
-                  )}
+                <div className="calendar-nav">
+                  <button onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1))}>
+                    <ChevronLeftIcon />
+                  </button>
+                  <span>{monthNames[calendarMonth.getMonth()]} {calendarMonth.getFullYear()}</span>
+                  <button onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1))}>
+                    <ChevronRightIcon />
+                  </button>
                 </div>
-                <div className="calendar-inputs">
-                  <div className="date-input-group">
-                    <label>От</label>
-                    <input 
-                      type="date" 
-                      value={dateFrom ? dateFrom.toISOString().split('T')[0] : ''}
-                      onChange={e => setDateFrom(e.target.value ? new Date(e.target.value) : null)}
-                    />
+                <div className="calendar-weekdays">
+                  {dayNames.map(d => <span key={d}>{d}</span>)}
+                </div>
+                <div className="calendar-days">
+                  {getDaysInMonth(calendarMonth).map((date, i) => (
+                    <button
+                      key={i}
+                      className={`calendar-day ${!date ? 'empty' : ''} ${date && isDateSelected(date) ? 'selected' : ''} ${date && isDateInRange(date) ? 'in-range' : ''} ${date && date.toDateString() === new Date().toDateString() ? 'today' : ''}`}
+                      onClick={() => date && handleDateClick(date)}
+                      disabled={!date}
+                    >
+                      {date?.getDate()}
+                    </button>
+                  ))}
+                </div>
+                <div className="calendar-footer">
+                  <div className="calendar-range-info">
+                    <span>{dateFrom ? dateFrom.toLocaleDateString('ru') : 'Начало'}</span>
+                    <span>—</span>
+                    <span>{dateTo ? dateTo.toLocaleDateString('ru') : 'Конец'}</span>
                   </div>
-                  <div className="date-input-group">
-                    <label>До</label>
-                    <input 
-                      type="date"
-                      value={dateTo ? dateTo.toISOString().split('T')[0] : ''}
-                      onChange={e => setDateTo(e.target.value ? new Date(e.target.value) : null)}
-                    />
+                  <div className="calendar-actions">
+                    {(dateFrom || dateTo) && (
+                      <button className="clear-btn" onClick={clearDateFilter}>Сбросить</button>
+                    )}
+                    <button className="apply-btn" onClick={() => setShowCalendar(false)}>Применить</button>
                   </div>
                 </div>
-                <button className="apply-btn" onClick={() => setShowCalendar(false)}>Применить</button>
               </div>
             )}
           </div>
@@ -447,7 +513,10 @@ export default function Chat() {
                       className={`player-search-item ${idx === selectedPlayerIndex ? 'selected' : ''}`}
                       onClick={() => selectPlayer(player)}
                     >
-                      <img src={player.avatar || '/default-avatar.png'} alt="" />
+                      <div className="player-avatar-wrapper">
+                        <img src={player.avatar || '/default-avatar.png'} alt="" />
+                        <span className="player-status offline"></span>
+                      </div>
                       <div className="player-info">
                         <span className="player-name">{player.name}</span>
                         <span className="player-role">{player.role || 'игрок'}</span>
@@ -492,3 +561,5 @@ function PlayerIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><pat
 function SearchIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z"/></svg> }
 function EmptyListIcon() { return <svg viewBox="0 0 24 24" width="48" height="48" fill="#555"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-5-9h10v2H7z"/></svg> }
 function SearchEmptyIcon() { return <svg viewBox="0 0 24 24" width="48" height="48" fill="#555"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg> }
+function ChevronLeftIcon() { return <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg> }
+function ChevronRightIcon() { return <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg> }
