@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 
@@ -44,7 +44,6 @@ export default function Chat() {
   const [dateTo, setDateTo] = useState<Date | null>(null)
   const [showPlayerSearch, setShowPlayerSearch] = useState(false)
   const [playerSearchQuery, setPlayerSearchQuery] = useState('')
-  const [players, setPlayers] = useState<Player[]>([])
   const [selectedPlayerIndex, setSelectedPlayerIndex] = useState(0)
   const calendarRef = useRef<HTMLDivElement>(null)
   const playerSearchRef = useRef<HTMLDivElement>(null)
@@ -131,33 +130,10 @@ export default function Chat() {
       if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
         setShowCalendar(false)
       }
-      if (playerSearchRef.current && !playerSearchRef.current.contains(e.target as Node)) {
-        setShowPlayerSearch(false)
-      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
-
-  // Загрузка списка игроков для поиска
-  useEffect(() => {
-    if (showPlayerSearch) {
-      fetchPlayers()
-    }
-  }, [showPlayerSearch])
-
-  const fetchPlayers = async () => {
-    try {
-      const res = await fetch('/api/players?limit=50')
-      if (res.ok) {
-        const data = await res.json()
-        const playersList = data.players || []
-        setPlayers(playersList)
-        return playersList
-      }
-    } catch {}
-    return []
-  }
 
   // Фильтрация сообщений
   const filteredMessages = messages.filter(msg => {
@@ -183,8 +159,25 @@ export default function Chat() {
     )
   }
 
+  // Получаем уникальных игроков из сообщений чата
+  const chatPlayers = React.useMemo(() => {
+    const uniquePlayers = new Map<string, Player>()
+    messages.forEach(msg => {
+      if (!uniquePlayers.has(msg.steam_id)) {
+        uniquePlayers.set(msg.steam_id, {
+          id: msg.steam_id,
+          steam_id: msg.steam_id,
+          name: msg.name,
+          avatar: msg.avatar,
+          role: msg.is_admin ? 'сотрудник проекта' : 'игрок'
+        })
+      }
+    })
+    return Array.from(uniquePlayers.values())
+  }, [messages])
+
   // Фильтрация игроков по поиску
-  const filteredPlayers = players.filter(p => 
+  const filteredPlayers = chatPlayers.filter(p => 
     p.name.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
     p.steam_id.includes(playerSearchQuery)
   )
@@ -242,10 +235,6 @@ export default function Chat() {
           <button 
             className={`filter-btn ${textFilter ? 'active' : ''}`}
             onClick={() => { 
-              if (messages.length === 0) {
-                showToast('Список сообщений пуст', 'info')
-                return
-              }
               setTempTextFilter(textFilter)
               setShowTextFilterModal(true) 
             }}
@@ -258,13 +247,7 @@ export default function Chat() {
           <div className="calendar-wrapper" ref={calendarRef}>
             <button 
               className={`filter-btn ${dateFrom || dateTo ? 'active' : ''}`}
-              onClick={() => {
-                if (messages.length === 0) {
-                  showToast('Список сообщений пуст', 'info')
-                  return
-                }
-                setShowCalendar(!showCalendar)
-              }}
+              onClick={() => setShowCalendar(!showCalendar)}
               title="Фильтр по дате"
             >
               <CalendarIcon />
@@ -303,18 +286,7 @@ export default function Chat() {
           {/* Кнопка поиска по игроку */}
           <button 
             className={`filter-btn ${playerSteamId ? 'active' : ''}`}
-            onClick={async () => {
-              if (showPlayerSearch) {
-                setShowPlayerSearch(false)
-                return
-              }
-              const playersList = await fetchPlayers()
-              if (playersList.length === 0) {
-                showToast('Список игроков пуст', 'info')
-              } else {
-                setShowPlayerSearch(true)
-              }
-            }}
+            onClick={() => setShowPlayerSearch(!showPlayerSearch)}
             title="Поиск по игроку"
           >
             <PlayerIcon />
@@ -448,9 +420,21 @@ export default function Chat() {
                   autoFocus
                 />
               </div>
-              {filteredPlayers.length > 0 && (
-                <div className="player-search-list">
-                  {filteredPlayers.slice(0, 10).map((player, idx) => (
+              <div className="player-search-list">
+                {chatPlayers.length === 0 ? (
+                  <div className="player-search-empty">
+                    <EmptyListIcon />
+                    <span>Нет игроков в чате</span>
+                    <p>Игроки появятся когда напишут сообщение</p>
+                  </div>
+                ) : filteredPlayers.length === 0 ? (
+                  <div className="player-search-empty">
+                    <SearchEmptyIcon />
+                    <span>Ничего не найдено</span>
+                    <p>Попробуйте изменить запрос</p>
+                  </div>
+                ) : (
+                  filteredPlayers.slice(0, 10).map((player, idx) => (
                     <div 
                       key={player.id}
                       className={`player-search-item ${idx === selectedPlayerIndex ? 'selected' : ''}`}
@@ -459,12 +443,12 @@ export default function Chat() {
                       <img src={player.avatar || '/default-avatar.png'} alt="" />
                       <div className="player-info">
                         <span className="player-name">{player.name}</span>
-                        <span className="player-role">{player.role || 'сотрудник проекта'}</span>
+                        <span className="player-role">{player.role || 'игрок'}</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                  ))
+                )}
+              </div>
               <div className="player-search-footer">
                 <div className="kbd-hint">
                   <span className="kbd">↓</span>
@@ -499,3 +483,5 @@ function TextSearchIcon() { return <svg viewBox="0 0 24 24" fill="currentColor">
 function CalendarIcon() { return <svg viewBox="0 0 17 17" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M5.66667 1.41699C6.05786 1.41699 6.375 1.73413 6.375 2.12533V2.83366H10.625V2.12533C10.625 1.73413 10.9421 1.41699 11.3333 1.41699C11.7245 1.41699 12.0417 1.73413 12.0417 2.12533V2.83366H12.75C13.9236 2.83366 14.875 3.78506 14.875 4.95866V12.7503C14.875 13.924 13.9236 14.8753 12.75 14.8753H4.25C3.0764 14.8753 2.125 13.924 2.125 12.7503V4.95866C2.125 3.78506 3.0764 2.83366 4.25 2.83366H4.95833V2.12533C4.95833 1.73413 5.27547 1.41699 5.66667 1.41699ZM3.54167 7.79199V12.7503C3.54167 13.1415 3.8588 13.4587 4.25 13.4587H12.75C13.1412 13.4587 13.4583 13.1415 13.4583 12.7503V7.79199H3.54167Z"/></svg> }
 function PlayerIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10ZM12.0002 20C9.76181 20 7.73814 19.0807 6.28613 17.5991C7.61787 16.005 9.60491 15 12.0002 15C14.3955 15 16.3825 16.005 17.7143 17.5991C16.2623 19.0807 14.2386 20 12.0002 20Z"/></svg> }
 function SearchIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z"/></svg> }
+function EmptyListIcon() { return <svg viewBox="0 0 24 24" width="48" height="48" fill="#555"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-5-9h10v2H7z"/></svg> }
+function SearchEmptyIcon() { return <svg viewBox="0 0 24 24" width="48" height="48" fill="#555"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg> }
