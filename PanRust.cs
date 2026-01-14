@@ -329,7 +329,7 @@ namespace Oxide.Plugins
                     var leftTime = mute.expired_at == 0 ? "навсегда" : GetTimeLeft(mute.expired_at - now);
                     if (connection.player is BasePlayer player)
                     {
-                        SendReply(player, $"<color=#ef4444>Вы замьючены!</color>\n<size=12>Причина: {mute.reason}\nОсталось: {leftTime}</size>");
+                        SendReply(player, $"Вы замьючены!<size=12>\n- причина: {mute.reason}\n- осталось: {leftTime}</size>");
                     }
                     return false;
                 }
@@ -516,16 +516,15 @@ namespace Oxide.Plugins
                                         created_at = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
                                     };
                                     var target = BasePlayer.Find(muteSteamId);
+                                    var duration = cmd.expired_at == 0 ? "навсегда" : GetTimeLeft(cmd.expired_at - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                                     if (target?.IsConnected == true)
                                     {
-                                        var duration = cmd.expired_at == 0 ? "навсегда" : GetTimeLeft(cmd.expired_at - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
-                                        SendReply(target, $"<color=#ef4444>Вы получили мут.</color> Причина: {cmd.reason}. Срок: {duration}");
+                                        SendReply(target, $"Вы замьючены!<size=12>\n- причина: {cmd.reason}\n- осталось: {duration}</size>");
                                     }
                                     if (cmd.broadcast)
                                     {
-                                        var durationText = cmd.expired_at == 0 ? "навсегда" : GetTimeLeft(cmd.expired_at - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
                                         foreach (var p in BasePlayer.activePlayerList)
-                                            SendReply(p, $"<color=#fcd34d>{target?.displayName ?? muteSteamId}</color> получил мут. Причина: {cmd.reason}. Срок: {durationText}");
+                                            SendReply(p, $"Игрок <color=#5af>{target?.displayName ?? muteSteamId}</color> получил мут.\n<size=12>- причина: {cmd.reason}\n- срок: {duration}</size>");
                                     }
                                     Puts($"[Mute] {muteSteamId} - {cmd.reason}");
                                 }
@@ -539,7 +538,7 @@ namespace Oxide.Plugins
                                     {
                                         var target = BasePlayer.Find(unmuteSteamId);
                                         if (target?.IsConnected == true)
-                                            SendReply(target, "<color=#22c55e>Ваш мут снят.</color>");
+                                            SendReply(target, "Ваш мут снят.");
                                         Puts($"[Unmute] {unmuteSteamId}");
                                     }
                                 }
