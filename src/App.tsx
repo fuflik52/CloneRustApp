@@ -24,9 +24,10 @@ import { useState, useEffect, createContext, useContext } from 'react'
 interface ServerContextType {
   serverSlug: string | null
   serverName: string | null
+  serverId: string | null
 }
 
-const ServerContext = createContext<ServerContextType>({ serverSlug: null, serverName: null })
+const ServerContext = createContext<ServerContextType>({ serverSlug: null, serverName: null, serverId: null })
 export const useServer = () => useContext(ServerContext)
 
 // Компонент с сайдбаром для страниц проекта
@@ -38,6 +39,8 @@ function ProjectLayout() {
     localStorage.getItem('sidebarCollapsed') === 'true'
   )
   const [serverName, setServerName] = useState<string | null>(null)
+  const [serverLogo, setServerLogo] = useState<string | null>(null)
+  const [serverId, setServerId] = useState<string | null>(null)
   const { showToast } = useToast()
 
   // Загружаем имя сервера
@@ -53,6 +56,8 @@ function ProjectLayout() {
           )
           if (server) {
             setServerName(server.name)
+            setServerLogo(server.logo || null)
+            setServerId(server.id)
           }
         }
       } catch {}
@@ -114,7 +119,7 @@ function ProjectLayout() {
   const closeMobileMenu = () => setMobileMenuOpen(false)
 
   return (
-    <ServerContext.Provider value={{ serverSlug: serverSlug || null, serverName }}>
+    <ServerContext.Provider value={{ serverSlug: serverSlug || null, serverName, serverId }}>
       <header className="mobile-header">
         <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
           <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
@@ -138,6 +143,7 @@ function ProjectLayout() {
         onMobileClose={closeMobileMenu}
         serverSlug={serverSlug}
         serverName={serverName}
+        serverLogo={serverLogo}
       />
       <main className={`main-content ${collapsed ? 'collapsed' : ''}`}>
         <Routes>

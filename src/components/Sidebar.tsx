@@ -10,11 +10,14 @@ interface SidebarProps {
   onMobileClose?: () => void
   serverSlug?: string
   serverName?: string | null
+  serverLogo?: string | null
 }
 
-export default function Sidebar({ collapsed, onToggle, onSearchClick, mobileOpen, onMobileClose, serverSlug, serverName }: SidebarProps) {
+export default function Sidebar({ collapsed, onToggle, onSearchClick, mobileOpen, onMobileClose, serverSlug, serverName, serverLogo }: SidebarProps) {
   const location = useLocation()
   const basePath = serverSlug ? `/${serverSlug}` : ''
+  
+  const defaultLogo = 'https://s3.rustapp.io/avatar-project/1755276829361-35f5b20e8642407589c95dc2.png'
 
   const handleNavClick = () => {
     if (onMobileClose) onMobileClose()
@@ -24,7 +27,7 @@ export default function Sidebar({ collapsed, onToggle, onSearchClick, mobileOpen
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileOpen ? 'mobile-open' : ''}`}>
       <div className="header">
         <NavLink to="/profile" className="logo-wrapper">
-          <img className="avatar" src="https://s3.rustapp.io/avatar-project/1755276829361-35f5b20e8642407589c95dc2.png" alt="" />
+          <img className="avatar" src={serverLogo || defaultLogo} alt="" />
           <span className="logo-text">{serverName || 'PAN RUST'}</span>
         </NavLink>
         <div className="nav-btn" onClick={onToggle}>
