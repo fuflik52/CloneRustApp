@@ -15,6 +15,14 @@ interface ChatMessage {
   date: string
 }
 
+interface Player {
+  id: string
+  steam_id: string
+  name: string
+  avatar: string
+  role?: string
+}
+
 export default function Chat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
@@ -26,6 +34,20 @@ export default function Chat() {
   const messagesRef = useRef<ChatMessage[]>([])
   const playerSteamId = searchParams.get('player')
   const navigate = useNavigate()
+
+  // Фильтры
+  const [textFilter, setTextFilter] = useState('')
+  const [showTextFilterModal, setShowTextFilterModal] = useState(false)
+  const [tempTextFilter, setTempTextFilter] = useState('')
+  const [showCalendar, setShowCalendar] = useState(false)
+  const [dateFrom, setDateFrom] = useState<Date | null>(null)
+  const [dateTo, setDateTo] = useState<Date | null>(null)
+  const [showPlayerSearch, setShowPlayerSearch] = useState(false)
+  const [playerSearchQuery, setPlayerSearchQuery] = useState('')
+  const [players, setPlayers] = useState<Player[]>([])
+  const [selectedPlayerIndex, setSelectedPlayerIndex] = useState(0)
+  const calendarRef = useRef<HTMLDivElement>(null)
+  const playerSearchRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -103,8 +125,219 @@ export default function Chat() {
     return () => document.removeEventListener('click', handleClick)
   }, [])
 
+  // Закрытие календаря и поиска игроков при клике вне
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (calendarRef.current && !calendarRef.current.contains(e.target as Node)) {
+        setShowCalendar(false)
+      }
+      if (playerSearchRef.current && !playerSearchRef.current.contains(e.target as Node)) {
+        setShowPlayerSearch(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  // Загрузка списка игроков для поиска
+  useEffect(() => {
+    if (showPlayerSearch) {
+      fetchPlayers()
+    }
+  }, [showPlayerSearch])
+
+  const fetchPlayers = async () => {
+    try {
+      const res = await fetch('/api/players?limit=50')
+      if (res.ok) {
+        const data = await res.json()
+        const playersList = data.players || []
+        setPlayers(playersList)
+        return playersList
+      }
+    } catch {}
+    return []
+  }
+
+  // Фильтрация сообщений
+  const filteredMessages = messages.filter(msg => {
+    // Фильтр по тексту
+    if (textFilter && !msg.message.toLowerCase().includes(textFilter.toLowerCase()) && 
+        !msg.name.toLowerCase().includes(textFilter.toLowerCase())) {
+      return false
+    }
+    // Фильтр по дате
+    if (dateFrom && msg.timestamp < dateFrom.getTime()) return false
+    if (dateTo && msg.timestamp > dateTo.getTime() + 86400000) return false
+    return true
+  })
+
+  // Подсветка текста
+  const highlightText = (text: string, search: string) => {
+    if (!search) return text
+    const parts = text.split(new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'))
+    return parts.map((part, i) => 
+      part.toLowerCase() === search.toLowerCase() 
+        ? <span key={i} className="highlight">{part}</span> 
+        : part
+    )
+  }
+
+  // Фильтрация игроков по поиску
+  const filteredPlayers = players.filter(p => 
+    p.name.toLowerCase().includes(playerSearchQuery.toLowerCase()) ||
+    p.steam_id.includes(playerSearchQuery)
+  )
+
+  // Навигация по списку игроков
+  const handlePlayerSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedPlayerIndex(i => Math.min(i + 1, filteredPlayers.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedPlayerIndex(i => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter' && filteredPlayers[selectedPlayerIndex]) {
+      e.preventDefault()
+      selectPlayer(filteredPlayers[selectedPlayerIndex])
+    } else if (e.key === 'Escape') {
+      setShowPlayerSearch(false)
+    }
+  }
+
+  const selectPlayer = (player: Player) => {
+    setSearchParams({ player: player.steam_id })
+    setShowPlayerSearch(false)
+    setPlayerSearchQuery('')
+  }
+
+  const applyTextFilter = () => {
+    setTextFilter(tempTextFilter)
+    setShowTextFilterModal(false)
+  }
+
+  const clearTextFilter = () => {
+    setTextFilter('')
+    setTempTextFilter('')
+  }
+
+  const clearDateFilter = () => {
+    setDateFrom(null)
+    setDateTo(null)
+  }
+
+  const formatDateRange = () => {
+    if (!dateFrom && !dateTo) return null
+    const from = dateFrom ? dateFrom.toLocaleDateString('ru') : '...'
+    const to = dateTo ? dateTo.toLocaleDateString('ru') : '...'
+    return `${from} - ${to}`
+  }
+
   return (
     <div className="chat-page">
+      {/* Панель фильтров */}
+      <div className="chat-header-controls">
+        <div className="chat-filter-buttons">
+          {/* Кнопка фильтра по тексту */}
+          <button 
+            className={`filter-btn ${textFilter ? 'active' : ''}`}
+            onClick={() => { 
+              if (messages.length === 0) {
+                showToast('Список сообщений пуст', 'info')
+                return
+              }
+              setTempTextFilter(textFilter)
+              setShowTextFilterModal(true) 
+            }}
+            title="Фильтр по тексту"
+          >
+            <TextSearchIcon />
+          </button>
+
+          {/* Кнопка календаря */}
+          <div className="calendar-wrapper" ref={calendarRef}>
+            <button 
+              className={`filter-btn ${dateFrom || dateTo ? 'active' : ''}`}
+              onClick={() => {
+                if (messages.length === 0) {
+                  showToast('Список сообщений пуст', 'info')
+                  return
+                }
+                setShowCalendar(!showCalendar)
+              }}
+              title="Фильтр по дате"
+            >
+              <CalendarIcon />
+            </button>
+            {showCalendar && (
+              <div className="calendar-dropdown">
+                <div className="calendar-header">
+                  <span>Период</span>
+                  {(dateFrom || dateTo) && (
+                    <button className="clear-btn" onClick={clearDateFilter}>Сбросить</button>
+                  )}
+                </div>
+                <div className="calendar-inputs">
+                  <div className="date-input-group">
+                    <label>От</label>
+                    <input 
+                      type="date" 
+                      value={dateFrom ? dateFrom.toISOString().split('T')[0] : ''}
+                      onChange={e => setDateFrom(e.target.value ? new Date(e.target.value) : null)}
+                    />
+                  </div>
+                  <div className="date-input-group">
+                    <label>До</label>
+                    <input 
+                      type="date"
+                      value={dateTo ? dateTo.toISOString().split('T')[0] : ''}
+                      onChange={e => setDateTo(e.target.value ? new Date(e.target.value) : null)}
+                    />
+                  </div>
+                </div>
+                <button className="apply-btn" onClick={() => setShowCalendar(false)}>Применить</button>
+              </div>
+            )}
+          </div>
+
+          {/* Кнопка поиска по игроку */}
+          <button 
+            className={`filter-btn ${playerSteamId ? 'active' : ''}`}
+            onClick={async () => {
+              if (showPlayerSearch) {
+                setShowPlayerSearch(false)
+                return
+              }
+              const playersList = await fetchPlayers()
+              if (playersList.length === 0) {
+                showToast('Список игроков пуст', 'info')
+              } else {
+                setShowPlayerSearch(true)
+              }
+            }}
+            title="Поиск по игроку"
+          >
+            <PlayerIcon />
+          </button>
+        </div>
+
+        {/* Активные фильтры */}
+        <div className="active-filters">
+          {textFilter && (
+            <div className="filter-tag">
+              <span>Текст: {textFilter}</span>
+              <button onClick={clearTextFilter}>×</button>
+            </div>
+          )}
+          {formatDateRange() && (
+            <div className="filter-tag">
+              <span>{formatDateRange()}</span>
+              <button onClick={clearDateFilter}>×</button>
+            </div>
+          )}
+        </div>
+      </div>
+
       {playerSteamId && (
         <div className="chat-filter-bar">
           <span>Сообщения игрока: {playerSteamId}</span>
@@ -113,14 +346,14 @@ export default function Chat() {
       )}
       <div className="chat-container">
         <div className="chat-messages">
-          {messages.length === 0 ? (
+          {filteredMessages.length === 0 ? (
             <div className="chat-empty">
               <ChatEmptyIcon />
               <span>Нет сообщений</span>
-              <p>Сообщения из игрового чата будут отображаться здесь</p>
+              <p>{textFilter || dateFrom || dateTo ? 'Сообщения не найдены по заданным фильтрам' : 'Сообщения из игрового чата будут отображаться здесь'}</p>
             </div>
           ) : (
-            messages.map(msg => (
+            filteredMessages.map(msg => (
               <div 
                 key={msg.id} 
                 className={`chat-message ${msg.is_admin ? 'admin' : ''} ${hoveredMessage === msg.id ? 'hovered' : ''}`}
@@ -145,8 +378,10 @@ export default function Chat() {
                 <span className="message-content">
                   {msg.is_team && <span className="team-badge">[TEAM]</span>}
                   {msg.avatar && <img src={msg.avatar} alt="" className="message-avatar" onClick={() => handlePlayerClick(msg.steam_id)} />}
-                  <button className={`message-author ${msg.is_admin ? 'admin' : ''}`} onClick={() => handlePlayerClick(msg.steam_id)}>{msg.name}</button>
-                  <span className="message-text">{msg.message}</span>
+                  <button className={`message-author ${msg.is_admin ? 'admin' : ''}`} onClick={() => handlePlayerClick(msg.steam_id)}>
+                    {highlightText(msg.name, textFilter)}
+                  </button>
+                  <span className="message-text">{highlightText(msg.message, textFilter)}</span>
                 </span>
               </div>
             ))
@@ -173,6 +408,82 @@ export default function Chat() {
           <button className="destructive">Выдать мут</button>
         </div>
       )}
+
+      {/* Модальное окно фильтра по тексту */}
+      {showTextFilterModal && (
+        <div className="modal-overlay" onClick={() => setShowTextFilterModal(false)}>
+          <div className="text-filter-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span>Фильтр по тексту</span>
+              <button className="close-btn" onClick={() => setShowTextFilterModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <input 
+                type="text"
+                placeholder="Введите текст"
+                value={tempTextFilter}
+                onChange={e => setTempTextFilter(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && applyTextFilter()}
+                autoFocus
+              />
+              <button className="apply-btn" onClick={applyTextFilter}>Применить</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно поиска игрока */}
+      {showPlayerSearch && (
+        <div className="modal-overlay" onClick={() => setShowPlayerSearch(false)}>
+          <div className="player-search-modal-border" onClick={e => e.stopPropagation()} ref={playerSearchRef}>
+            <div className="player-search-modal">
+              <div className="player-search-input">
+                <SearchIcon />
+                <input 
+                  type="text"
+                  placeholder="Введите ник, steamid или IP"
+                  value={playerSearchQuery}
+                  onChange={e => { setPlayerSearchQuery(e.target.value); setSelectedPlayerIndex(0) }}
+                  onKeyDown={handlePlayerSearchKeyDown}
+                  autoFocus
+                />
+              </div>
+              {filteredPlayers.length > 0 && (
+                <div className="player-search-list">
+                  {filteredPlayers.slice(0, 10).map((player, idx) => (
+                    <div 
+                      key={player.id}
+                      className={`player-search-item ${idx === selectedPlayerIndex ? 'selected' : ''}`}
+                      onClick={() => selectPlayer(player)}
+                    >
+                      <img src={player.avatar || '/default-avatar.png'} alt="" />
+                      <div className="player-info">
+                        <span className="player-name">{player.name}</span>
+                        <span className="player-role">{player.role || 'сотрудник проекта'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="player-search-footer">
+                <div className="kbd-hint">
+                  <span className="kbd">↓</span>
+                  <span className="kbd">↑</span>
+                  <span>перемещаться</span>
+                </div>
+                <div className="kbd-hint">
+                  <span className="kbd">ENTR</span>
+                  <span>выбрать</span>
+                </div>
+                <div className="kbd-hint ml-auto">
+                  <span className="kbd">ESC</span>
+                  <span>закрыть</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -182,3 +493,9 @@ function ProfileIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><pa
 function MuteIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 11C17 11.53 16.92 12.04 16.76 12.52L8.11 3.86C9.02 2.73 10.43 2 12 2C14.76 2 17 4.24 17 7V11Z"/><path d="M2.29 2.29C2.68 1.9 3.32 1.9 3.71 2.29L21.71 20.29C22.1 20.68 22.1 21.32 21.71 21.71C21.32 22.1 20.68 22.1 20.29 21.71L17.04 18.46C15.96 19.2 14.62 19.78 13 19.95V21C13 21.55 12.55 22 12 22C11.45 22 11 21.55 11 21V19.95C7.45 19.58 5.3 17.28 4.18 15.54C3.87 15.08 4.01 14.46 4.47 14.16C4.93 13.86 5.55 13.99 5.85 14.46C6.89 16.06 8.8 18 12 18C13.46 18 14.65 17.6 15.6 17.01L14.12 15.53C13.47 15.83 12.76 16 12 16C9.24 16 7 13.76 7 11V8.41L2.29 3.71C1.9 3.32 1.9 2.68 2.29 2.29Z"/></svg> }
 function MoreGridIcon() { return <svg viewBox="0 0 24 25" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M3 5.5C3 4.4 3.9 3.5 5 3.5C6.1 3.5 7 4.4 7 5.5C7 6.6 6.1 7.5 5 7.5C3.9 7.5 3 6.6 3 5.5ZM10 5.5C10 4.4 10.9 3.5 12 3.5C13.1 3.5 14 4.4 14 5.5C14 6.6 13.1 7.5 12 7.5C10.9 7.5 10 6.6 10 5.5ZM17 5.5C17 4.4 17.9 3.5 19 3.5C20.1 3.5 21 4.4 21 5.5C21 6.6 20.1 7.5 19 7.5C17.9 7.5 17 6.6 17 5.5ZM3 12.5C3 11.4 3.9 10.5 5 10.5C6.1 10.5 7 11.4 7 12.5C7 13.6 6.1 14.5 5 14.5C3.9 14.5 3 13.6 3 12.5ZM10 12.5C10 11.4 10.9 10.5 12 10.5C13.1 10.5 14 11.4 14 12.5C14 13.6 13.1 14.5 12 14.5C10.9 14.5 10 13.6 10 12.5ZM17 12.5C17 11.4 17.9 10.5 19 10.5C20.1 10.5 21 11.4 21 12.5C21 13.6 20.1 14.5 19 14.5C17.9 14.5 17 13.6 17 12.5ZM3 19.5C3 18.4 3.9 17.5 5 17.5C6.1 17.5 7 18.4 7 19.5C7 20.6 6.1 21.5 5 21.5C3.9 21.5 3 20.6 3 19.5ZM10 19.5C10 18.4 10.9 17.5 12 17.5C13.1 17.5 14 18.4 14 19.5C14 20.6 13.1 21.5 12 21.5C10.9 21.5 10 20.6 10 19.5ZM17 19.5C17 18.4 17.9 17.5 19 17.5C20.1 17.5 21 18.4 21 19.5C21 20.6 20.1 21.5 19 21.5C17.9 21.5 17 20.6 17 19.5Z"/></svg> }
 function SendIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg> }
+
+// Иконки для фильтров
+function TextSearchIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M2 12C2 6.47715 6.47715 2 12 2C17.5228 2 22 6.47715 22 12C22 17.5228 17.5228 22 12 22C10.527 22 9.12598 21.6809 7.86443 21.1072L3.91523 21.8461C2.86781 22.0421 1.95576 21.114 2.16998 20.0701L2.95146 16.2622C2.34094 14.9681 2 13.5225 2 12ZM6.25 12C6.25 12.6904 6.80964 13.25 7.5 13.25C8.19036 13.25 8.75 12.6904 8.75 12C8.75 11.3096 8.19036 10.75 7.5 10.75C6.80964 10.75 6.25 11.3096 6.25 12ZM10.75 12C10.75 12.6904 11.3096 13.25 12 13.25C12.6904 13.25 13.25 12.6904 13.25 12C13.25 11.3096 12.6904 10.75 12 10.75C11.3096 10.75 10.75 11.3096 10.75 12ZM16.5 13.25C15.8096 13.25 15.25 12.6904 15.25 12C15.25 11.3096 15.8096 10.75 16.5 10.75C17.1904 10.75 17.75 11.3096 17.75 12C17.75 12.6904 17.1904 13.25 16.5 13.25Z"/></svg> }
+function CalendarIcon() { return <svg viewBox="0 0 17 17" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M5.66667 1.41699C6.05786 1.41699 6.375 1.73413 6.375 2.12533V2.83366H10.625V2.12533C10.625 1.73413 10.9421 1.41699 11.3333 1.41699C11.7245 1.41699 12.0417 1.73413 12.0417 2.12533V2.83366H12.75C13.9236 2.83366 14.875 3.78506 14.875 4.95866V12.7503C14.875 13.924 13.9236 14.8753 12.75 14.8753H4.25C3.0764 14.8753 2.125 13.924 2.125 12.7503V4.95866C2.125 3.78506 3.0764 2.83366 4.25 2.83366H4.95833V2.12533C4.95833 1.73413 5.27547 1.41699 5.66667 1.41699ZM3.54167 7.79199V12.7503C3.54167 13.1415 3.8588 13.4587 4.25 13.4587H12.75C13.1412 13.4587 13.4583 13.1415 13.4583 12.7503V7.79199H3.54167Z"/></svg> }
+function PlayerIcon() { return <svg viewBox="0 0 24 24" fill="currentColor"><path fillRule="evenodd" clipRule="evenodd" d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22ZM15 10C15 11.6569 13.6569 13 12 13C10.3431 13 9 11.6569 9 10C9 8.34315 10.3431 7 12 7C13.6569 7 15 8.34315 15 10ZM12.0002 20C9.76181 20 7.73814 19.0807 6.28613 17.5991C7.61787 16.005 9.60491 15 12.0002 15C14.3955 15 16.3825 16.005 17.7143 17.5991C16.2623 19.0807 14.2386 20 12.0002 20Z"/></svg> }
+function SearchIcon() { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 20L16.05 16.05M18 11C18 14.866 14.866 18 11 18C7.13401 18 4 14.866 4 11C4 7.13401 7.13401 4 11 4C14.866 4 18 7.13401 18 11Z"/></svg> }
