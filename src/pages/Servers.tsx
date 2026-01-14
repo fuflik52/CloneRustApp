@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useToast } from '../components/Toast'
+import { useServer } from '../App'
 
 interface Server {
   id: string
