@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import { useServer } from '../App'
 
@@ -90,7 +91,8 @@ interface CombatLogEntry {
 }
 
 export default function Players() {
-  const { serverId } = useServer()
+  const { serverId, serverSlug } = useServer()
+  const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [allPlayers, setAllPlayers] = useState<Player[]>([])
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
@@ -107,6 +109,16 @@ export default function Players() {
   const [killsLoading, setKillsLoading] = useState(false)
   const [combatLogOpen, setCombatLogOpen] = useState(false)
   const [selectedKillForCombat, setSelectedKillForCombat] = useState<KillEvent | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null)
+  const [showMuteModal, setShowMuteModal] = useState(false)
+  const [showBanModal, setShowBanModal] = useState(false)
+  const [showKickModal, setShowKickModal] = useState(false)
+  const [muteReason, setMuteReason] = useState('')
+  const [muteDuration, setMuteDuration] = useState('1h')
+  const [banReason, setBanReason] = useState('')
+  const [banDuration, setBanDuration] = useState('')
+  const [kickReason, setKickReason] = useState('')
+  const contextMenuRef = useRef<HTMLDivElement>(null)
   const { showToast } = useToast()
 
   const copyToClipboard = (text: string) => {
@@ -121,6 +133,83 @@ export default function Players() {
       document.body.removeChild(textarea)
     }
     showToast('Текст скопирован в буфер обмена')
+  }
+
+  // Закрытие контекстного меню при клике вне
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.stopPropagation()
+    const rect = (e.target as HTMLElement).getBoundingClientRect()
+    setContextMenu({ x: rect.left, y: rect.bottom + 8 })
+  }
+
+  const handleMute = async () => {
+    if (!selectedPlayer || !muteReason) return
+    try {
+      const res = await fetch(`/api/servers/${serverId}/cmd`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'mute', target_steam_id: selectedPlayer.steam_id, reason: muteReason, duration: muteDuration, broadcast: true })
+      })
+      if (res.ok) {
+        showToast(`Игрок ${selectedPlayer.name} замьючен`)
+        setShowMuteModal(false)
+        setMuteReason('')
+      } else {
+        showToast('Ошибка выдачи мута', 'error')
+      }
+    } catch { showToast('Ошибка выдачи мута', 'error') }
+  }
+
+  const handleBan = async () => {
+    if (!selectedPlayer || !banReason) return
+    try {
+      const res = await fetch(`/api/servers/${serverId}/cmd`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'ban', target_steam_id: selectedPlayer.steam_id, reason: banReason, duration: banDuration || null, broadcast: true })
+      })
+      if (res.ok) {
+        showToast(`Игрок ${selectedPlayer.name} заблокирован`)
+        setShowBanModal(false)
+        setBanReason('')
+      } else {
+        showToast('Ошибка блокировки', 'error')
+      }
+    } catch { showToast('Ошибка блокировки', 'error') }
+  }
+
+  const handleKick = async () => {
+    if (!selectedPlayer) return
+    try {
+      const res = await fetch(`/api/servers/${serverId}/cmd`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'kick', target_steam_id: selectedPlayer.steam_id, reason: kickReason || 'Kicked by admin' })
+      })
+      if (res.ok) {
+        showToast(`Игрок ${selectedPlayer.name} кикнут`)
+        setShowKickModal(false)
+        setKickReason('')
+      } else {
+        showToast('Ошибка кика', 'error')
+      }
+    } catch { showToast('Ошибка кика', 'error') }
+  }
+
+  const goToPlayerChat = () => {
+    if (!selectedPlayer || !serverSlug) return
+    navigate(`/${serverSlug}/chat?player=${selectedPlayer.steam_id}`)
+    setContextMenu(null)
   }
 
   // Читаем player из URL при загрузке
@@ -370,14 +459,38 @@ export default function Players() {
                   </div>
                   <div className="modal-player-info">
                     <span className="modal-player-name">{steamInfo?.personaName || selectedPlayer.name}</span>
-                    <span className="modal-player-status">{selectedPlayer.online ? 'онлайн' : 'был недавно'}</span>
+                    <span className="modal-player-status">{selectedPlayer.online ? 'онлайн' : 'нет на месте'}</span>
                   </div>
                 </div>
                 <div className="modal-action-btns">
-                  <a href={`https://rustcheatcheck.ru/panel/player/${selectedPlayer.steam_id}`} target="_blank" className="modal-action-btn"><RccIcon /></a>
-                  <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}/`} target="_blank" className="modal-action-btn"><SteamIcon /></a>
-                  <button className="modal-action-btn"><MoreIcon /></button>
+                  <a href={`https://rustcheatcheck.ru/panel/player/${selectedPlayer.steam_id}`} target="_blank" rel="noopener noreferrer" className="modal-action-btn"><RccIcon /></a>
+                  <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}/`} target="_blank" rel="noopener noreferrer" className="modal-action-btn"><SteamIcon /></a>
+                  <button className="modal-action-btn" onClick={handleContextMenu}><MoreIcon /></button>
                 </div>
+                {contextMenu && (
+                  <div 
+                    ref={contextMenuRef}
+                    className="player-context-menu"
+                    style={{ position: 'absolute', left: contextMenu.x, top: contextMenu.y, zIndex: 1111 }}
+                  >
+                    <button className="context-menu-item" onClick={() => { copyToClipboard(selectedPlayer.steam_id); setContextMenu(null) }}>
+                      <CopySmallIcon /> Скопировать SteamID
+                    </button>
+                    <button className="context-menu-item" onClick={goToPlayerChat}>
+                      <ChatIcon /> Сообщения
+                    </button>
+                    <div className="context-menu-divider" />
+                    <button className="context-menu-item destructive" onClick={() => { setShowMuteModal(true); setContextMenu(null) }}>
+                      <MutesIcon /> Выдать мут
+                    </button>
+                    <button className="context-menu-item destructive" onClick={() => { setShowKickModal(true); setContextMenu(null) }}>
+                      <KickIcon /> Кикнуть
+                    </button>
+                    <button className="context-menu-item destructive" onClick={() => { setShowBanModal(true); setContextMenu(null) }}>
+                      <BansIcon /> Заблокировать
+                    </button>
+                  </div>
+                )}
               </div>
               <div className="modal-menu-items">
                 <div className={`modal-menu-item ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}><OverviewIcon /> Обзор</div>
@@ -837,6 +950,100 @@ export default function Players() {
           </div>
         </div>
       )}
+
+      {/* Mute Modal */}
+      {showMuteModal && selectedPlayer && (
+        <div className="action-modal-overlay" onClick={() => setShowMuteModal(false)}>
+          <div className="action-modal" onClick={e => e.stopPropagation()}>
+            <div className="action-modal-header">
+              <span>Выдать мут</span>
+              <button className="action-modal-close" onClick={() => setShowMuteModal(false)}><CloseIcon /></button>
+            </div>
+            <div className="action-modal-content">
+              <div className="action-modal-player">
+                <img src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                <span>{selectedPlayer.name}</span>
+              </div>
+              <div className="action-input-group">
+                <label>Причина</label>
+                <input type="text" placeholder="Нарушение правил чата" value={muteReason} onChange={e => setMuteReason(e.target.value)} />
+              </div>
+              <div className="action-input-group">
+                <label>Длительность</label>
+                <select value={muteDuration} onChange={e => setMuteDuration(e.target.value)}>
+                  <option value="10m">10 минут</option>
+                  <option value="30m">30 минут</option>
+                  <option value="1h">1 час</option>
+                  <option value="6h">6 часов</option>
+                  <option value="1d">1 день</option>
+                  <option value="7d">7 дней</option>
+                  <option value="0">Навсегда</option>
+                </select>
+              </div>
+            </div>
+            <div className="action-modal-footer">
+              <button className="btn-cancel" onClick={() => setShowMuteModal(false)}>Отмена</button>
+              <button className="btn-action destructive" onClick={handleMute} disabled={!muteReason}>Выдать мут</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Ban Modal */}
+      {showBanModal && selectedPlayer && (
+        <div className="action-modal-overlay" onClick={() => setShowBanModal(false)}>
+          <div className="action-modal" onClick={e => e.stopPropagation()}>
+            <div className="action-modal-header">
+              <span>Заблокировать игрока</span>
+              <button className="action-modal-close" onClick={() => setShowBanModal(false)}><CloseIcon /></button>
+            </div>
+            <div className="action-modal-content">
+              <div className="action-modal-player">
+                <img src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                <span>{selectedPlayer.name}</span>
+              </div>
+              <div className="action-input-group">
+                <label>Причина</label>
+                <input type="text" placeholder="Читы / Макросы" value={banReason} onChange={e => setBanReason(e.target.value)} />
+              </div>
+              <div className="action-input-group">
+                <label>Длительность (оставьте пустым для перманентного)</label>
+                <input type="text" placeholder="7d, 30d, 1y или пусто" value={banDuration} onChange={e => setBanDuration(e.target.value)} />
+              </div>
+            </div>
+            <div className="action-modal-footer">
+              <button className="btn-cancel" onClick={() => setShowBanModal(false)}>Отмена</button>
+              <button className="btn-action destructive" onClick={handleBan} disabled={!banReason}>Заблокировать</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Kick Modal */}
+      {showKickModal && selectedPlayer && (
+        <div className="action-modal-overlay" onClick={() => setShowKickModal(false)}>
+          <div className="action-modal" onClick={e => e.stopPropagation()}>
+            <div className="action-modal-header">
+              <span>Кикнуть игрока</span>
+              <button className="action-modal-close" onClick={() => setShowKickModal(false)}><CloseIcon /></button>
+            </div>
+            <div className="action-modal-content">
+              <div className="action-modal-player">
+                <img src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                <span>{selectedPlayer.name}</span>
+              </div>
+              <div className="action-input-group">
+                <label>Причина (опционально)</label>
+                <input type="text" placeholder="Kicked by admin" value={kickReason} onChange={e => setKickReason(e.target.value)} />
+              </div>
+            </div>
+            <div className="action-modal-footer">
+              <button className="btn-cancel" onClick={() => setShowKickModal(false)}>Отмена</button>
+              <button className="btn-action destructive" onClick={handleKick}>Кикнуть</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -878,11 +1085,11 @@ function CopyIcon() {
 }
 
 function RccIcon() {
-  return <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+  return <svg viewBox="0 0 24 24"><path d="M12.2666 2.01143C12.6444 2.0857 13.0275 2.14283 13.3999 2.23424C15.4668 2.75985 17.1181 4.88516 17.1829 7.09617C17.1883 7.18758 17.1829 7.2847 17.1829 7.39325C16.1791 7.39325 15.1915 7.39325 14.2093 7.39325C14.1554 7.13045 14.123 6.87335 14.042 6.6334C13.7021 5.64501 12.6659 5.01085 11.6945 5.16511C10.6584 5.3365 9.83278 6.25632 9.80583 7.33612C9.7788 8.49589 9.79499 9.66139 9.80044 10.8211C9.80044 10.9126 9.84895 11.0325 9.91913 11.084C10.8419 11.7581 11.5381 12.678 12.2342 13.5864C13.2866 14.9461 14.3011 16.3401 15.3264 17.7285C16.1576 18.8539 17.4419 19.1796 18.5913 18.5397C19.7139 17.917 20.2966 16.4315 19.9243 15.1517C19.5412 13.8434 18.3215 13.015 17.0425 13.1921C16.028 13.3349 15.1321 14.1748 14.8677 15.2318C14.8461 15.3117 14.83 15.3918 14.7922 15.5288C14.0745 14.5976 13.3837 13.7006 12.6821 12.7922C13.1031 12.0723 13.6373 11.4782 14.3065 11.0325C16.2222 9.75283 18.219 9.64425 20.1833 10.8326C22.207 12.0609 23.1352 14.0091 22.9842 16.4716C22.7845 19.7338 20.0646 22.2189 16.9886 21.9847C15.4506 21.8704 14.1662 21.1564 13.1948 19.8995C12.0885 18.4712 11.0631 16.9799 9.95686 15.5516C9.42262 14.8661 8.8452 14.1862 8.18143 13.6606C6.99419 12.7294 5.42379 13.0036 4.58733 14.1691C3.65373 15.4774 3.78324 17.2542 4.90033 18.2769C5.51553 18.8425 6.24406 18.9225 7.01038 18.7453C7.84144 18.5511 8.50521 18.0654 9.05026 17.3857C9.19597 17.2028 9.34168 17.0257 9.51437 16.8085C10.1457 17.6313 10.7663 18.4425 11.4356 19.3109C11.0362 19.7051 10.6692 20.1223 10.2537 20.4651C8.73727 21.722 7.01577 22.2818 5.12158 21.8019C2.88203 21.2306 1.60843 19.5966 1.12814 17.2656C0.480561 14.1176 2.35316 10.924 5.2619 10.1528C5.66124 10.0499 6.07678 10.0042 6.48691 9.99847C6.77292 9.99276 6.82689 9.89561 6.8215 9.6214C6.80531 8.83868 6.81071 8.06169 6.8161 7.27899C6.84848 4.58236 8.87757 2.28566 11.4193 2.06284C11.5057 2.05713 11.592 2.02285 11.6784 2C11.8726 2.01143 12.0669 2.01143 12.2666 2.01143Z"/></svg>
 }
 
 function SteamIcon() {
-  return <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3l-.5 3H13v6.95c5.05-.5 9-4.76 9-9.95 0-5.52-4.48-10-10-10z"/></svg>
+  return <svg viewBox="0 0 24 24"><path d="M12 2C13.3132 2 14.6136 2.25866 15.8268 2.7612C17.0401 3.26375 18.1425 4.00035 19.0711 4.92893C19.9997 5.85752 20.7362 6.95991 21.2388 8.17317C21.7413 9.38642 22 10.6868 22 12C22 14.6522 20.9464 17.1957 19.0711 19.0711C17.1957 20.9464 14.6522 22 12 22C7.4 22 3.55 18.92 2.36 14.73L6.19 16.31C6.32176 16.9503 6.67016 17.5257 7.17652 17.9391C7.68289 18.3526 8.31627 18.5789 8.97 18.58C10.53 18.58 11.8 17.31 11.8 15.75V15.62L15.2 13.19H15.28C17.36 13.19 19.05 11.5 19.05 9.42C19.05 7.34 17.36 5.65 15.28 5.65C13.2 5.65 11.5 7.34 11.5 9.42V9.47L9.13 12.93L8.97 12.92C8.38 12.92 7.83 13.1 7.38 13.41L2 11.2C2.43 6.05 6.73 2 12 2ZM8.28 17.17C9.08 17.5 10 17.13 10.33 16.33C10.66 15.53 10.28 14.62 9.5 14.29L8.22 13.76C8.71 13.58 9.26 13.57 9.78 13.79C10.31 14 10.72 14.41 10.93 14.94C11.15 15.46 11.15 16.04 10.93 16.56C10.5 17.64 9.23 18.16 8.15 17.71C7.65 17.5 7.27 17.12 7.06 16.67L8.28 17.17ZM17.8 9.42C17.8 10.81 16.67 11.94 15.28 11.94C14.6134 11.9374 13.975 11.6707 13.5046 11.1984C13.0341 10.7261 12.77 10.0866 12.77 9.42C12.7687 9.09001 12.8327 8.76303 12.9584 8.4579C13.084 8.15278 13.2689 7.87555 13.5022 7.64221C13.7356 7.40887 14.0128 7.22404 14.3179 7.09837C14.623 6.9727 14.95 6.90868 15.28 6.91C15.9466 6.90999 16.5861 7.17412 17.0584 7.64455C17.5307 8.11498 17.7974 8.75339 17.8 9.42ZM13.4 9.42C13.4 10.46 14.24 11.31 15.29 11.31C16.33 11.31 17.17 10.46 17.17 9.42C17.17 8.38 16.33 7.53 15.29 7.53C14.24 7.53 13.4 8.38 13.4 9.42Z"/></svg>
 }
 
 function MoreIcon() {
@@ -927,6 +1134,14 @@ function MutesIcon() {
 
 function BansIcon() {
   return <svg viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C9.23858 2 7 4.23858 7 7V9H6C4.89543 9 4 9.89543 4 11V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V11C20 9.89543 19.1046 9 18 9H17V7C17 4.23858 14.7614 2 12 2ZM15 9V7C15 5.34315 13.6569 4 12 4C10.3431 4 9 5.34315 9 7V9H15ZM12 13C12.5523 13 13 13.4477 13 14V17C13 17.5523 12.5523 18 12 18C11.4477 18 11 17.5523 11 17V14C11 13.4477 11.4477 13 12 13Z" /></svg>
+}
+
+function ChatIcon() {
+  return <svg viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 3C7.02944 3 3 7.02944 3 12C3 13.6362 3.44511 15.1701 4.22167 16.4876L3.0711 20.9289L7.51244 19.7783C8.82988 20.5549 10.3638 21 12 21C16.9706 21 21 16.9706 21 12C21 7.02944 16.9706 3 12 3ZM8 11C8 10.4477 8.44772 10 9 10H15C15.5523 10 16 10.4477 16 11C16 11.5523 15.5523 12 15 12H9C8.44772 12 8 11.5523 8 11ZM9 13C8.44772 13 8 13.4477 8 14C8 14.5523 8.44772 15 9 15H13C13.5523 15 14 14.5523 14 14C14 13.4477 13.5523 13 13 13H9Z" /></svg>
+}
+
+function KickIcon() {
+  return <svg viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM9.70711 8.29289C9.31658 7.90237 8.68342 7.90237 8.29289 8.29289C7.90237 8.68342 7.90237 9.31658 8.29289 9.70711L10.5858 12L8.29289 14.2929C7.90237 14.6834 7.90237 15.3166 8.29289 15.7071C8.68342 16.0976 9.31658 16.0976 9.70711 15.7071L12 13.4142L14.2929 15.7071C14.6834 16.0976 15.3166 16.0976 15.7071 15.7071C16.0976 15.3166 16.0976 14.6834 15.7071 14.2929L13.4142 12L15.7071 9.70711C16.0976 9.31658 16.0976 8.68342 15.7071 8.29289C15.3166 7.90237 14.6834 7.90237 14.2929 8.29289L12 10.5858L9.70711 8.29289Z" /></svg>
 }
 
 function CopySmallIcon() {

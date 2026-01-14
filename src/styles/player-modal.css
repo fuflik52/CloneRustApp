@@ -100,17 +100,19 @@
 .modal-action-btns {
   display: flex;
   gap: 8px;
+  width: 100%;
+  margin-top: 12px;
 }
 
 .modal-action-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  flex: 1;
+  height: 48px;
   background: #2a2a2a;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   transition: background 0.2s;
   text-decoration: none;
@@ -121,8 +123,8 @@
 }
 
 .modal-action-btn svg {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   fill: #888;
 }
 
@@ -1365,4 +1367,231 @@
   color: #666;
   font-size: 13px;
   text-align: center;
+}
+
+
+/* ==================== CONTEXT MENU ==================== */
+.player-context-menu {
+  background: #1e1e1e;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 6px;
+  min-width: 200px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  animation: fadeIn 0.15s ease;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #ccc;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+  text-align: left;
+}
+
+.context-menu-item:hover {
+  background: #2a2a2a;
+  color: #fff;
+}
+
+.context-menu-item svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+.context-menu-item.destructive {
+  color: #ef4444;
+}
+
+.context-menu-item.destructive:hover {
+  background: rgba(239, 68, 68, 0.15);
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: #333;
+  margin: 6px 0;
+}
+
+/* ==================== ACTION MODALS ==================== */
+.action-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 1200;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: fadeIn 0.2s ease;
+}
+
+.action-modal {
+  background: #1a1a1a;
+  border: 1px solid #2a2a2a;
+  border-radius: 12px;
+  width: 400px;
+  max-width: 95vw;
+  animation: slideUp 0.25s ease;
+}
+
+.action-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #2a2a2a;
+}
+
+.action-modal-header span {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.action-modal-close {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-modal-close svg {
+  width: 20px;
+  height: 20px;
+  fill: #666;
+  transition: fill 0.15s;
+}
+
+.action-modal-close:hover svg {
+  fill: #fff;
+}
+
+.action-modal-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.action-modal-player {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #252525;
+  border-radius: 8px;
+}
+
+.action-modal-player img {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+}
+
+.action-modal-player span {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.action-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.action-input-group label {
+  color: #888;
+  font-size: 12px;
+}
+
+.action-input-group input,
+.action-input-group select {
+  background: #252525;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.action-input-group input:focus,
+.action-input-group select:focus {
+  border-color: #555;
+}
+
+.action-input-group input::placeholder {
+  color: #555;
+}
+
+.action-input-group select {
+  cursor: pointer;
+}
+
+.action-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 16px 20px;
+  border-top: 1px solid #2a2a2a;
+}
+
+.action-modal-footer .btn-cancel {
+  background: #333;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: #ccc;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.action-modal-footer .btn-cancel:hover {
+  background: #444;
+}
+
+.action-modal-footer .btn-action {
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.action-modal-footer .btn-action:hover {
+  background: #2563eb;
+}
+
+.action-modal-footer .btn-action.destructive {
+  background: #ef4444;
+}
+
+.action-modal-footer .btn-action.destructive:hover {
+  background: #dc2626;
+}
+
+.action-modal-footer .btn-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

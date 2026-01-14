@@ -736,18 +736,24 @@ app.get('/api/cmd', (req, res) => {
 
 // Web sends command to server
 app.post('/api/servers/:serverId/cmd', (req, res) => {
-  const { type, steam_id, reason, duration, admin } = req.body;
+  const { type, target_steam_id, steam_id, reason, duration, broadcast, admin, message, is_global } = req.body;
   
   const cmds = loadCommands(req.params.serverId);
   const cmd = {
     id: crypto.randomUUID(),
     type,
-    steam_id,
+    target_steam_id: target_steam_id || steam_id,
+    steam_id: target_steam_id || steam_id,
     reason: reason || '',
-    duration: duration || 0,
+    duration: duration || '',
+    broadcast: broadcast || false,
+    message: message || '',
+    is_global: is_global || false,
     admin: admin || 'Admin',
     timestamp: Date.now(),
-    executed: false
+    executed: false,
+    // For mute - calculate expired_at
+    expired_at: type === 'mute' ? calculateExpiredAt(duration) : 0
   };
   
   cmds.commands.push(cmd);
@@ -761,7 +767,7 @@ app.post('/api/servers/:serverId/cmd', (req, res) => {
   
   // Log the action
   addServerActivityLog(req.params.serverId, `player_${type}`, {
-    steam_id,
+    steam_id: target_steam_id || steam_id,
     reason,
     duration,
     admin
@@ -769,6 +775,28 @@ app.post('/api/servers/:serverId/cmd', (req, res) => {
   
   res.json({ success: true, command: cmd });
 });
+
+// Helper to calculate expired_at from duration string
+function calculateExpiredAt(duration) {
+  if (!duration || duration === '0') return 0; // permanent
+  
+  const now = Date.now();
+  const match = duration.match(/^(\d+)([mhdwy])$/);
+  if (!match) return 0;
+  
+  const value = parseInt(match[1]);
+  const unit = match[2];
+  
+  const multipliers = {
+    'm': 60 * 1000,           // minutes
+    'h': 60 * 60 * 1000,      // hours
+    'd': 24 * 60 * 60 * 1000, // days
+    'w': 7 * 24 * 60 * 60 * 1000, // weeks
+    'y': 365 * 24 * 60 * 60 * 1000 // years
+  };
+  
+  return now + (value * (multipliers[unit] || 0));
+}
 
 // === BANS & MUTES (per server) ===
 

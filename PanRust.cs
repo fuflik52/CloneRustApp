@@ -480,12 +480,12 @@ namespace Oxide.Plugins
             if (string.IsNullOrEmpty(_meta.Key)) return;
             webrequest.Enqueue($"{API}/cmd", null, (c, r) =>
             {
-                if (c != 200 || string.IsNullOrEmpty(r)) return;
+                if (c != 200 || string.IsNullOrEmpty(r) || r == "[]") return;
                 try
                 {
-                    var d = JsonConvert.DeserializeObject<CmdResp>(r);
-                    if (d == null || d.commands == null || d.commands.Count == 0) return;
-                    foreach (var cmd in d.commands)
+                    var commands = JsonConvert.DeserializeObject<List<Cmd>>(r);
+                    if (commands == null || commands.Count == 0) return;
+                    foreach (var cmd in commands)
                     {
                         if (cmd == null || string.IsNullOrEmpty(cmd.type)) continue;
                         
@@ -543,13 +543,78 @@ namespace Oxide.Plugins
                                     }
                                 }
                                 break;
+                                
+                            case "kick":
+                                var kickSteamId = !string.IsNullOrEmpty(cmd.target_steam_id) ? cmd.target_steam_id : cmd.steam_id;
+                                if (!string.IsNullOrEmpty(kickSteamId))
+                                {
+                                    var target = BasePlayer.Find(kickSteamId);
+                                    if (target?.IsConnected == true)
+                                    {
+                                        var kickReason = !string.IsNullOrEmpty(cmd.reason) ? cmd.reason : "Kicked by admin";
+                                        target.Kick(kickReason);
+                                        Puts($"[Kick] {kickSteamId} - {kickReason}");
+                                        if (cmd.broadcast)
+                                        {
+                                            foreach (var p in BasePlayer.activePlayerList)
+                                                SendReply(p, $"Игрок <color=#5af>{target.displayName}</color> был кикнут.\n<size=12>- причина: {kickReason}</size>");
+                                        }
+                                    }
+                                }
+                                break;
+                                
+                            case "ban":
+                                var banSteamId = !string.IsNullOrEmpty(cmd.target_steam_id) ? cmd.target_steam_id : cmd.steam_id;
+                                if (!string.IsNullOrEmpty(banSteamId))
+                                {
+                                    var target = BasePlayer.Find(banSteamId);
+                                    var banReason = !string.IsNullOrEmpty(cmd.reason) ? cmd.reason : "Banned by admin";
+                                    var banDuration = cmd.expired_at > 0 
+                                        ? (cmd.expired_at - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()) / 1000 
+                                        : 0;
+                                    
+                                    // Add to server ban list
+                                    if (ulong.TryParse(banSteamId, out var banId))
+                                    {
+                                        var playerName = target?.displayName ?? banSteamId;
+                                        ServerUsers.Set(banId, ServerUsers.UserGroup.Banned, playerName, banReason);
+                                        ServerUsers.Save();
+                                        
+                                        // Kick if online
+                                        if (target?.IsConnected == true)
+                                        {
+                                            var banMsg = banDuration > 0 
+                                                ? $"Вы забанены до {DateTimeOffset.FromUnixTimeMilliseconds(cmd.expired_at).DateTime.ToString("dd.MM.yyyy HH:mm")} (МСК)\nПричина: {banReason}"
+                                                : $"Вы навсегда забанены на этом сервере\nПричина: {banReason}";
+                                            target.Kick(banMsg);
+                                        }
+                                        
+                                        Puts($"[Ban] {banSteamId} - {banReason}");
+                                        
+                                        if (cmd.broadcast)
+                                        {
+                                            foreach (var p in BasePlayer.activePlayerList)
+                                                SendReply(p, $"Игрок <color=#5af>{playerName}</color> был заблокирован.\n<size=12>- причина: {banReason}</size>");
+                                        }
+                                    }
+                                }
+                                break;
+                                
+                            case "unban":
+                                var unbanSteamId = !string.IsNullOrEmpty(cmd.target_steam_id) ? cmd.target_steam_id : cmd.steam_id;
+                                if (!string.IsNullOrEmpty(unbanSteamId) && ulong.TryParse(unbanSteamId, out var unbanId))
+                                {
+                                    ServerUsers.Remove(unbanId);
+                                    ServerUsers.Save();
+                                    Puts($"[Unban] {unbanSteamId}");
+                                }
+                                break;
                         }
                     }
                 } catch (Exception ex) { Puts($"[FetchCmd Error] {ex.Message}"); }
             }, this, Oxide.Core.Libraries.RequestMethod.GET, Headers());
         }
 
-        class CmdResp { public List<Cmd> commands; }
         class Cmd 
         { 
             public string type; 
