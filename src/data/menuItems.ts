@@ -28,6 +28,7 @@ export const managementItems: MenuItem[] = [
 
 export const projectItems: MenuItem[] = [
   { name: 'Сотрудники', slug: 'staff', icon: 'staff' },
+  { name: 'Настройки', slug: 'settings', icon: 'settings' },
 ]
 
 export const allItems = [...welcomeItems, ...moderationItems, ...managementItems, ...projectItems]

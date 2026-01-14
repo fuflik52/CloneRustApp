@@ -18,6 +18,7 @@ import Audit from './pages/Audit'
 import Staff from './pages/Staff'
 import Database from './pages/Database'
 import Profile from './pages/Profile'
+import Settings from './pages/Settings'
 import { useState, useEffect, createContext, useContext } from 'react'
 
 // Контекст для текущего сервера
@@ -176,6 +177,7 @@ function ProjectLayout() {
           <Route path="audit" element={<Audit />} />
           <Route path="staff" element={<Staff />} />
           <Route path="secret-db-panel" element={<Database />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="welcome" replace />} />
         </Routes>
       </main>
