@@ -1,97 +1,68 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 
-interface Project {
+interface Server {
   id: string
   name: string
-  slug: string
-  website?: string
+  hostname: string
+  secretKey: string
+  online: number
+  maxPlayers: number
+  status: string
   logo?: string
-  createdAt: number
 }
 
 export default function Profile() {
-  const [projects, setProjects] = useState<Project[]>([])
+  const [servers, setServers] = useState<Server[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
-  const [projectName, setProjectName] = useState('')
-  const [projectSlug, setProjectSlug] = useState('')
-  const [projectWebsite, setProjectWebsite] = useState('')
-  const [projectLogo, setProjectLogo] = useState<string | null>(null)
+  const [serverName, setServerName] = useState('')
   const [creating, setCreating] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const fetchProjects = async () => {
+    const fetchServers = async () => {
       try {
-        const res = await fetch('/api/projects')
+        const res = await fetch('/api/servers')
         if (res.ok) {
           const data = await res.json()
-          setProjects(data)
+          setServers(data)
         }
       } catch {}
     }
-    fetchProjects()
+    fetchServers()
   }, [])
 
-  // Автогенерация slug из названия
-  useEffect(() => {
-    if (projectName) {
-      const slug = projectName
-        .toLowerCase()
-        .replace(/\s+/g, '')
-        .replace(/[^a-z0-9]/g, '')
-      setProjectSlug(slug)
-    }
-  }, [projectName])
-
-  const handleProjectClick = (project: Project) => {
-    localStorage.setItem('selectedProject', project.slug)
-    navigate(`/${project.slug}/welcome`)
+  const handleServerClick = (server: Server) => {
+    // Создаём slug из имени сервера
+    const slug = server.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    localStorage.setItem('selectedServer', server.id)
+    navigate(`/${slug}/welcome`)
   }
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setProjectLogo(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
-  const handleCreateProject = async () => {
-    if (!projectName.trim() || !projectSlug.trim()) return
+  const handleCreateServer = async () => {
+    if (!serverName.trim()) return
     
     setCreating(true)
     try {
-      const res = await fetch('/api/projects', {
+      const res = await fetch('/api/servers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: projectName,
-          slug: projectSlug,
-          website: projectWebsite,
-          logo: projectLogo
-        })
+        body: JSON.stringify({ name: serverName })
       })
       if (res.ok) {
-        const newProject = await res.json()
-        setProjects([...projects, newProject])
+        const newServer = await res.json()
+        setServers([...servers, newServer])
         setShowCreateModal(false)
-        setProjectName('')
-        setProjectSlug('')
-        setProjectWebsite('')
-        setProjectLogo(null)
+        setServerName('')
         // Переходим в новый проект
-        navigate(`/${newProject.slug}/welcome`)
+        const slug = newServer.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+        navigate(`/${slug}/welcome`)
       } else {
         const err = await res.json()
         alert(err.error || 'Ошибка создания проекта')
       }
     } catch (e) {
-      console.error('Create project error:', e)
+      console.error('Create server error:', e)
       alert('Ошибка создания проекта')
     }
     setCreating(false)
@@ -99,11 +70,11 @@ export default function Profile() {
 
   const closeModal = () => {
     setShowCreateModal(false)
-    setProjectName('')
-    setProjectSlug('')
-    setProjectWebsite('')
-    setProjectLogo(null)
+    setServerName('')
   }
+
+  // Генерируем slug для отображения
+  const getSlug = (name: string) => name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
 
   return (
     <div className="profile-page">
@@ -118,25 +89,25 @@ export default function Profile() {
 
         <div className="profile-content">
           <div className="profile-projects">
-            {projects.length === 0 ? (
+            {servers.length === 0 ? (
               <div className="profile-empty">
                 <p>Нет проектов</p>
                 <span>Создайте свой первый проект</span>
               </div>
             ) : (
-              projects.map(project => (
-                <div key={project.id} className="profile-project" onClick={() => handleProjectClick(project)}>
+              servers.map(server => (
+                <div key={server.id} className="profile-project" onClick={() => handleServerClick(server)}>
                   <div className="project-info">
                     <div className="project-logo">
-                      {project.logo ? (
-                        <img src={project.logo} alt="" />
+                      {server.logo ? (
+                        <img src={server.logo} alt="" />
                       ) : (
                         <DefaultProjectIcon />
                       )}
                     </div>
                     <div className="project-details">
-                      <p className="project-name">{project.name}</p>
-                      <p className="project-url">app.bublickrust.ru/{project.slug}</p>
+                      <p className="project-name">{server.name}</p>
+                      <p className="project-url">app.bublickrust.ru/{getSlug(server.name)}</p>
                     </div>
                   </div>
                   <ArrowIcon />
@@ -174,9 +145,9 @@ export default function Profile() {
                 <label>Название проекта</label>
                 <input 
                   type="text"
-                  placeholder="Null Rust"
-                  value={projectName}
-                  onChange={e => setProjectName(e.target.value)}
+                  placeholder="My Rust Server"
+                  value={serverName}
+                  onChange={e => setServerName(e.target.value)}
                   autoFocus
                 />
               </div>
@@ -186,48 +157,19 @@ export default function Profile() {
                   <span className="input-prefix">app.bublickrust.ru/</span>
                   <input 
                     type="text"
-                    placeholder="nullrust"
-                    value={projectSlug}
-                    onChange={e => setProjectSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''))}
+                    placeholder="myserver"
+                    value={getSlug(serverName)}
+                    disabled
                   />
                 </div>
-              </div>
-              <div className="input-group">
-                <label>Сайт проекта</label>
-                <input 
-                  type="text"
-                  placeholder="https://nullrust.com"
-                  value={projectWebsite}
-                  onChange={e => setProjectWebsite(e.target.value)}
-                />
-              </div>
-              <div className="upload-area" onClick={() => fileInputRef.current?.click()}>
-                <div className="upload-preview">
-                  {projectLogo ? (
-                    <img src={projectLogo} alt="" />
-                  ) : (
-                    <CameraIcon />
-                  )}
-                </div>
-                <div className="upload-text">
-                  <p className="upload-title">Загрузите логотип проекта</p>
-                  <span className="upload-subtitle">PNG, JPEG или GIF (не более 10MB)</span>
-                </div>
-                <input 
-                  ref={fileInputRef}
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleLogoUpload}
-                  style={{ display: 'none' }}
-                />
               </div>
             </div>
             <div className="modal-footer">
               <button className="btn-secondary" onClick={closeModal}>Закрыть</button>
               <button 
                 className="btn-primary" 
-                onClick={handleCreateProject}
-                disabled={!projectName.trim() || !projectSlug.trim() || creating}
+                onClick={handleCreateServer}
+                disabled={!serverName.trim() || creating}
               >
                 {creating ? 'Создание...' : 'Создать'}
               </button>
