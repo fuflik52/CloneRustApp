@@ -235,6 +235,7 @@ export default function Chat() {
           <button 
             className={`filter-btn ${textFilter ? 'active' : ''}`}
             onClick={() => { 
+              console.log('Text filter clicked')
               setTempTextFilter(textFilter)
               setShowTextFilterModal(true) 
             }}
@@ -247,7 +248,10 @@ export default function Chat() {
           <div className="calendar-wrapper" ref={calendarRef}>
             <button 
               className={`filter-btn ${dateFrom || dateTo ? 'active' : ''}`}
-              onClick={() => setShowCalendar(!showCalendar)}
+              onClick={() => {
+                console.log('Calendar clicked')
+                setShowCalendar(!showCalendar)
+              }}
               title="Фильтр по дате"
             >
               <CalendarIcon />
@@ -286,7 +290,10 @@ export default function Chat() {
           {/* Кнопка поиска по игроку */}
           <button 
             className={`filter-btn ${playerSteamId ? 'active' : ''}`}
-            onClick={() => setShowPlayerSearch(!showPlayerSearch)}
+            onClick={() => {
+              console.log('Player search clicked')
+              setShowPlayerSearch(!showPlayerSearch)
+            }}
             title="Поиск по игроку"
           >
             <PlayerIcon />

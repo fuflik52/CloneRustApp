@@ -347,6 +347,8 @@
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
+  position: relative;
+  z-index: 10;
 }
 
 .chat-filter-buttons {
@@ -367,6 +369,8 @@
   cursor: pointer;
   color: #888;
   transition: all 0.15s ease;
+  position: relative;
+  z-index: 1;
 }
 
 .filter-btn:hover {
