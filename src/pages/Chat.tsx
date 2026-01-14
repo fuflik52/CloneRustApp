@@ -231,54 +231,39 @@ export default function Chat() {
   const submitMute = async () => {
     if (!muteModal || !muteReason.trim() || !serverId) return
     try {
-      const res = await fetch(`/api/servers/${serverId}/mutes`, {
+      // Отправляем команду на игровой сервер (как в Players.tsx)
+      const res = await fetch(`/api/servers/${serverId}/cmd`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          steam_id: muteModal.steamId,
-          name: muteModal.name,
+          type: 'mute',
+          target_steam_id: muteModal.steamId,
           reason: muteReason,
-          duration: parseDuration(muteDuration)
+          duration: muteDuration,
+          broadcast: true
         })
       })
       if (res.ok) {
         showToast('Мут выдан')
         setMuteModal(null)
         setMuteReason('')
-        // Обновляем список мутов
-        const mutesRes = await fetch(`/api/servers/${serverId}/mutes`)
-        if (mutesRes.ok) {
-          const data = await mutesRes.json()
-          const mutesMap: Record<string, MuteInfo> = {}
-          data.forEach((m: MuteInfo) => { mutesMap[m.steam_id] = m })
-          setMutedPlayers(mutesMap)
-        }
-        // Отправляем команду на сервер
-        await fetch(`/api/servers/${serverId}/cmd`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            type: 'mute',
+        // Обновляем локальный список мутов
+        setMutedPlayers(prev => ({
+          ...prev,
+          [muteModal.steamId]: {
             steam_id: muteModal.steamId,
             reason: muteReason,
-            duration: parseDuration(muteDuration)
-          })
-        })
+            duration: muteDuration,
+            expired_at: 0,
+            created_at: Date.now()
+          }
+        }))
+      } else {
+        showToast('Ошибка выдачи мута', 'error')
       }
     } catch {
       showToast('Ошибка', 'error')
     }
-  }
-
-  const parseDuration = (dur: string): number => {
-    const match = dur.match(/^(\d+)([mhd])$/)
-    if (!match) return dur === '0' ? 0 : 3600
-    const val = parseInt(match[1])
-    const unit = match[2]
-    if (unit === 'm') return val * 60
-    if (unit === 'h') return val * 3600
-    if (unit === 'd') return val * 86400
-    return 3600
   }
 
   const handleUnmute = async (steamId: string) => {
