@@ -638,7 +638,7 @@
 }
 
 /* Text Filter Modal */
-.modal-overlay {
+.chat-modal-overlay {
   position: fixed;
   top: 0;
   left: 0;

@@ -390,7 +390,7 @@ export default function Chat() {
 
       {/* Модальное окно фильтра по тексту */}
       {showTextFilterModal && (
-        <div className="modal-overlay" onClick={() => setShowTextFilterModal(false)}>
+        <div className="chat-modal-overlay" onClick={() => setShowTextFilterModal(false)}>
           <div className="text-filter-modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <span>Фильтр по тексту</span>
@@ -413,7 +413,7 @@ export default function Chat() {
 
       {/* Модальное окно поиска игрока */}
       {showPlayerSearch && (
-        <div className="modal-overlay" onClick={() => setShowPlayerSearch(false)}>
+        <div className="chat-modal-overlay" onClick={() => setShowPlayerSearch(false)}>
           <div className="player-search-modal-border" onClick={e => e.stopPropagation()} ref={playerSearchRef}>
             <div className="player-search-modal">
               <div className="player-search-input">
