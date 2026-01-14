@@ -463,13 +463,15 @@ namespace Oxide.Plugins
             if (string.IsNullOrEmpty(_meta.Key)) return;
             webrequest.Enqueue($"{API}/commands", null, (c, r) =>
             {
-                if (c != 200) return;
+                if (c != 200 || string.IsNullOrEmpty(r)) return;
                 try
                 {
                     var d = JsonConvert.DeserializeObject<CmdResp>(r);
-                    if (d?.commands == null) return;
+                    if (d == null || d.commands == null || d.commands.Count == 0) return;
                     foreach (var cmd in d.commands)
                     {
+                        if (cmd == null || string.IsNullOrEmpty(cmd.type)) continue;
+                        
                         switch (cmd.type)
                         {
                             case "chat_message":
@@ -478,7 +480,7 @@ namespace Oxide.Plugins
                                     foreach (var p in BasePlayer.activePlayerList) 
                                         SendReply(p, $"<color=#84cc16>[Админ]</color> {cmd.message}"); 
                                 }
-                                else 
+                                else if (!string.IsNullOrEmpty(cmd.target_steam_id))
                                 { 
                                     var t = BasePlayer.Find(cmd.target_steam_id); 
                                     if (t?.IsConnected == true) 
@@ -527,7 +529,7 @@ namespace Oxide.Plugins
                                 break;
                         }
                     }
-                } catch { }
+                } catch (Exception ex) { Puts($"[FetchCmd Error] {ex.Message}"); }
             }, this, Oxide.Core.Libraries.RequestMethod.GET, Headers());
         }
 
