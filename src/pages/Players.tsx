@@ -148,8 +148,8 @@ export default function Players() {
 
   const handleContextMenu = (e: React.MouseEvent) => {
     e.stopPropagation()
-    const rect = (e.target as HTMLElement).getBoundingClientRect()
-    setContextMenu({ x: rect.left, y: rect.bottom + 8 })
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    setContextMenu({ x: rect.right + 8, y: rect.top })
   }
 
   const handleMute = async () => {
@@ -471,7 +471,7 @@ export default function Players() {
                   <div 
                     ref={contextMenuRef}
                     className="player-context-menu"
-                    style={{ position: 'absolute', left: contextMenu.x, top: contextMenu.y, zIndex: 1111 }}
+                    style={{ left: contextMenu.x, top: contextMenu.y }}
                   >
                     <button className="context-menu-item" onClick={() => { copyToClipboard(selectedPlayer.steam_id); setContextMenu(null) }}>
                       <CopySmallIcon /> Скопировать SteamID
