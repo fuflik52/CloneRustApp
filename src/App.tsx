@@ -16,6 +16,7 @@ import Statistics from './pages/Statistics'
 import Servers from './pages/Servers'
 import Audit from './pages/Audit'
 import Staff from './pages/Staff'
+import Database from './pages/Database'
 import { useState, useEffect } from 'react'
 
 function AppContent() {
@@ -136,6 +137,7 @@ function AppContent() {
           <Route path="/servers" element={<Servers />} />
           <Route path="/audit" element={<Audit />} />
           <Route path="/staff" element={<Staff />} />
+          <Route path="/secret-db-panel" element={<Database />} />
         </Routes>
       </main>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
