@@ -309,29 +309,45 @@ namespace Oxide.Plugins
             });
         }
 
-        object OnPlayerChat(BasePlayer p, string m, ConVar.Chat.ChatChannel c)
+        // Блокировка чата для замьюченных (как в RustApp.cs)
+        object OnClientCommand(Network.Connection connection, string command)
         {
-            if (string.IsNullOrEmpty(_meta.Key) || string.IsNullOrEmpty(m)) return null;
-            if (c != ConVar.Chat.ChatChannel.Team && c != ConVar.Chat.ChatChannel.Global) return null;
+            if (connection == null) return null;
+            
+            // Проверяем только команды чата
+            if (!command.StartsWith("chat.say", StringComparison.OrdinalIgnoreCase)) return null;
+            // Пропускаем команды (начинаются с /)
+            if (command.StartsWith("chat.say \"/", StringComparison.OrdinalIgnoreCase) || 
+                command.StartsWith("chat.say /", StringComparison.OrdinalIgnoreCase)) return null;
             
             // Проверяем мут
-            if (_mutes.TryGetValue(p.userID, out var mute))
+            if (_mutes.TryGetValue(connection.userid, out var mute))
             {
                 var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 if (mute.expired_at == 0 || mute.expired_at > now)
                 {
                     var leftTime = mute.expired_at == 0 ? "навсегда" : GetTimeLeft(mute.expired_at - now);
-                    SendReply(p, $"<color=#ef4444>Вы в муте.</color> Причина: {mute.reason}. Осталось: {leftTime}");
-                    return false; // Блокируем сообщение
+                    if (connection.player is BasePlayer player)
+                    {
+                        SendReply(player, $"<color=#ef4444>Вы замьючены!</color>\n<size=12>Причина: {mute.reason}\nОсталось: {leftTime}</size>");
+                    }
+                    return false;
                 }
                 else
                 {
-                    _mutes.Remove(p.userID);
+                    _mutes.Remove(connection.userid);
                 }
             }
             
-            _chatQueue.Add(new ChatMsg { si = p.UserIDString, n = p.displayName, m = m, t = c == ConVar.Chat.ChatChannel.Team, ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
             return null;
+        }
+
+        void OnPlayerChat(BasePlayer p, string m, ConVar.Chat.ChatChannel c)
+        {
+            if (string.IsNullOrEmpty(_meta.Key) || string.IsNullOrEmpty(m)) return;
+            if (c != ConVar.Chat.ChatChannel.Team && c != ConVar.Chat.ChatChannel.Global) return;
+            
+            _chatQueue.Add(new ChatMsg { si = p.UserIDString, n = p.displayName, m = m, t = c == ConVar.Chat.ChatChannel.Team, ts = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() });
         }
 
         void OnPlayerReported(BasePlayer r, string tn, string ti, string s, string m, string t)
