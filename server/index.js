@@ -761,14 +761,18 @@ app.get('/api/cmd', (req, res) => {
 
 // Web sends command to server
 app.post('/api/servers/:serverId/cmd', (req, res) => {
-  const { type, target_steam_id, steam_id, reason, duration, broadcast, admin, message, is_global } = req.body;
+  const { type, target_steam_id, steam_id, reason, duration, broadcast, admin, message, is_global, name } = req.body;
+  const finalSteamId = target_steam_id || steam_id;
+  const serverId = req.params.serverId;
   
-  const cmds = loadCommands(req.params.serverId);
+  const cmds = loadCommands(serverId);
+  const expired_at = (type === 'mute' || type === 'ban') ? calculateExpiredAt(duration) : 0;
+  
   const cmd = {
     id: crypto.randomUUID(),
     type,
-    target_steam_id: target_steam_id || steam_id,
-    steam_id: target_steam_id || steam_id,
+    target_steam_id: finalSteamId,
+    steam_id: finalSteamId,
     reason: reason || '',
     duration: duration || '',
     broadcast: broadcast || false,
@@ -777,8 +781,7 @@ app.post('/api/servers/:serverId/cmd', (req, res) => {
     admin: admin || 'Admin',
     timestamp: Date.now(),
     executed: false,
-    // For mute - calculate expired_at
-    expired_at: type === 'mute' ? calculateExpiredAt(duration) : 0
+    expired_at
   };
   
   cmds.commands.push(cmd);
@@ -788,11 +791,60 @@ app.post('/api/servers/:serverId/cmd', (req, res) => {
     cmds.commands = cmds.commands.slice(-1000);
   }
   
-  saveCommands(req.params.serverId, cmds);
+  saveCommands(serverId, cmds);
+  
+  // === SAVE TO DATABASE ===
+  if (type === 'mute' && finalSteamId) {
+    const mutes = loadMutes(serverId);
+    // Remove existing mute for this player
+    mutes.mutes = mutes.mutes.filter(m => m.steam_id !== finalSteamId);
+    // Add new mute
+    mutes.mutes.push({
+      id: crypto.randomUUID(),
+      steam_id: finalSteamId,
+      name: name || 'Unknown',
+      reason: reason || 'Нарушение правил чата',
+      duration: duration || '1h',
+      admin: admin || 'Admin',
+      timestamp: Date.now(),
+      expires: expired_at || null
+    });
+    saveMutes(serverId, mutes);
+  }
+  
+  if (type === 'unmute' && finalSteamId) {
+    const mutes = loadMutes(serverId);
+    mutes.mutes = mutes.mutes.filter(m => m.steam_id !== finalSteamId);
+    saveMutes(serverId, mutes);
+  }
+  
+  if (type === 'ban' && finalSteamId) {
+    const bans = loadBans(serverId);
+    // Remove existing ban for this player
+    bans.bans = bans.bans.filter(b => b.steam_id !== finalSteamId);
+    // Add new ban
+    bans.bans.push({
+      id: crypto.randomUUID(),
+      steam_id: finalSteamId,
+      name: name || 'Unknown',
+      reason: reason || 'Нарушение правил',
+      duration: duration || 0,
+      admin: admin || 'Admin',
+      timestamp: Date.now(),
+      expires: expired_at || null
+    });
+    saveBans(serverId, bans);
+  }
+  
+  if (type === 'unban' && finalSteamId) {
+    const bans = loadBans(serverId);
+    bans.bans = bans.bans.filter(b => b.steam_id !== finalSteamId);
+    saveBans(serverId, bans);
+  }
   
   // Log the action
-  addServerActivityLog(req.params.serverId, `player_${type}`, {
-    steam_id: target_steam_id || steam_id,
+  addServerActivityLog(serverId, `player_${type}`, {
+    steam_id: finalSteamId,
     reason,
     duration,
     admin
