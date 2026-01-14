@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useToast } from '../components/Toast'
 
 interface Server {
   id: string
@@ -22,6 +23,7 @@ export default function Profile() {
   const [creating, setCreating] = useState(false)
   const [errors, setErrors] = useState<{name?: string, slug?: string, website?: string}>({})
   const navigate = useNavigate()
+  const { showToast } = useToast()
 
   useEffect(() => {
     const fetchServers = async () => {
@@ -77,12 +79,12 @@ export default function Profile() {
         closeModal()
         navigate(`/${serverSlug}/welcome`)
       } else {
-        const err = await res.json()
-        alert(err.error || 'Ошибка создания проекта')
+        const err = await res.json().catch(() => ({ error: 'Ошибка сервера' }))
+        showToast(err.error || 'Ошибка создания проекта', 'error')
       }
     } catch (e) {
       console.error('Create server error:', e)
-      alert('Ошибка создания проекта')
+      showToast('Ошибка создания проекта', 'error')
     }
     setCreating(false)
   }
@@ -105,7 +107,7 @@ export default function Profile() {
     const file = e.target.files?.[0]
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        alert('Файл слишком большой (макс 10MB)')
+        showToast('Файл слишком большой (макс 10MB)', 'error')
         return
       }
       const reader = new FileReader()
