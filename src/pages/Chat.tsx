@@ -273,13 +273,6 @@ export default function Chat() {
     setDateTo(null)
   }
 
-  const formatDateRange = () => {
-    if (!dateFrom && !dateTo) return null
-    const from = dateFrom ? dateFrom.toLocaleDateString('ru') : '...'
-    const to = dateTo ? dateTo.toLocaleDateString('ru') : '...'
-    return `${from} - ${to}`
-  }
-
   return (
     <div className="chat-page">
       {/* Панель фильтров */}
@@ -367,28 +360,49 @@ export default function Chat() {
         </div>
 
         {/* Активные фильтры */}
-        <div className="active-filters">
-          {textFilter && (
-            <div className="filter-tag">
-              <span>Текст: {textFilter}</span>
-              <button onClick={clearTextFilter}>×</button>
+        {textFilter && (
+          <div className="filter-tag-group">
+            <div className="filter-tag-icon">
+              <TextSearchIcon />
             </div>
-          )}
-          {formatDateRange() && (
-            <div className="filter-tag">
-              <span>{formatDateRange()}</span>
-              <button onClick={clearDateFilter}>×</button>
+            <div className="filter-tag-text">{textFilter}</div>
+            <button className="filter-tag-close" onClick={clearTextFilter}>×</button>
+          </div>
+        )}
+        
+        {(dateFrom || dateTo) && (
+          <div className="filter-tag-group">
+            <div className="filter-tag-icon">
+              <CalendarIcon />
             </div>
-          )}
-        </div>
+            <div className="filter-tag-text">
+              {dateFrom ? `${dateFrom.getDate().toString().padStart(2, '0')} ${monthNames[dateFrom.getMonth()].slice(0, 3)} ${dateFrom.getFullYear()}` : '...'}
+              {dateTo ? ` - ${dateTo.getDate().toString().padStart(2, '0')} ${monthNames[dateTo.getMonth()].slice(0, 3)} ${dateTo.getFullYear()}` : ''}
+            </div>
+            <button className="filter-tag-close" onClick={clearDateFilter}>×</button>
+          </div>
+        )}
+        
+        {playerSteamId && (
+          <div className="filter-tag-group">
+            <div className="filter-tag-icon player">
+              {chatPlayers.find(p => p.steam_id === playerSteamId)?.avatar ? (
+                <img src={chatPlayers.find(p => p.steam_id === playerSteamId)?.avatar} alt="" />
+              ) : (
+                <PlayerIcon />
+              )}
+            </div>
+            <div className="filter-tag-text">
+              {chatPlayers.find(p => p.steam_id === playerSteamId)?.name || playerSteamId}
+            </div>
+            <button className="filter-tag-icon-btn" onClick={() => handlePlayerClick(playerSteamId)}>
+              <PlayerIcon />
+            </button>
+            <button className="filter-tag-close" onClick={() => setSearchParams({})}>×</button>
+          </div>
+        )}
       </div>
 
-      {playerSteamId && (
-        <div className="chat-filter-bar">
-          <span>Сообщения игрока: {playerSteamId}</span>
-          <button onClick={() => setSearchParams({})}>Показать все</button>
-        </div>
-      )}
       <div className="chat-container">
         <div className="chat-messages">
           {filteredMessages.length === 0 ? (
