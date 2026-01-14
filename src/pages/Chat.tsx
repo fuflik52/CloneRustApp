@@ -35,7 +35,7 @@ interface MuteInfo {
 }
 
 export default function Chat() {
-  const { serverId } = useServer()
+  const { serverId, serverSlug } = useServer()
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [searchParams, setSearchParams] = useSearchParams()
@@ -188,7 +188,7 @@ export default function Chat() {
   }, [messages])
 
   const handlePlayerClick = (steamId: string) => {
-    navigate(`/players?player=${steamId}`)
+    navigate(`/${serverSlug}/players?player=${steamId}`)
   }
 
   const handleSendMessage = async () => {
@@ -292,6 +292,12 @@ export default function Chat() {
           const copy = { ...prev }
           delete copy[steamId]
           return copy
+        })
+        // Отправляем команду unmute на игровой сервер
+        await fetch(`/api/servers/${serverId}/cmd`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'unmute', steam_id: steamId })
         })
       }
     } catch {

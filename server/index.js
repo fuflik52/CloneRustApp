@@ -865,7 +865,8 @@ app.post('/api/servers/:serverId/bans', (req, res) => {
 // Remove ban
 app.delete('/api/servers/:serverId/bans/:banId', (req, res) => {
   const bans = loadBans(req.params.serverId);
-  bans.bans = bans.bans.filter(b => b.id !== req.params.banId);
+  // Ищем по id или по steam_id
+  bans.bans = bans.bans.filter(b => b.id !== req.params.banId && b.steam_id !== req.params.banId);
   saveBans(req.params.serverId, bans);
   res.json({ success: true });
 });
@@ -904,7 +905,8 @@ app.post('/api/servers/:serverId/mutes', (req, res) => {
 // Remove mute
 app.delete('/api/servers/:serverId/mutes/:muteId', (req, res) => {
   const mutes = loadMutes(req.params.serverId);
-  mutes.mutes = mutes.mutes.filter(m => m.id !== req.params.muteId);
+  // Ищем по id или по steam_id
+  mutes.mutes = mutes.mutes.filter(m => m.id !== req.params.muteId && m.steam_id !== req.params.muteId);
   saveMutes(req.params.serverId, mutes);
   res.json({ success: true });
 });
