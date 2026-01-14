@@ -52,7 +52,7 @@ export default function Servers() {
 
   const fetchServers = async () => {
     try {
-      const res = await fetch('http://localhost:3001/api/servers')
+      const res = await fetch('/api/servers')
       if (res.ok) setServers(await res.json())
     } catch {}
   }
@@ -60,7 +60,7 @@ export default function Servers() {
   const createServer = async () => {
     if (!serverName.trim()) return
     try {
-      const res = await fetch('http://localhost:3001/api/servers', {
+      const res = await fetch('/api/servers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: serverName })
@@ -76,7 +76,7 @@ export default function Servers() {
 
   const deleteServer = async (id: string) => {
     try {
-      await fetch(`http://localhost:3001/api/servers/${id}`, { method: 'DELETE' })
+      await fetch(`/api/servers/${id}`, { method: 'DELETE' })
       fetchServers()
       setDeleteConfirm(null)
       showToast('Сервер удалён')

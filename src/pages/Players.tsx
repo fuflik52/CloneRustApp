@@ -75,7 +75,7 @@ export default function Players() {
     window.history.pushState({}, '', url.toString())
     
     try {
-      const res = await fetch(`http://localhost:3001/api/player/${player.steam_id}/steam`)
+      const res = await fetch(`/api/player/${player.steam_id}/steam`)
       if (res.ok) {
         const data = await res.json()
         if (!data.error) {
@@ -98,7 +98,7 @@ export default function Players() {
   useEffect(() => {
     const fetchPlayers = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/players')
+        const res = await fetch('/api/players')
         if (res.ok) setAllPlayers(await res.json())
       } catch {}
     }

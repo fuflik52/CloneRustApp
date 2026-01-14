@@ -64,7 +64,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
     const searchPlayers = async () => {
       setLoading(true)
       try {
-        const res = await fetch('http://localhost:3001/api/players')
+        const res = await fetch('/api/players')
         if (res.ok) {
           const players: Player[] = await res.json()
           const filtered = players.filter(p => 

@@ -42,7 +42,7 @@ function AppContent() {
   useEffect(() => {
     (window as any).addPlayers = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/test-players', { method: 'POST' })
+        const res = await fetch('/api/test-players', { method: 'POST' })
         if (res.ok) {
           const data = await res.json()
           showToast(`Добавлено ${data.count} тестовых игроков`)
@@ -53,7 +53,7 @@ function AppContent() {
     };
     (window as any).removePlayers = async () => {
       try {
-        const res = await fetch('http://localhost:3001/api/test-players', { method: 'DELETE' })
+        const res = await fetch('/api/test-players', { method: 'DELETE' })
         if (res.ok) {
           showToast('Тестовые игроки удалены')
         }
