@@ -20,6 +20,7 @@ import { useState, useEffect } from 'react'
 
 function AppContent() {
   const [searchOpen, setSearchOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(() => 
     localStorage.getItem('sidebarCollapsed') === 'true'
   )
@@ -32,10 +33,18 @@ function AppContent() {
         e.stopImmediatePropagation()
         setSearchOpen(true)
       }
-      if (e.key === 'Escape') setSearchOpen(false)
+      if (e.key === 'Escape') {
+        setSearchOpen(false)
+        setMobileMenuOpen(false)
+      }
     }
     window.addEventListener('keydown', handleKeyDown, { capture: true })
     return () => window.removeEventListener('keydown', handleKeyDown, { capture: true })
+  }, [])
+
+  // Закрываем мобильное меню при изменении роута
+  useEffect(() => {
+    setMobileMenuOpen(false)
   }, [])
 
   // Консольные команды для тестовых игроков
@@ -79,12 +88,36 @@ function AppContent() {
     })
   }
 
+  const closeMobileMenu = () => setMobileMenuOpen(false)
+
   return (
     <>
+      {/* Mobile Header */}
+      <header className="mobile-header">
+        <button className="mobile-menu-btn" onClick={() => setMobileMenuOpen(true)}>
+          <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+        </button>
+        <div className="mobile-logo">
+          <img src="https://i.imgur.com/J0Ckth8.png" alt="Logo" />
+          <span>RustApp</span>
+        </div>
+        <button className="mobile-menu-btn" onClick={() => setSearchOpen(true)}>
+          <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+        </button>
+      </header>
+
+      {/* Mobile Overlay */}
+      <div 
+        className={`mobile-overlay ${mobileMenuOpen ? 'active' : ''}`} 
+        onClick={closeMobileMenu}
+      />
+
       <Sidebar 
         collapsed={collapsed} 
         onToggle={toggleSidebar}
         onSearchClick={() => setSearchOpen(true)}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={closeMobileMenu}
       />
       <main className={`main-content ${collapsed ? 'collapsed' : ''}`}>
         <Routes>
