@@ -174,6 +174,10 @@ export default function Map() {
         // Пропускаем игроков в центре карты (0,0,0) - невалидные позиции
         if (x === 0 && z === 0) return
         
+        // Проверяем что игрок в пределах карты (не в море)
+        const halfSize = worldSize / 2
+        if (Math.abs(x) > halfSize || Math.abs(z) > halfSize) return
+        
         const canvasX = (x + worldSize / 2) * mapScale
         const canvasY = (worldSize / 2 - z) * mapScale
 
@@ -461,9 +465,21 @@ export default function Map() {
           maxWidth: 250
         }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 12, color: '#888' }}>
-            Онлайн ({mapData.players.filter(p => p.position && !(p.position.x === 0 && p.position.z === 0)).length})
+            Онлайн ({mapData.players.filter(p => {
+              if (!p.position) return false;
+              const { x, z } = p.position;
+              if (x === 0 && z === 0) return false;
+              const halfSize = mapData.worldSize / 2;
+              return Math.abs(x) <= halfSize && Math.abs(z) <= halfSize;
+            }).length})
           </div>
-          {mapData.players.filter(p => p.position && !(p.position.x === 0 && p.position.z === 0)).map((player) => (
+          {mapData.players.filter(p => {
+            if (!p.position) return false;
+            const { x, z } = p.position;
+            if (x === 0 && z === 0) return false;
+            const halfSize = mapData.worldSize / 2;
+            return Math.abs(x) <= halfSize && Math.abs(z) <= halfSize;
+          }).map((player) => (
             <div
               key={player.steam_id}
               onClick={() => zoomToPlayer(player)}

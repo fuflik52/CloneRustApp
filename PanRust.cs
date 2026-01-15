@@ -537,16 +537,11 @@ namespace Oxide.Plugins
             
             var pl = new List<object>();
             
-            // Добавляем активных игроков
+            // Добавляем ТОЛЬКО активных игроков с позициями
             foreach (var p in BasePlayer.activePlayerList) 
             {
+                if (p == null || !p.IsConnected) continue;
                 pl.Add(MakePlayer(p, true));
-            }
-            
-            // Добавляем спящих игроков
-            foreach (var p in BasePlayer.sleepingPlayerList)
-            {
-                pl.Add(MakePlayer(p, false));
             }
             
             var json = JsonConvert.SerializeObject(new { hostname = GetServerAddress(), port = ConVar.Server.port, name = ConVar.Server.hostname, online = BasePlayer.activePlayerList.Count, max_players = ConVar.Server.maxplayers, players = pl });
