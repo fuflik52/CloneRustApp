@@ -508,11 +508,27 @@ app.post('/api/reports', (req, res) => {
   res.json({ success: true });
 });
 
-// Get all reports (for web)
+// Get all reports (for web) - supports filtering by serverId
 app.get('/api/reports', (req, res) => {
+  const { serverId } = req.query;
   const reportsData = loadReports();
+  let reports = reportsData.reports;
+  
+  // Filter by server if specified
+  if (serverId) {
+    reports = reports.filter(r => r.serverId === serverId);
+  }
+  
   // Return sorted by date
-  const sorted = [...reportsData.reports].sort((a, b) => b.timestamp - a.timestamp);
+  const sorted = [...reports].sort((a, b) => b.timestamp - a.timestamp);
+  res.json(sorted);
+});
+
+// Get reports for specific server
+app.get('/api/servers/:serverId/reports', (req, res) => {
+  const reportsData = loadReports();
+  const reports = reportsData.reports.filter(r => r.serverId === req.params.serverId);
+  const sorted = [...reports].sort((a, b) => b.timestamp - a.timestamp);
   res.json(sorted);
 });
 

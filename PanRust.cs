@@ -560,7 +560,17 @@ namespace Oxide.Plugins
             if (string.IsNullOrEmpty(_meta.Key)) return;
             webrequest.Enqueue($"{API}/cmd", null, (c, r) =>
             {
-                if (c != 200 || string.IsNullOrEmpty(r) || r == "[]") return;
+                if (r == null)
+                {
+                    // Сервер не ответил или ошибка соединения
+                    return;
+                }
+                if (c != 200)
+                {
+                    if (c == 401) Puts("[FetchCmd] Unauthorized - check API key");
+                    return;
+                }
+                if (string.IsNullOrEmpty(r) || r == "[]" || r == "null") return;
                 try
                 {
                     var commands = JsonConvert.DeserializeObject<List<Cmd>>(r);

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useToast } from '../components/Toast'
+import { useServer } from '../App'
 
 interface Report {
   id: string
@@ -16,6 +17,12 @@ interface Report {
   message: string
   timestamp: number
   date: string
+}
+
+interface Server {
+  id: string
+  name: string
+  status: string
 }
 
 function DonutChart({ kills, deaths }: { kills: number, deaths: number }) {
