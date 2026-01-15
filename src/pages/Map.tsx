@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useServer } from '../App'
+import { useSearchParams } from 'react-router-dom'
 
 interface Player {
   steam_id: string
@@ -18,13 +18,35 @@ interface MapData {
 }
 
 export default function Map() {
-  const { serverId } = useServer()
+  const [searchParams] = useSearchParams()
+  const serverIdFromQuery = searchParams.get('server')
+  const [serverId, setServerId] = useState<string | null>(serverIdFromQuery)
   const [mapData, setMapData] = useState<MapData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hoveredPlayer, setHoveredPlayer] = useState<Player | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+
+  // Получаем первый доступный сервер если не указан
+  useEffect(() => {
+    if (!serverId) {
+      fetch('/api/servers')
+        .then(res => res.json())
+        .then(servers => {
+          if (servers.length > 0) {
+            setServerId(servers[0].id)
+          } else {
+            setError('Нет доступных серверов')
+            setLoading(false)
+          }
+        })
+        .catch(() => {
+          setError('Ошибка загрузки серверов')
+          setLoading(false)
+        })
+    }
+  }, [serverId])
 
   useEffect(() => {
     if (!serverId) return
