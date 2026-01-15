@@ -978,8 +978,21 @@
 }
 
 .preset-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 12px;
   color: #888;
   flex-shrink: 0;
   padding-left: 12px;
+}
+
+.preset-status.exists {
+  color: #84cc16;
+}
+
+.preset-status-icon {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
 }

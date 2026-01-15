@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import { useServer } from '../App'
@@ -90,6 +91,18 @@ interface CombatLogEntry {
   attacker_dead?: boolean
 }
 
+interface CustomAction {
+  id: string
+  name: string
+  group: string
+  enabled: boolean
+  accessLevel: 'safe' | 'dangerous' | 'very-dangerous' | 'admin'
+  commands: string[]
+  allowOffline: boolean
+  selectServer: boolean
+  confirmBefore: boolean
+}
+
 export default function Players() {
   const { serverId, serverSlug } = useServer()
   const navigate = useNavigate()
@@ -110,6 +123,9 @@ export default function Players() {
   const [combatLogOpen, setCombatLogOpen] = useState(false)
   const [selectedKillForCombat, setSelectedKillForCombat] = useState<KillEvent | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number, y: number } | null>(null)
+  const [customActions, setCustomActions] = useState<CustomAction[]>([])
+  const [openSubmenu, setOpenSubmenu] = useState<'actions' | null>(null)
+  const [submenuPos, setSubmenuPos] = useState<{ x: number, y: number } | null>(null)
   const [showMuteModal, setShowMuteModal] = useState(false)
   const [showBanModal, setShowBanModal] = useState(false)
   const [showKickModal, setShowKickModal] = useState(false)
@@ -122,6 +138,8 @@ export default function Players() {
   const [bannedPlayers, setBannedPlayers] = useState<Record<string, { id?: string, reason: string, expires?: number }>>({})
   const [durationDropdownOpen, setDurationDropdownOpen] = useState(false)
   const contextMenuRef = useRef<HTMLDivElement>(null)
+  const submenuRef = useRef<HTMLDivElement>(null)
+  const actionsMenuItemRef = useRef<HTMLButtonElement>(null)
   const { showToast } = useToast()
 
   const durationOptions = [
@@ -148,21 +166,116 @@ export default function Players() {
     showToast('Текст скопирован в буфер обмена')
   }
 
-  // Закрытие контекстного меню при клике вне
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
-        setContextMenu(null)
-      }
+      const target = e.target as Node
+      const inMenu = contextMenuRef.current?.contains(target)
+      const inSubmenu = submenuRef.current?.contains(target)
+      if (!inMenu && !inSubmenu) setContextMenu(null)
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    if (!contextMenu) {
+      setOpenSubmenu(null)
+      setSubmenuPos(null)
+    }
+  }, [contextMenu])
+
+  useEffect(() => {
+    if (!serverId) return
+    const fetchActions = async () => {
+      try {
+        const res = await fetch(`/api/servers/${serverId}/actions`)
+        if (res.ok) setCustomActions(await res.json())
+      } catch {}
+    }
+    fetchActions()
+  }, [serverId])
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.stopPropagation()
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    setContextMenu({ x: rect.right + 8, y: rect.top })
+    setOpenSubmenu(null)
+    setSubmenuPos(null)
+    setContextMenu({ x: e.clientX + 8, y: e.clientY + 8 })
+  }
+
+  useEffect(() => {
+    if (!contextMenu) return
+    const raf = requestAnimationFrame(() => {
+      if (!contextMenuRef.current) return
+      const padding = 8
+      const rect = contextMenuRef.current.getBoundingClientRect()
+      const maxX = Math.max(padding, window.innerWidth - rect.width - padding)
+      const maxY = Math.max(padding, window.innerHeight - rect.height - padding)
+      const x = Math.min(Math.max(padding, contextMenu.x), maxX)
+      const y = Math.min(Math.max(padding, contextMenu.y), maxY)
+      if (x !== contextMenu.x || y !== contextMenu.y) setContextMenu({ x, y })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [contextMenu])
+
+  useEffect(() => {
+    if (!contextMenu || openSubmenu !== 'actions') return
+    const raf = requestAnimationFrame(() => {
+      if (!actionsMenuItemRef.current || !submenuRef.current) return
+      const padding = 8
+      const gap = 8
+      const itemRect = actionsMenuItemRef.current.getBoundingClientRect()
+      const submenuRect = submenuRef.current.getBoundingClientRect()
+
+      let x = itemRect.right + gap
+      if (x + submenuRect.width > window.innerWidth - padding) {
+        x = itemRect.left - submenuRect.width - gap
+      }
+
+      const maxX = Math.max(padding, window.innerWidth - submenuRect.width - padding)
+      const maxY = Math.max(padding, window.innerHeight - submenuRect.height - padding)
+      x = Math.min(Math.max(padding, x), maxX)
+
+      let y = itemRect.top
+      y = Math.min(Math.max(padding, y), maxY)
+      setSubmenuPos({ x, y })
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [contextMenu, openSubmenu, customActions.length])
+
+  const executeCustomAction = async (action: CustomAction) => {
+    if (!serverId || !selectedPlayer) return
+    if (!selectedPlayer.online && !action.allowOffline) {
+      showToast('Нельзя выполнить действие для офлайн игрока', 'info')
+      return
+    }
+    if (action.confirmBefore) {
+      const ok = window.confirm(`Выполнить действие «${action.name}» для игрока ${selectedPlayer.name}?`)
+      if (!ok) return
+    }
+
+    try {
+      const res = await fetch(`/api/servers/${serverId}/actions/${action.id}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steam_id: selectedPlayer.steam_id,
+          steam_name: selectedPlayer.name,
+          player_ip: selectedPlayer.ip,
+        })
+      })
+
+      if (res.ok) {
+        const data = await res.json().catch(() => null)
+        showToast(`Действие выполнено: ${data?.action || action.name}`, 'success')
+      } else {
+        const data = await res.json().catch(() => null)
+        showToast(data?.error || 'Ошибка выполнения действия', 'error')
+      }
+    } catch {
+      showToast('Ошибка выполнения действия', 'error')
+    }
+
+    setContextMenu(null)
   }
 
   const handleMute = async () => {
@@ -1146,51 +1259,112 @@ export default function Players() {
       )}
 
       {/* Context Menu */}
-      {contextMenu && selectedPlayer && (
-        <div 
-          ref={contextMenuRef}
-          className="player-context-menu"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-        >
-          <button className="context-menu-item" onClick={() => { showToast('Функция в разработке'); setContextMenu(null) }}>
-            <CheckIcon /> Начать проверку
-          </button>
-          <button className="context-menu-item" onClick={() => { copyToClipboard(selectedPlayer.steam_id); setContextMenu(null) }}>
-            <CopySmallIcon /> Скопировать SteamID
-          </button>
-          <button className="context-menu-item" onClick={goToPlayerChat}>
-            <ChatIcon /> Сообщения
-          </button>
-          <button className="context-menu-item has-submenu" onClick={() => { showToast('Функция в разработке'); setContextMenu(null) }}>
-            <ReportsIcon /> Репорты
-            <ArrowRightIcon />
-          </button>
-          <button className="context-menu-item" onClick={() => { showToast('Функция в разработке'); setContextMenu(null) }}>
-            <NoteIcon /> Добавить заметку
-          </button>
-          <div className="context-menu-divider" />
-          {mutedPlayers[selectedPlayer.steam_id] ? (
-            <button className="context-menu-item success" onClick={handleUnmute}>
-              <UnmuteIcon /> Снять мут
+      {contextMenu && selectedPlayer && typeof document !== 'undefined' && createPortal(
+        <>
+          <div
+            ref={contextMenuRef}
+            className="player-context-menu"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+          >
+            <button className="context-menu-item" onClick={() => { showToast('Функция в разработке'); setContextMenu(null) }}>
+              <CheckIcon /> Начать проверку
             </button>
-          ) : (
-            <button className="context-menu-item destructive" onClick={() => { setShowMuteModal(true); setContextMenu(null) }}>
-              <MutesIcon /> Выдать мут
+            <button className="context-menu-item" onClick={() => { copyToClipboard(selectedPlayer.steam_id); setContextMenu(null) }}>
+              <CopySmallIcon /> Скопировать SteamID
             </button>
+            <button className="context-menu-item" onClick={goToPlayerChat}>
+              <ChatIcon /> Сообщения
+            </button>
+            <button className="context-menu-item has-submenu" onClick={() => { showToast('Функция в разработке'); setContextMenu(null) }}>
+              <ReportsIcon /> Репорты
+              <ArrowRightIcon />
+            </button>
+
+            <button
+              ref={actionsMenuItemRef}
+              className="context-menu-item has-submenu"
+              onClick={(e) => {
+                e.stopPropagation()
+                if (customActions.filter(a => a.enabled).length === 0) {
+                  showToast('Нет доступных действий', 'info')
+                  return
+                }
+                setOpenSubmenu(prev => prev === 'actions' ? null : 'actions')
+              }}
+            >
+              <ActionsIcon /> Действия
+              <ArrowRightIcon />
+            </button>
+
+            <button className="context-menu-item" onClick={() => { showToast('Функция в разработке'); setContextMenu(null) }}>
+              <NoteIcon /> Добавить заметку
+            </button>
+            <div className="context-menu-divider" />
+            {mutedPlayers[selectedPlayer.steam_id] ? (
+              <button className="context-menu-item success" onClick={handleUnmute}>
+                <UnmuteIcon /> Снять мут
+              </button>
+            ) : (
+              <button className="context-menu-item destructive" onClick={() => { setShowMuteModal(true); setContextMenu(null) }}>
+                <MutesIcon /> Выдать мут
+              </button>
+            )}
+            <button className="context-menu-item destructive" onClick={() => { setShowKickModal(true); setContextMenu(null) }}>
+              <KickIcon /> Кикнуть
+            </button>
+            {bannedPlayers[selectedPlayer.steam_id] ? (
+              <button className="context-menu-item success" onClick={handleUnban}>
+                <UnbanIcon /> Снять бан
+              </button>
+            ) : (
+              <button className="context-menu-item destructive" onClick={() => { setShowBanModal(true); setContextMenu(null) }}>
+                <BansIcon /> Заблокировать
+              </button>
+            )}
+          </div>
+
+          {openSubmenu === 'actions' && (
+            <div
+              ref={submenuRef}
+              className="player-context-submenu"
+              style={{
+                left: submenuPos?.x ?? 0,
+                top: submenuPos?.y ?? 0,
+                visibility: submenuPos ? 'visible' : 'hidden',
+              }}
+            >
+              {Object.entries(
+                customActions
+                  .filter(a => a.enabled)
+                  .reduce((acc, action) => {
+                    const group = (action.group || 'Без группы').trim() || 'Без группы'
+                    acc[group] ||= []
+                    acc[group].push(action)
+                    return acc
+                  }, {} as Record<string, CustomAction[]>)
+              )
+                .sort(([a], [b]) => a.localeCompare(b, 'ru'))
+                .map(([group, actions]) => (
+                  <div key={group}>
+                    <div className="context-submenu-group-title">{group}</div>
+                    {actions
+                      .slice()
+                      .sort((a, b) => a.name.localeCompare(b.name, 'ru'))
+                      .map(action => (
+                        <button
+                          key={action.id}
+                          className="context-menu-item"
+                          onClick={() => executeCustomAction(action)}
+                        >
+                          {action.name}
+                        </button>
+                      ))}
+                  </div>
+                ))}
+            </div>
           )}
-          <button className="context-menu-item destructive" onClick={() => { setShowKickModal(true); setContextMenu(null) }}>
-            <KickIcon /> Кикнуть
-          </button>
-          {bannedPlayers[selectedPlayer.steam_id] ? (
-            <button className="context-menu-item success" onClick={handleUnban}>
-              <UnbanIcon /> Снять бан
-            </button>
-          ) : (
-            <button className="context-menu-item destructive" onClick={() => { setShowBanModal(true); setContextMenu(null) }}>
-              <BansIcon /> Заблокировать
-            </button>
-          )}
-        </div>
+        </>,
+        document.body
       )}
     </div>
   )
@@ -1254,6 +1428,14 @@ function TeamIcon() {
 
 function ReportsIcon() {
   return <svg viewBox="0 0 24 24"><path fillRule="evenodd" clipRule="evenodd" d="M11.3498 2.16624C11.7712 2.02141 12.2288 2.02141 12.6502 2.16624L19.6502 4.57249C20.4578 4.85011 21 5.60988 21 6.46387V11.9125C21 14.7193 19.8511 16.742 18.1875 18.317C16.6151 19.8056 14.5552 20.9164 12.6319 21.9535L12.4748 22.0382C12.1785 22.1981 11.8215 22.1981 11.5252 22.0382L11.3681 21.9535C9.44484 20.9164 7.38493 19.8056 5.8125 18.317C4.14891 16.742 3 14.7193 3 11.9125V6.46387C3 5.60988 3.54224 4.85011 4.34984 4.57249L11.3498 2.16624ZM14.7071 14.2071C14.3166 14.5976 13.6834 14.5976 13.2929 14.2071L12 12.9142L10.7071 14.2071C10.3166 14.5976 9.68342 14.5976 9.29289 14.2071C8.90237 13.8166 8.90237 13.1834 9.29289 12.7929L10.5858 11.5L9.29289 10.2071C8.90237 9.81658 8.90237 9.18342 9.29289 8.79289C9.68342 8.40237 10.3166 8.40237 10.7071 8.79289L12 10.0858L13.2929 8.79289C13.6834 8.40237 14.3166 8.40237 14.7071 8.79289C15.0976 9.18342 15.0976 9.81658 14.7071 10.2071L13.4142 11.5L14.7071 12.7929C15.0976 13.1834 15.0976 13.8166 14.7071 14.2071Z" /></svg>
+}
+
+function ActionsIcon() {
+  return (
+    <svg viewBox="0 0 24 24">
+      <path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.63-.94l-.36-2.54A.5.5 0 0 0 14.4 2h-3.8a.5.5 0 0 0-.49.42l-.36 2.54c-.58.23-1.12.53-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L3.21 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.3.6.22l2.39-.96c.5.41 1.05.71 1.63.94l.36 2.54c.05.24.25.42.49.42h3.8c.24 0 .45-.18.49-.42l.36-2.54c.58-.23 1.12-.53 1.63-.94l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z" />
+    </svg>
+  )
 }
 
 function StatsIcon() {

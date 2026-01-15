@@ -548,7 +548,14 @@ function PresetActionsModal({ onClose, onSelect, existingActions }: PresetAction
                 <p className="preset-desc">{preset.desc}</p>
                 <code className="preset-cmd">{preset.command}</code>
               </div>
-              <span className="preset-status">{exists ? 'Уже добавлено' : 'Добавить'}</span>
+              <span className={`preset-status ${exists ? 'exists' : ''}`}>
+                {exists && (
+                  <svg className="preset-status-icon" viewBox="0 0 24 24">
+                    <path d="M20 6L9 17l-5-5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+                {exists ? 'Уже добавлено' : 'Добавить'}
+              </span>
             </div>
           )})}
         </div>
