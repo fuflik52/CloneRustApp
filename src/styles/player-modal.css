@@ -1999,98 +1999,181 @@
   cursor: not-allowed;
 }
 
-/* Confirm Modal */
-.confirm-modal {
-  display: flex !important;
-  flex-direction: column !important;
-  width: 420px !important;
-  height: auto !important;
-  padding: 0 !important;
-  overflow: hidden;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+/* Action Modal Redesign */
+.action-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  z-index: 3000; /* Самый высокий z-index */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: modalFadeIn 0.2s ease-out;
 }
 
-.player-info-confirm {
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.confirm-modal-new {
+  background: #141414;
+  border: 1px solid #252525;
+  border-radius: 16px;
+  width: 440px;
+  max-width: 90vw;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  animation: modalSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+}
+
+.confirm-modal-header {
+  padding: 24px 24px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.confirm-modal-header h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.confirm-modal-close {
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.confirm-modal-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.confirm-modal-content {
+  padding: 0 24px 24px;
+}
+
+.confirm-player-preview {
+  display: flex;
+  align-items: center; 
+  gap: 16px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.confirm-player-preview img {
+  width: 48px;
+  height: 48px;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+.confirm-player-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.player-info-confirm .player-name {
+.confirm-player-name {
   color: #fff;
-  font-size: 16px;
   font-weight: 600;
+  font-size: 15px;
 }
 
-.player-info-confirm .player-steamid {
-  color: #888;
+.confirm-player-steamid {
+  color: #777;
   font-size: 12px;
-  font-family: monospace;
+  font-family: 'JetBrains Mono', monospace;
 }
 
-.confirm-message {
-  margin-top: 20px;
-  color: #ccc;
+.confirm-text {
+  color: #aaa;
   font-size: 14px;
-  line-height: 1.5;
-  text-align: center;
-  padding: 0 20px;
+  line-height: 1.6;
+  margin: 0;
 }
 
-.confirm-message strong {
+.confirm-action-highlight {
   color: #84cc16;
+  font-weight: 600;
+  background: rgba(132, 204, 22, 0.1);
+  padding: 2px 6px;
+  border-radius: 4px;
 }
 
-.action-modal-footer {
+.confirm-modal-footer {
+  padding: 16px 24px 24px;
   display: flex;
-  justify-content: flex-end;
   gap: 12px;
-  padding: 20px;
-  margin-top: 10px;
+  background: rgba(0, 0, 0, 0.2);
 }
 
-.btn-cancel {
-  background: #2a2a2a;
-  border: 1px solid #3a3a3a;
-  color: #888;
-  padding: 8px 16px;
-  border-radius: 6px;
-  font-size: 13px;
+.btn-confirm-cancel {
+  flex: 1;
+  background: #222;
+  border: 1px solid #333;
+  color: #eee;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-cancel:hover {
-  background: #3a3a3a;
-  color: #fff;
+.btn-confirm-cancel:hover {
+  background: #2a2a2a;
+  border-color: #444;
 }
 
-.btn-action {
+.btn-confirm-execute {
+  flex: 2;
   background: #84cc16;
   border: none;
   color: #000;
-  padding: 8px 20px;
-  border-radius: 6px;
-  font-size: 13px;
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
 }
 
-.btn-action:hover {
-  background: #bef264;
+.btn-confirm-execute:hover {
+  background: #a3e635;
   transform: translateY(-1px);
 }
 
-.btn-action.destructive {
+.btn-confirm-execute.destructive {
   background: #ef4444;
   color: #fff;
 }
 
-.btn-action.destructive:hover {
+.btn-confirm-execute.destructive:hover {
   background: #f87171;
 }
 

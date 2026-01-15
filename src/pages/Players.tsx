@@ -245,27 +245,40 @@ export default function Players() {
   }, [contextMenu, openSubmenu, customActions.length])
 
   const executeCustomAction = async (action: CustomAction, confirmed = false) => {
-    setContextMenu(null) // Закрываем контекстное меню сразу при любом клике на действие
-    if (!serverId || !selectedPlayer) return
+    console.log(`[CustomAction] Вызов действия: "${action.name}"`, { actionId: action.id, confirmed });
+    
+    setContextMenu(null)
+    
+    if (!serverId || !selectedPlayer) {
+      console.warn('[CustomAction] Ошибка: Отсутствует serverId или выбранный игрок');
+      return
+    }
+
     if (!selectedPlayer.online && !action.allowOffline) {
+      console.log(`[CustomAction] Действие "${action.name}" отклонено: игрок оффлайн`);
       showToast('Нельзя выполнить действие для офлайн игрока', 'info')
       return
     }
 
     if (action.confirmBefore && !confirmed) {
+      console.log(`[CustomAction] Требуется подтверждение для "${action.name}". Открываем модальное окно.`);
       setPendingAction(action)
       setShowActionConfirmModal(true)
-      setContextMenu(null)
       return
     }
 
     if (confirmed) {
+      console.log(`[CustomAction] Подтверждено пользователем. Выполняем...`);
       setShowActionConfirmModal(false)
-      // Даем время на анимацию закрытия если она есть, прежде чем очищать данные
-      setTimeout(() => setPendingAction(null), 200)
+      // Очищаем pendingAction позже, чтобы избежать скачков интерфейса
+      setTimeout(() => {
+        setPendingAction(null);
+        console.log('[CustomAction] Состояние pendingAction очищено');
+      }, 300);
     }
 
     try {
+      console.log(`[CustomAction] Отправка запроса на сервер: /api/servers/${serverId}/actions/${action.id}/execute`);
       const res = await fetch(`/api/servers/${serverId}/actions/${action.id}/execute`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -278,12 +291,15 @@ export default function Players() {
 
       if (res.ok) {
         const data = await res.json().catch(() => null)
+        console.log(`[CustomAction] Успешный ответ от сервера:`, data);
         showToast(`Действие выполнено: ${data?.action || action.name}`, 'success')
       } else {
         const data = await res.json().catch(() => null)
+        console.error(`[CustomAction] Ошибка сервера при выполнении:`, data);
         showToast(data?.error || 'Ошибка выполнения действия', 'error')
       }
-    } catch {
+    } catch (error) {
+      console.error(`[CustomAction] Сетевая ошибка при вызове действия:`, error);
       showToast('Ошибка выполнения действия', 'error')
     }
   }
@@ -1272,29 +1288,51 @@ export default function Players() {
 
       {/* Action Confirmation Modal */}
       {showActionConfirmModal && pendingAction && selectedPlayer && (
-        <div className="action-modal-overlay" onClick={() => { setShowActionConfirmModal(false); setTimeout(() => setPendingAction(null), 200); }}>
-          <div className="action-modal confirm-modal" onClick={e => e.stopPropagation()}>
-            <div className="action-modal-header">
-              <span>Подтверждение действия</span>
-              <button className="action-modal-close" onClick={() => { setShowActionConfirmModal(false); setTimeout(() => setPendingAction(null), 200); }}><CloseIcon /></button>
+        <div className="action-modal-overlay" onClick={() => { 
+          console.log('[CustomAction] Закрытие по клику на фон');
+          setShowActionConfirmModal(false); 
+          setTimeout(() => setPendingAction(null), 300); 
+        }}>
+          <div className="confirm-modal-new" onClick={e => e.stopPropagation()}>
+            <div className="confirm-modal-header">
+              <h3>Подтверждение</h3>
+              <button className="confirm-modal-close" onClick={() => { 
+                console.log('[CustomAction] Закрытие по крестику');
+                setShowActionConfirmModal(false); 
+                setTimeout(() => setPendingAction(null), 300); 
+              }}>
+                <CloseIcon />
+              </button>
             </div>
-            <div className="action-modal-content">
-              <div className="action-modal-player">
+            
+            <div className="confirm-modal-content">
+              <div className="confirm-player-preview">
                 <img src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
-                <div className="player-info-confirm">
-                  <span className="player-name">{selectedPlayer.name}</span>
-                  <span className="player-steamid">{selectedPlayer.steam_id}</span>
+                <div className="confirm-player-info">
+                  <span className="confirm-player-name">{selectedPlayer.name}</span>
+                  <span className="confirm-player-steamid">{selectedPlayer.steam_id}</span>
                 </div>
               </div>
-              <div className="confirm-message">
-                Вы действительно хотите выполнить действие <strong>«{pendingAction.name}»</strong>?
-              </div>
+              
+              <p className="confirm-text">
+                Вы действительно хотите выполнить действие <span className="confirm-action-highlight">{pendingAction.name}</span> для этого игрока?
+              </p>
             </div>
-            <div className="action-modal-footer">
-              <button className="btn-cancel" onClick={() => { setShowActionConfirmModal(false); setTimeout(() => setPendingAction(null), 200); }}>Отмена</button>
+
+            <div className="confirm-modal-footer">
+              <button className="btn-confirm-cancel" onClick={() => { 
+                console.log('[CustomAction] Отмена пользователем');
+                setShowActionConfirmModal(false); 
+                setTimeout(() => setPendingAction(null), 300); 
+              }}>
+                Отмена
+              </button>
               <button 
-                className={`btn-action ${pendingAction.accessLevel === 'very-dangerous' || pendingAction.accessLevel === 'admin' ? 'destructive' : ''}`} 
-                onClick={() => executeCustomAction(pendingAction, true)}
+                className={`btn-confirm-execute ${pendingAction.accessLevel === 'very-dangerous' || pendingAction.accessLevel === 'admin' ? 'destructive' : ''}`} 
+                onClick={() => {
+                  console.log('[CustomAction] Нажата кнопка "Выполнить"');
+                  executeCustomAction(pendingAction, true);
+                }}
               >
                 Выполнить
               </button>
