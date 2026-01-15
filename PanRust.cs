@@ -606,7 +606,7 @@ namespace Oxide.Plugins
                 var monumentData = new Dictionary<string, object>
                 {
                     ["name"] = monument.displayPhrase?.english ?? monument.name ?? "Unknown",
-                    ["x"] = pos.x,
+                    ["x"] = -pos.x,
                     ["y"] = pos.y,
                     ["z"] = pos.z,
                     ["type"] = monument.Type.ToString()
