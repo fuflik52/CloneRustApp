@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useServer } from '../App'
 import '../styles/settings.css'
 
 interface CustomAction {
@@ -7,6 +8,10 @@ interface CustomAction {
   group: string
   enabled: boolean
   accessLevel: 'safe' | 'dangerous' | 'very-dangerous' | 'admin'
+  commands: string[]
+  allowOffline: boolean
+  selectServer: boolean
+  confirmBefore: boolean
 }
 
 const tabs = [
@@ -20,16 +25,69 @@ const tabs = [
 ]
 
 export default function Settings() {
+  const { serverId } = useServer()
   const [activeTab, setActiveTab] = useState('actions')
   const [actions, setActions] = useState<CustomAction[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
 
-  const toggleAction = (id: string) => {
-    setActions(prev => prev.map(a => a.id === id ? { ...a, enabled: !a.enabled } : a))
+  // Загрузка действий из БД
+  useEffect(() => {
+    if (!serverId) return
+    const fetchActions = async () => {
+      try {
+        const res = await fetch(`/api/servers/${serverId}/actions`)
+        if (res.ok) {
+          const data = await res.json()
+          setActions(data)
+        }
+      } catch (err) {
+        console.error('Failed to load actions:', err)
+      }
+    }
+    fetchActions()
+  }, [serverId])
+
+  const toggleAction = async (id: string) => {
+    const action = actions.find(a => a.id === id)
+    if (!action) return
+    
+    const updated = { ...action, enabled: !action.enabled }
+    setActions(prev => prev.map(a => a.id === id ? updated : a))
+    
+    try {
+      await fetch(`/api/servers/${serverId}/actions/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updated)
+      })
+    } catch (err) {
+      console.error('Failed to update action:', err)
+    }
   }
 
-  const deleteAction = (id: string) => {
+  const deleteAction = async (id: string) => {
     setActions(prev => prev.filter(a => a.id !== id))
+    try {
+      await fetch(`/api/servers/${serverId}/actions/${id}`, { method: 'DELETE' })
+    } catch (err) {
+      console.error('Failed to delete action:', err)
+    }
+  }
+
+  const saveAction = async (action: Omit<CustomAction, 'id'>) => {
+    const newAction = { ...action, id: Date.now().toString() }
+    setActions(prev => [...prev, newAction])
+    setShowCreateModal(false)
+    
+    try {
+      await fetch(`/api/servers/${serverId}/actions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newAction)
+      })
+    } catch (err) {
+      console.error('Failed to save action:', err)
+    }
   }
 
   const getAccessLevelColor = (level: CustomAction['accessLevel']) => {
@@ -148,10 +206,7 @@ export default function Settings() {
       )}
 
       {showCreateModal && (
-        <CreateActionModal onClose={() => setShowCreateModal(false)} onSave={(action) => {
-          setActions(prev => [...prev, { ...action, id: Date.now().toString() }])
-          setShowCreateModal(false)
-        }} />
+        <CreateActionModal onClose={() => setShowCreateModal(false)} onSave={saveAction} />
       )}
     </div>
   )
@@ -180,6 +235,20 @@ function CreateActionModal({ onClose, onSave }: CreateActionModalProps) {
     { value: 'admin', label: 'Только админам', color: 'admin' },
   ]
 
+  const currentLevel = accessLevels.find(l => l.value === accessLevel)
+
+  const AccessIcon = ({ color }: { color: string }) => (
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={`level-icon ${color}`}>
+      <path d="M3 5C3 3.89543 3.89543 3 5 3H9.25C10.3546 3 11.25 3.89543 11.25 5V6C11.25 7.10457 10.3546 8 9.25 8H5C3.89543 8 3 7.10457 3 6V5Z"/>
+      <path d="M8.5 11.5C8.5 10.3954 9.39543 9.5 10.5 9.5H13.5C14.6046 9.5 15.5 10.3954 15.5 11.5V12.5C15.5 13.6046 14.6046 14.5 13.5 14.5H10.5C9.39543 14.5 8.5 13.6046 8.5 12.5V11.5Z"/>
+      <path d="M3 11.375C3 10.3395 3.83947 9.5 4.875 9.5C5.91053 9.5 6.75 10.3395 6.75 11.375V12.625C6.75 13.6605 5.91053 14.5 4.875 14.5C3.83947 14.5 3 13.6605 3 12.625V11.375Z"/>
+      <path d="M17.2 11.375C17.2 10.3395 18.0394 9.5 19.075 9.5C20.1105 9.5 20.95 10.3395 20.95 11.375V12.625C20.95 13.6605 20.1105 14.5 19.075 14.5C18.0394 14.5 17.2 13.6605 17.2 12.625V11.375Z"/>
+      <path d="M12.75 5C12.75 3.89543 13.6454 3 14.75 3H19C20.1046 3 21 3.89543 21 5V6C21 7.10457 20.1046 8 19 8H14.75C13.6454 8 12.75 7.10457 12.75 6V5Z"/>
+      <path d="M3 18C3 16.8954 3.89543 16 5 16H9.25C10.3546 16 11.25 16.8954 11.25 18V19C11.25 20.1046 10.3546 21 9.25 21H5C3.89543 21 3 20.1046 3 19V18Z"/>
+      <path d="M12.75 18C12.75 16.8954 13.6454 16 14.75 16H19C20.1046 16 21 16.8954 21 18V19C21 20.1046 20.1046 21 19 21H14.75C13.6454 21 12.75 20.1046 12.75 19V18Z"/>
+    </svg>
+  )
+
   const variables = [
     { name: '{steam_id}', desc: 'SteamID выбранного игрока' },
     { name: '{steam_name}', desc: 'Имя выбранного игрока' },
@@ -198,7 +267,7 @@ function CreateActionModal({ onClose, onSave }: CreateActionModalProps) {
   }
 
   const handleSave = () => {
-    onSave({ name, group, enabled: true, accessLevel })
+    onSave({ name, group, enabled: true, accessLevel, commands: commands.filter(c => c.trim()), allowOffline, selectServer, confirmBefore })
   }
 
   const canProceed = step === 1 ? name.trim() !== '' : commands.some(c => c.trim() !== '')
@@ -246,7 +315,10 @@ function CreateActionModal({ onClose, onSave }: CreateActionModalProps) {
                   </div>
                   <div className="select-wrapper" onClick={() => setShowAccessDropdown(!showAccessDropdown)}>
                     <div className="select-activator">
-                      <span>{accessLevels.find(l => l.value === accessLevel)?.label || 'Выберите уровень доступа'}</span>
+                      <div className="select-value">
+                        {currentLevel && <AccessIcon color={currentLevel.color} />}
+                        <span>{currentLevel?.label || 'Выберите уровень доступа'}</span>
+                      </div>
                       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={`arrow ${showAccessDropdown ? 'open' : ''}`}>
                         <path fillRule="evenodd" clipRule="evenodd" d="M9.29289 7.29289C9.68342 6.90237 10.3166 6.90237 10.7071 7.29289L14.1768 10.7626C14.8602 11.446 14.8602 12.554 14.1768 13.2374L10.7071 16.7071C10.3166 17.0976 9.68342 17.0976 9.29289 16.7071C8.90237 16.3166 8.90237 15.6834 9.29289 15.2929L12.5858 12L9.29289 8.70711C8.90237 8.31658 8.90237 7.68342 9.29289 7.29289Z"/>
                       </svg>
@@ -255,15 +327,7 @@ function CreateActionModal({ onClose, onSave }: CreateActionModalProps) {
                       <div className="select-options">
                         {accessLevels.map(level => (
                           <div key={level.value} className="select-option" onClick={() => { setAccessLevel(level.value as CustomAction['accessLevel']); setShowAccessDropdown(false) }}>
-                            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={`level-icon ${level.color}`}>
-                              <path d="M3 5C3 3.89543 3.89543 3 5 3H9.25C10.3546 3 11.25 3.89543 11.25 5V6C11.25 7.10457 10.3546 8 9.25 8H5C3.89543 8 3 7.10457 3 6V5Z"/>
-                              <path d="M8.5 11.5C8.5 10.3954 9.39543 9.5 10.5 9.5H13.5C14.6046 9.5 15.5 10.3954 15.5 11.5V12.5C15.5 13.6046 14.6046 14.5 13.5 14.5H10.5C9.39543 14.5 8.5 13.6046 8.5 12.5V11.5Z"/>
-                              <path d="M3 11.375C3 10.3395 3.83947 9.5 4.875 9.5C5.91053 9.5 6.75 10.3395 6.75 11.375V12.625C6.75 13.6605 5.91053 14.5 4.875 14.5C3.83947 14.5 3 13.6605 3 12.625V11.375Z"/>
-                              <path d="M17.2 11.375C17.2 10.3395 18.0394 9.5 19.075 9.5C20.1105 9.5 20.95 10.3395 20.95 11.375V12.625C20.95 13.6605 20.1105 14.5 19.075 14.5C18.0394 14.5 17.2 13.6605 17.2 12.625V11.375Z"/>
-                              <path d="M12.75 5C12.75 3.89543 13.6454 3 14.75 3H19C20.1046 3 21 3.89543 21 5V6C21 7.10457 20.1046 8 19 8H14.75C13.6454 8 12.75 7.10457 12.75 6V5Z"/>
-                              <path d="M3 18C3 16.8954 3.89543 16 5 16H9.25C10.3546 16 11.25 16.8954 11.25 18V19C11.25 20.1046 10.3546 21 9.25 21H5C3.89543 21 3 20.1046 3 19V18Z"/>
-                              <path d="M12.75 18C12.75 16.8954 13.6454 16 14.75 16H19C20.1046 16 21 16.8954 21 18V19C21 20.1046 20.1046 21 19 21H14.75C13.6454 21 12.75 20.1046 12.75 19V18Z"/>
-                            </svg>
+                            <AccessIcon color={level.color} />
                             <span>{level.label}</span>
                           </div>
                         ))}

@@ -1138,6 +1138,102 @@ app.post('/api/servers/:serverId/chat/send', (req, res) => {
   res.json({ success: true, command: cmd });
 });
 
+// === CUSTOM ACTIONS (per server) ===
+const getActionsFile = (serverId) => path.join(getServerDir(serverId), 'actions.json');
+const loadActions = (serverId) => loadJSON(getActionsFile(serverId), { actions: [] });
+const saveActions = (serverId, data) => saveJSON(getActionsFile(serverId), data);
+
+// Get all actions
+app.get('/api/servers/:serverId/actions', (req, res) => {
+  const actions = loadActions(req.params.serverId);
+  res.json(actions.actions);
+});
+
+// Create action
+app.post('/api/servers/:serverId/actions', (req, res) => {
+  const actions = loadActions(req.params.serverId);
+  const action = req.body;
+  actions.actions.push(action);
+  saveActions(req.params.serverId, actions);
+  res.json(action);
+});
+
+// Update action
+app.put('/api/servers/:serverId/actions/:actionId', (req, res) => {
+  const actions = loadActions(req.params.serverId);
+  const idx = actions.actions.findIndex(a => a.id === req.params.actionId);
+  if (idx !== -1) {
+    actions.actions[idx] = req.body;
+    saveActions(req.params.serverId, actions);
+  }
+  res.json(req.body);
+});
+
+// Delete action
+app.delete('/api/servers/:serverId/actions/:actionId', (req, res) => {
+  const actions = loadActions(req.params.serverId);
+  actions.actions = actions.actions.filter(a => a.id !== req.params.actionId);
+  saveActions(req.params.serverId, actions);
+  res.json({ success: true });
+});
+
+// Execute custom action
+app.post('/api/servers/:serverId/actions/:actionId/execute', (req, res) => {
+  const { steam_id, steam_name, player_ip, staff_steam_id, variables } = req.body;
+  const serverId = req.params.serverId;
+  
+  const actions = loadActions(serverId);
+  const action = actions.actions.find(a => a.id === req.params.actionId);
+  
+  if (!action) {
+    return res.status(404).json({ error: 'Action not found' });
+  }
+  
+  if (!action.enabled) {
+    return res.status(400).json({ error: 'Action is disabled' });
+  }
+  
+  // Replace variables in commands
+  const cmds = loadCommands(serverId);
+  
+  for (const cmdTemplate of action.commands) {
+    let cmd = cmdTemplate
+      .replace(/{steam_id}/g, steam_id || '')
+      .replace(/{steam_name}/g, steam_name || '')
+      .replace(/{player_ip}/g, player_ip || '')
+      .replace(/{staff_steam_id}/g, staff_steam_id || '');
+    
+    // Replace custom variables
+    if (variables) {
+      for (const [key, value] of Object.entries(variables)) {
+        cmd = cmd.replace(new RegExp(`{${key}}`, 'g'), value);
+      }
+    }
+    
+    cmds.commands.push({
+      id: crypto.randomUUID(),
+      type: 'custom_action',
+      action_id: action.id,
+      action_name: action.name,
+      command: cmd,
+      target_steam_id: steam_id,
+      timestamp: Date.now(),
+      executed: false
+    });
+  }
+  
+  saveCommands(serverId, cmds);
+  
+  addServerActivityLog(serverId, 'custom_action', {
+    action_id: action.id,
+    action_name: action.name,
+    target_steam_id: steam_id,
+    staff_steam_id
+  });
+  
+  res.json({ success: true, action: action.name });
+});
+
 // SPA fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));

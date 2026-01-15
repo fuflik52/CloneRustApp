@@ -508,6 +508,12 @@
   cursor: pointer;
 }
 
+.select-value {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .select-activator span {
   font-size: 14px;
   color: #fff;
