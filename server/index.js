@@ -17,9 +17,10 @@ app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, '../dist')));
 
 // === PATHS ===
-const DATA_DIR = path.join(__dirname, 'data');
-const SERVERS_FILE = path.join(DATA_DIR, 'servers.json');
+const DATA_DIR = path.join(__dirname, '..');
+const SERVERS_FILE = path.join(DATA_DIR, 'data.json');
 const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
+const CHAT_FILE = path.join(DATA_DIR, 'chat.json');
 
 const STEAM_API_KEY = process.env.STEAM_API_KEY;
 
@@ -71,18 +72,16 @@ const saveServerPlayers = (serverId, data) => {
   saveJSON(file, data);
 };
 
-const loadServerChat = (serverId) => {
-  const file = path.join(getServerDir(serverId), 'chat.json');
-  return loadJSON(file, { messages: [] });
+const loadServerChat = () => {
+  return loadJSON(CHAT_FILE, { messages: [] });
 };
 
-const saveServerChat = (serverId, data) => {
-  const file = path.join(getServerDir(serverId), 'chat.json');
+const saveServerChat = (data) => {
   // Limit to 5000 messages
   if (data.messages.length > 5000) {
     data.messages = data.messages.slice(-5000);
   }
-  saveJSON(file, data);
+  saveJSON(CHAT_FILE, data);
 };
 
 const loadServerActivity = (serverId) => {
@@ -773,9 +772,12 @@ app.delete('/api/servers/:serverId/players/:steamId/tag/:tag', (req, res) => {
 // Get chat messages for server
 app.get('/api/servers/:serverId/chat', (req, res) => {
   const { limit = 100, before, player } = req.query;
-  const chat = loadServerChat(req.params.serverId);
+  const chat = loadServerChat();
   
   let messages = chat.messages;
+  
+  // Filter by serverId
+  messages = messages.filter(m => m.serverId === req.params.serverId);
   
   // Filter by player steam_id
   if (player) {
@@ -800,20 +802,22 @@ app.post('/api/chat', (req, res) => {
   const server = Object.values(data.servers).find(s => s.secretKey === key);
   if (!server) return res.status(401).json({ error: 'Invalid key' });
   
-  const chat = loadServerChat(server.id);
+  const chat = loadServerChat();
   
   // Support batch messages from PanRust plugin: { messages: [...], server: ... }
   if (req.body.messages && Array.isArray(req.body.messages)) {
     for (const msg of req.body.messages) {
       chat.messages.push({
         id: crypto.randomUUID(),
+        serverId: server.id,
         steam_id: msg.si || msg.steam_id,
         name: msg.n || msg.name,
         message: msg.m || msg.message,
-        team: msg.t || msg.team || false,
+        is_team: msg.t || msg.team || false,
         avatar: msg.avatar || '',
         timestamp: msg.ts || Date.now(),
-        server: server.name
+        server: server.name,
+        date: new Date(msg.ts || Date.now()).toISOString()
       });
     }
   } else {
@@ -821,17 +825,19 @@ app.post('/api/chat', (req, res) => {
     const { steam_id, name, message, team, avatar } = req.body;
     chat.messages.push({
       id: crypto.randomUUID(),
+      serverId: server.id,
       steam_id,
       name,
       message,
-      team: team || false,
+      is_team: team || false,
       avatar: avatar || '',
       timestamp: Date.now(),
-      server: server.name
+      server: server.name,
+      date: new Date().toISOString()
     });
   }
   
-  saveServerChat(server.id, chat);
+  saveServerChat(chat);
   res.json({ success: true });
 });
 
@@ -1307,19 +1313,21 @@ app.post('/api/servers/:serverId/chat/send', (req, res) => {
   saveCommands(serverId, cmds);
   
   // Also save to chat history so it appears in web interface
-  const chat = loadServerChat(serverId);
+  const chat = loadServerChat();
   chat.messages.push({
     id: crypto.randomUUID(),
+    serverId: serverId,
     steam_id: 'admin',
     name: '[Админ]',
     message: target_steam_id ? `[ЛС → ${target_steam_id}] ${message.trim()}` : message.trim(),
-    team: false,
+    is_team: false,
     avatar: '',
     timestamp: Date.now(),
     server: server.name,
-    is_admin: true
+    is_admin: true,
+    date: new Date().toISOString()
   });
-  saveServerChat(serverId, chat);
+  saveServerChat(chat);
   
   res.json({ success: true, command: cmd });
 });
