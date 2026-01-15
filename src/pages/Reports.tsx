@@ -39,26 +39,51 @@ function TrashIcon() {
 export default function Reports() {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const { showToast } = useToast()
   const { serverId } = useServer()
 
-  const fetchReports = () => {
+  const fetchReports = async () => {
     if (!serverId) return
-    fetch(`/api/servers/${serverId}/reports`)
-      .then(res => res.json())
-      .then(data => {
-        setReports(data)
-        setLoading(false)
+    
+    setLoading(true)
+    setError(null)
+    
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 секунд таймаут
+    
+    try {
+      const res = await fetch(`/api/servers/${serverId}/reports`, {
+        signal: controller.signal
       })
-      .catch(err => {
-        console.error('Error fetching reports:', err)
-        setLoading(false)
-      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!res.ok) {
+        throw new Error(`Ошибка ${res.status}: ${res.statusText}`)
+      }
+      
+      const data = await res.json()
+      setReports(data)
+      setError(null)
+    } catch (err: any) {
+      clearTimeout(timeoutId)
+      
+      if (err.name === 'AbortError') {
+        setError('Таймаут: Превышено время ожидания ответа от сервера')
+        showToast('Таймаут при загрузке репортов', 'error')
+      } else {
+        const errorMessage = err.message || 'Неизвестная ошибка при загрузке репортов'
+        setError(errorMessage)
+        showToast(errorMessage, 'error')
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
     if (serverId) {
-      setLoading(true)
       fetchReports()
     }
   }, [serverId])
@@ -85,7 +110,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="page">
+    <div className="page reports-page">
       <div className="reports-table-container">
         <div className="reports-table">
           <div className="table-header">
@@ -102,8 +127,12 @@ export default function Reports() {
           </div>
 
           <div className="table-body">
-            {loading ? (
-              <div className="table-empty">Загрузка репортов...</div>
+            {loading ? null : error ? (
+              <div className="table-empty table-error">
+                <div className="error-title">Ошибка загрузки</div>
+                <div className="error-message">{error}</div>
+                <button className="retry-btn" onClick={fetchReports}>Повторить</button>
+              </div>
             ) : reports.length === 0 ? (
               <div className="table-empty">Репортов пока нет</div>
             ) : (
@@ -179,11 +208,23 @@ export default function Reports() {
       </div>
 
       <style>{`
+        .reports-page {
+          margin-left: -40px;
+          margin-right: -40px;
+          margin-top: -40px;
+          margin-bottom: 0;
+          padding: 0;
+          width: calc(100% + 80px);
+          max-width: none;
+        }
         .reports-table-container {
           background: #151515;
-          border-radius: 8px;
+          border-radius: 0;
           overflow: hidden;
-          border: 1px solid #262626;
+          border: none;
+          border-bottom: 1px solid #262626;
+          width: 100%;
+          margin: 0;
         }
         .reports-table {
           width: 100%;
@@ -341,6 +382,40 @@ export default function Reports() {
           text-align: center;
           color: #525252;
           font-size: 14px;
+        }
+        .table-error {
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 16px;
+          padding: 40px 20px;
+        }
+        .error-title {
+          color: #ef4444;
+          font-size: 16px;
+          font-weight: 600;
+        }
+        .error-message {
+          color: #a3a3a3;
+          font-size: 14px;
+          max-width: 600px;
+          line-height: 1.5;
+        }
+        .retry-btn {
+          background: #262626;
+          border: 1px solid #404040;
+          color: #e5e5e5;
+          padding: 10px 20px;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 14px;
+          font-weight: 500;
+          transition: all 0.15s;
+          margin-top: 8px;
+        }
+        .retry-btn:hover {
+          background: #333;
+          border-color: #525252;
         }
       `}</style>
     </div>
