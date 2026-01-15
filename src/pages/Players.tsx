@@ -129,6 +129,8 @@ export default function Players() {
   const [showMuteModal, setShowMuteModal] = useState(false)
   const [showBanModal, setShowBanModal] = useState(false)
   const [showKickModal, setShowKickModal] = useState(false)
+  const [showActionConfirmModal, setShowActionConfirmModal] = useState(false)
+  const [pendingAction, setPendingAction] = useState<CustomAction | null>(null)
   const [muteReason, setMuteReason] = useState('')
   const [muteDuration, setMuteDuration] = useState('1h')
   const [banReason, setBanReason] = useState('')
@@ -242,15 +244,18 @@ export default function Players() {
     return () => cancelAnimationFrame(raf)
   }, [contextMenu, openSubmenu, customActions.length])
 
-  const executeCustomAction = async (action: CustomAction) => {
+  const executeCustomAction = async (action: CustomAction, confirmed = false) => {
     if (!serverId || !selectedPlayer) return
     if (!selectedPlayer.online && !action.allowOffline) {
       showToast('Нельзя выполнить действие для офлайн игрока', 'info')
       return
     }
-    if (action.confirmBefore) {
-      const ok = window.confirm(`Выполнить действие «${action.name}» для игрока ${selectedPlayer.name}?`)
-      if (!ok) return
+
+    if (action.confirmBefore && !confirmed) {
+      setPendingAction(action)
+      setShowActionConfirmModal(true)
+      setContextMenu(null)
+      return
     }
 
     try {
@@ -276,6 +281,8 @@ export default function Players() {
     }
 
     setContextMenu(null)
+    setShowActionConfirmModal(false)
+    setPendingAction(null)
   }
 
   const handleMute = async () => {
@@ -1253,6 +1260,39 @@ export default function Players() {
             <div className="action-modal-footer">
               <button className="btn-cancel" onClick={() => setShowKickModal(false)}>Отмена</button>
               <button className="btn-action destructive" onClick={handleKick}>Кикнуть</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Action Confirmation Modal */}
+      {showActionConfirmModal && pendingAction && selectedPlayer && (
+        <div className="action-modal-overlay" onClick={() => { setShowActionConfirmModal(false); setPendingAction(null); }}>
+          <div className="action-modal confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="action-modal-header">
+              <span>Подтверждение действия</span>
+              <button className="action-modal-close" onClick={() => { setShowActionConfirmModal(false); setPendingAction(null); }}><CloseIcon /></button>
+            </div>
+            <div className="action-modal-content">
+              <div className="action-modal-player">
+                <img src={selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                <div className="player-info-confirm">
+                  <span className="player-name">{selectedPlayer.name}</span>
+                  <span className="player-steamid">{selectedPlayer.steam_id}</span>
+                </div>
+              </div>
+              <div className="confirm-message">
+                Вы действительно хотите выполнить действие <strong>«{pendingAction.name}»</strong>?
+              </div>
+            </div>
+            <div className="action-modal-footer">
+              <button className="btn-cancel" onClick={() => { setShowActionConfirmModal(false); setPendingAction(null); }}>Отмена</button>
+              <button 
+                className={`btn-action ${pendingAction.accessLevel === 'very-dangerous' || pendingAction.accessLevel === 'admin' ? 'destructive' : ''}`} 
+                onClick={() => executeCustomAction(pendingAction, true)}
+              >
+                Выполнить
+              </button>
             </div>
           </div>
         </div>

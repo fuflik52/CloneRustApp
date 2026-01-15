@@ -650,6 +650,14 @@ namespace Oxide.Plugins
                                     Puts($"[Unban] {unbanSteamId}");
                                 }
                                 break;
+
+                            case "custom_action":
+                                if (!string.IsNullOrEmpty(cmd.command))
+                                {
+                                    ConsoleSystem.Run(ConsoleSystem.Option.Server, cmd.command);
+                                    Puts($"[CustomAction] {cmd.command}");
+                                }
+                                break;
                         }
                     }
                 } catch (Exception ex) { Puts($"[FetchCmd Error] {ex.Message}"); }
@@ -663,6 +671,7 @@ namespace Oxide.Plugins
             public string steam_id;
             public string message;
             public string reason; 
+            public string command;
             public bool is_global;
             public bool broadcast; 
             public long expired_at;
