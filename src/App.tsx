@@ -179,6 +179,7 @@ function ProjectLayout() {
           <Route path="staff" element={<Staff />} />
           <Route path="secret-db-panel" element={<Database />} />
           <Route path="settings" element={<Settings />} />
+          <Route path="map" element={<Map />} />
           <Route path="*" element={<Navigate to="welcome" replace />} />
         </Routes>
       </main>
@@ -202,9 +203,6 @@ function AppContent() {
     <Routes>
       {/* Страница профиля без сайдбара */}
       <Route path="/profile" element={<Profile />} />
-      
-      {/* Страница карты без сайдбара (скрытая) */}
-      <Route path="/map" element={<Map />} />
       
       {/* Редирект с корня на профиль */}
       <Route path="/" element={<Navigate to="/profile" replace />} />
