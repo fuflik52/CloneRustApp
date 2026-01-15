@@ -31,6 +31,8 @@ export default function Map() {
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
   const [isVisible, setIsVisible] = useState(true)
+  const [nextUpdate, setNextUpdate] = useState(5)
+  const [showPlayerList, setShowPlayerList] = useState(false)
 
   // Отслеживание видимости вкладки
   useEffect(() => {
@@ -45,16 +47,26 @@ export default function Map() {
     if (!serverId) return
 
     const fetchMap = async () => {
+      console.log('[MAP] Fetching map data for server:', serverId)
       try {
         const res = await fetch(`/api/servers/${serverId}/map`)
+        console.log('[MAP] Response status:', res.status)
+        
         if (res.ok) {
           const data = await res.json()
+          console.log('[MAP] Received data:', data)
+          console.log('[MAP] Players count:', data.players?.length || 0)
+          console.log('[MAP] Players:', data.players)
           setMapData(data)
           setError('')
+          setNextUpdate(5) // Сброс таймера
         } else {
+          const errorText = await res.text()
+          console.error('[MAP] Error response:', errorText)
           setError('Не удалось загрузить карту')
         }
-      } catch {
+      } catch (err) {
+        console.error('[MAP] Fetch error:', err)
         setError('Ошибка подключения к серверу')
       } finally {
         setLoading(false)
@@ -69,8 +81,16 @@ export default function Map() {
         fetchMap()
       }
     }, 5000)
+    
+    // Таймер обратного отсчета
+    const countdown = setInterval(() => {
+      setNextUpdate(prev => prev > 0 ? prev - 1 : 5)
+    }, 1000)
 
-    return () => clearInterval(interval)
+    return () => {
+      clearInterval(interval)
+      clearInterval(countdown)
+    }
   }, [serverId, isVisible])
 
   useEffect(() => {
@@ -94,13 +114,21 @@ export default function Map() {
       const mapScale = canvas.width / worldSize
 
       // Рисуем всех игроков
-      mapData.players.forEach(player => {
-        if (!player.position) return
+      console.log('[MAP] Drawing players:', mapData.players.length)
+      mapData.players.forEach((player, index) => {
+        console.log(`[MAP] Player ${index}:`, player.name, player.position)
+        
+        if (!player.position) {
+          console.warn(`[MAP] Player ${player.name} has no position!`)
+          return
+        }
         
         const { x, z } = player.position
         
         const canvasX = (x + worldSize / 2) * mapScale
         const canvasY = (worldSize / 2 - z) * mapScale
+        
+        console.log(`[MAP] Drawing ${player.name} at canvas coords:`, canvasX, canvasY)
 
         const dotSize = Math.max(8, 10 / scale)
 
@@ -186,6 +214,29 @@ export default function Map() {
     setIsDragging(false)
   }
 
+  const zoomToPlayer = (player: Player) => {
+    if (!player.position || !canvasRef.current || !mapData) return
+    
+    const canvas = canvasRef.current
+    const worldSize = mapData.worldSize
+    const mapScale = canvas.width / worldSize
+    
+    const { x, z } = player.position
+    const canvasX = (x + worldSize / 2) * mapScale
+    const canvasY = (worldSize / 2 - z) * mapScale
+    
+    // Центрируем на игроке
+    const containerWidth = window.innerWidth
+    const containerHeight = window.innerHeight
+    
+    const offsetX = (containerWidth / 2 - canvasX * 2) 
+    const offsetY = (containerHeight / 2 - canvasY * 2)
+    
+    setScale(2)
+    setOffset({ x: offsetX, y: offsetY })
+    setShowPlayerList(false)
+  }
+
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault()
     e.stopPropagation()
@@ -257,9 +308,108 @@ export default function Map() {
           Игроков онлайн: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{mapData?.online || 0}</span>
         </div>
         <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-          Обновление каждые 5 сек
+          Обновление через {nextUpdate} сек
         </div>
+        <button
+          onClick={() => setShowPlayerList(!showPlayerList)}
+          style={{
+            marginTop: 10,
+            background: 'linear-gradient(135deg, #84cc16 0%, #65a30d 100%)',
+            border: 'none',
+            color: '#fff',
+            padding: '8px 16px',
+            borderRadius: 8,
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 'bold',
+            width: '100%'
+          }}
+        >
+          {showPlayerList ? 'Скрыть список' : 'Показать игроков'}
+        </button>
       </div>
+
+      {/* Список игроков */}
+      {showPlayerList && mapData && (
+        <div style={{
+          position: 'absolute',
+          top: 140,
+          left: 20,
+          background: 'rgba(0, 0, 0, 0.9)',
+          padding: '15px',
+          borderRadius: 12,
+          color: '#fff',
+          zIndex: 10,
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
+          maxHeight: '60vh',
+          overflowY: 'auto',
+          minWidth: 250
+        }}>
+          <div style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 14 }}>
+            Игроки на карте ({mapData.players.length}):
+          </div>
+          {mapData.players.map((player, index) => (
+            <div
+              key={player.steam_id}
+              onClick={() => zoomToPlayer(player)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                padding: '8px 10px',
+                marginBottom: 6,
+                background: 'rgba(255, 255, 255, 0.05)',
+                borderRadius: 8,
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                border: '1px solid transparent'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(132, 204, 22, 0.2)'
+                e.currentTarget.style.borderColor = '#84cc16'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)'
+                e.currentTarget.style.borderColor = 'transparent'
+              }}
+            >
+              <div style={{
+                width: 10,
+                height: 10,
+                borderRadius: '50%',
+                background: player.team ? '#4CAF50' : '#FF5252',
+                border: '2px solid #fff',
+                flexShrink: 0
+              }} />
+              {player.avatar && (
+                <img 
+                  src={player.avatar} 
+                  alt="" 
+                  style={{ 
+                    width: 32, 
+                    height: 32, 
+                    borderRadius: '50%',
+                    border: '2px solid #84cc16'
+                  }}
+                />
+              )}
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 13, fontWeight: 'bold' }}>
+                  {player.name}
+                </div>
+                <div style={{ fontSize: 10, color: '#888' }}>
+                  {player.position ? 
+                    `X: ${Math.round(player.position.x)} Z: ${Math.round(player.position.z)}` : 
+                    'Нет позиции'
+                  }
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Легенда */}
       <div style={{

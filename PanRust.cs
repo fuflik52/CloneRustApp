@@ -544,6 +544,10 @@ namespace Oxide.Plugins
         {
             var s = GetStats(p.UserIDString);
             var pos = p.transform.position;
+            
+            // Логируем позицию игрока
+            if (on) Puts($"[MakePlayer] {p.displayName} - Online: {on}, Pos: {pos.x}, {pos.y}, {pos.z}");
+            
             return new
             {
                 steam_id = p.UserIDString, name = p.displayName, ip = on ? GetIP(p) : "", ping = on ? Network.Net.sv.GetAveragePing(p.Connection) : 0,
