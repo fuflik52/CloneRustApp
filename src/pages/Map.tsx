@@ -164,13 +164,15 @@ export default function Map() {
         ctx.stroke()
       }
 
-      // Рисуем только онлайн игроков
+      // Рисуем только онлайн игроков с валидными позициями
       mapData.players.forEach((player) => {
-        // Пропускаем оффлайн игроков
-        if (player.online === false) return
+        // Пропускаем игроков без позиции или с невалидными координатами
         if (!player.position) return
         
         const { x, z } = player.position
+        
+        // Пропускаем игроков в центре карты (0,0,0) - невалидные позиции
+        if (x === 0 && z === 0) return
         
         const canvasX = (x + worldSize / 2) * mapScale
         const canvasY = (worldSize / 2 - z) * mapScale
@@ -459,9 +461,9 @@ export default function Map() {
           maxWidth: 250
         }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 12, color: '#888' }}>
-            Онлайн ({mapData.players.filter(p => p.online !== false).length})
+            Онлайн ({mapData.players.filter(p => p.position && !(p.position.x === 0 && p.position.z === 0)).length})
           </div>
-          {mapData.players.filter(p => p.online !== false).map((player) => (
+          {mapData.players.filter(p => p.position && !(p.position.x === 0 && p.position.z === 0)).map((player) => (
             <div
               key={player.steam_id}
               onClick={() => zoomToPlayer(player)}

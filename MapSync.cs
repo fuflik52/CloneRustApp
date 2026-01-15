@@ -95,6 +95,7 @@ namespace Oxide.Plugins
                 {
                     ["steam_id"] = player.UserIDString,
                     ["name"] = player.displayName,
+                    ["online"] = true,
                     ["position"] = new Dictionary<string, float>
                     {
                         ["x"] = pos.x,

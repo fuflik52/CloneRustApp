@@ -1490,14 +1490,27 @@ app.get('/api/servers/:serverId/map', (req, res) => {
     return res.status(404).json({ error: 'Server not found' });
   }
   
-  // Get online players with their positions
-  const players = (server.players || []).map(p => ({
-    steam_id: p.steam_id,
-    name: p.name || p.steam_name,
-    avatar: p.avatar || '',
-    position: p.position || { x: 0, y: 0, z: 0 }, // Plugin должен отправлять позиции
-    team: p.team || null
-  }));
+  // Get only online players with valid positions
+  const players = (server.players || [])
+    .filter(p => {
+      // Фильтруем только игроков с валидными позициями
+      if (!p.position) return false;
+      const { x, z } = p.position;
+      // Исключаем игроков в центре карты (0,0,0) - это невалидные позиции
+      if (x === 0 && z === 0) return false;
+      return true;
+    })
+    .map(p => ({
+      steam_id: p.steam_id,
+      name: p.name || p.steam_name,
+      avatar: p.avatar || '',
+      position: {
+        x: p.position.x || 0,
+        y: p.position.y || 0,
+        z: p.position.z || 0
+      },
+      team: p.team || null
+    }));
   
   res.json({
     mapUrl: server.mapUrl || '', // URL карты из плагина MapImageUrl
