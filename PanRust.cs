@@ -26,6 +26,9 @@ namespace Oxide.Plugins
         readonly Dictionary<ulong, float> _sessions = new Dictionary<ulong, float>();
         readonly Dictionary<ulong, List<HitRecord>> _hitHistory = new Dictionary<ulong, List<HitRecord>>();
         readonly Dictionary<ulong, MuteData> _mutes = new Dictionary<ulong, MuteData>();
+        
+        // Map sync
+        string _mapImageUrl = null;
 
         #region Data
         
@@ -169,6 +172,15 @@ namespace Oxide.Plugins
             }
             Puts("PanRust: Подключен");
             FetchServerIp();
+            
+            // Map sync
+            _mapImageUrl = MapUploader.ImageUrl;
+            if (!string.IsNullOrEmpty(_mapImageUrl))
+            {
+                Puts($"Map URL: {_mapImageUrl}");
+                SendMapUrl();
+            }
+            
             timer.Once(2f, Sync);
             timer.Every(_config.UpdateInt, SendState);
             timer.Every(_config.ChatInt, SendChat);
@@ -531,12 +543,35 @@ namespace Oxide.Plugins
         object MakePlayer(BasePlayer p, bool on)
         {
             var s = GetStats(p.UserIDString);
+            var pos = p.transform.position;
             return new
             {
                 steam_id = p.UserIDString, name = p.displayName, ip = on ? GetIP(p) : "", ping = on ? Network.Net.sv.GetAveragePing(p.Connection) : 0,
-                online = on, position = p.transform.position.ToString(), server = ConVar.Server.hostname,
+                online = on, 
+                position = new { x = pos.x, y = pos.y, z = pos.z }, // Отправляем позицию как объект
+                team = p.currentTeam != 0 ? p.currentTeam.ToString() : null,
+                server = ConVar.Server.hostname,
                 stats = new { kills = s.k, deaths = s.d, headshots = s.hs, bodyshots = s.bs, limbshots = s.ls, playtime_hours = Math.Round(GetPlaytime(p.UserIDString) / 3600, 2), reports_count = s.rp, kd = s.d > 0 ? Math.Round((double)s.k / s.d, 2) : s.k }
             };
+        }
+        
+        void SendMapUrl()
+        {
+            if (string.IsNullOrEmpty(_meta.Key) || string.IsNullOrEmpty(_mapImageUrl)) return;
+            
+            var data = new Dictionary<string, object>
+            {
+                ["mapUrl"] = _mapImageUrl,
+                ["worldSize"] = World.Size,
+                ["hostname"] = GetServerAddress()
+            };
+
+            string json = JsonConvert.SerializeObject(data);
+            webrequest.Enqueue($"{API}/map-url", json, (c, r) => 
+            { 
+                if (c == 200) Puts("Map URL sent successfully");
+                else if (c != 0) PrintWarning($"Failed to send map URL: {c}");
+            }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
         }
 
         void SendChat()
