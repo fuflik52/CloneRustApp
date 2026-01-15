@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Oxide.Plugins
 {
-    [Info("MapSync", "PanRust", "1.0.0")]
+    [Info("MapSync", "PanRust", "1.0.1")]
     [Description("Синхронизирует карту и позиции игроков с веб-панелью")]
     class MapSync : RustPlugin
     {
@@ -29,6 +29,7 @@ namespace Oxide.Plugins
             updateTimer = timer.Every(5f, () => SendPlayerPositions());
             
             Puts("MapSync initialized. Map URL: " + (mapImageUrl ?? "Not available"));
+            Puts($"API URL: {apiUrl}");
         }
 
         void Unload()
@@ -38,24 +39,18 @@ namespace Oxide.Plugins
 
         void SendMapUrl()
         {
-            if (secretKey == "YOUR_SECRET_KEY_HERE")
-            {
-                PrintWarning("Secret key not set! Use: mapsync.setkey <your_key>");
-                return;
-            }
-
             var data = new Dictionary<string, object>
             {
                 ["mapUrl"] = mapImageUrl,
-                ["worldSize"] = World.Size
+                ["worldSize"] = World.Size,
+                ["hostname"] = ConVar.Server.hostname
             };
 
             string json = JsonConvert.SerializeObject(data);
             
             var headers = new Dictionary<string, string>
             {
-                ["Content-Type"] = "application/json",
-                ["Authorization"] = $"Bearer {secretKey}"
+                ["Content-Type"] = "application/json"
             };
 
             Puts($"Sending map URL to: {apiUrl}/map-url");
@@ -72,6 +67,7 @@ namespace Oxide.Plugins
                     else if (code == 0)
                     {
                         PrintError($"Connection failed! Check API URL: {apiUrl}");
+                        PrintError("Make sure the web server is running and accessible");
                     }
                     else
                     {
@@ -86,8 +82,6 @@ namespace Oxide.Plugins
 
         void SendPlayerPositions()
         {
-            if (string.IsNullOrEmpty(mapImageUrl)) return;
-
             var players = new List<Dictionary<string, object>>();
 
             foreach (var player in BasePlayer.activePlayerList)
@@ -136,7 +130,11 @@ namespace Oxide.Plugins
                 {
                     if (code == 200)
                     {
-                        Puts("Player positions updated successfully");
+                        // Успешно - не спамим в лог
+                    }
+                    else if (code == 0)
+                    {
+                        PrintError($"Connection failed! Check if web server is running at: {apiUrl}");
                     }
                     else
                     {
@@ -179,8 +177,18 @@ namespace Oxide.Plugins
 
             apiUrl = arg.GetString(0);
             arg.ReplyWith($"API URL set to: {apiUrl}");
+            Puts($"API URL changed to: {apiUrl}");
         }
 
-
+        // Команда для проверки статуса
+        [ConsoleCommand("mapsync.status")]
+        void StatusCommand(ConsoleSystem.Arg arg)
+        {
+            arg.ReplyWith($"MapSync Status:");
+            arg.ReplyWith($"API URL: {apiUrl}");
+            arg.ReplyWith($"Map URL: {mapImageUrl ?? "Not available"}");
+            arg.ReplyWith($"World Size: {World.Size}");
+            arg.ReplyWith($"Online Players: {BasePlayer.activePlayerList.Count}");
+        }
     }
 }
