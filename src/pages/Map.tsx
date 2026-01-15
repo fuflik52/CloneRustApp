@@ -126,44 +126,32 @@ export default function Map() {
         ctx.stroke()
       }
       
-      // Координаты (буквы и цифры)
-      const fontSize = Math.max(18, 24 / scale)
+      // Координаты (буквы и цифры) - в центре каждого квадрата
+      const fontSize = Math.max(20, 28 / scale)
       ctx.font = `bold ${fontSize}px Arial, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'middle'
       
       const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
       
-      for (let i = 0; i < gridCount; i++) {
-        const centerPos = i * gridSize + gridSize / 2
-        
-        // Буквы по горизонтали (сверху и снизу)
-        if (i < letters.length) {
-          const letter = letters[i]
+      for (let row = 0; row < gridCount; row++) {
+        for (let col = 0; col < gridCount; col++) {
+          const centerX = col * gridSize + gridSize / 2
+          const centerY = row * gridSize + gridSize / 2
           
-          // Тень для текста
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
-          ctx.fillText(letter, centerPos + 2, 30 + 2)
-          ctx.fillText(letter, centerPos + 2, canvas.height - 30 + 2)
+          // Формируем координату: буква + цифра (например A0, B1, C2...)
+          const letter = col < letters.length ? letters[col] : ''
+          const number = row
+          const label = `${letter}${number}`
           
-          // Основной текст
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-          ctx.fillText(letter, centerPos, 30)
-          ctx.fillText(letter, centerPos, canvas.height - 30)
+          // Тень для текста (темная)
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+          ctx.fillText(label, centerX + 1, centerY + 1)
+          
+          // Основной текст (темно-серый)
+          ctx.fillStyle = 'rgba(50, 50, 50, 0.7)'
+          ctx.fillText(label, centerX, centerY)
         }
-        
-        // Цифры по вертикали (слева и справа)
-        const number = i.toString()
-        
-        // Тень для текста
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
-        ctx.fillText(number, 30 + 2, centerPos + 2)
-        ctx.fillText(number, canvas.width - 30 + 2, centerPos + 2)
-        
-        // Основной текст
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-        ctx.fillText(number, 30, centerPos)
-        ctx.fillText(number, canvas.width - 30, centerPos)
       }
 
       // Рисуем всех игроков
