@@ -47,26 +47,18 @@ export default function Map() {
     if (!serverId) return
 
     const fetchMap = async () => {
-      console.log('[MAP] Fetching map data for server:', serverId)
       try {
         const res = await fetch(`/api/servers/${serverId}/map`)
-        console.log('[MAP] Response status:', res.status)
         
         if (res.ok) {
           const data = await res.json()
-          console.log('[MAP] Received data:', data)
-          console.log('[MAP] Players count:', data.players?.length || 0)
-          console.log('[MAP] Players:', data.players)
           setMapData(data)
           setError('')
-          setNextUpdate(5) // Сброс таймера
+          setNextUpdate(5)
         } else {
-          const errorText = await res.text()
-          console.error('[MAP] Error response:', errorText)
           setError('Не удалось загрузить карту')
         }
-      } catch (err) {
-        console.error('[MAP] Fetch error:', err)
+      } catch {
         setError('Ошибка подключения к серверу')
       } finally {
         setLoading(false)
@@ -75,14 +67,12 @@ export default function Map() {
 
     fetchMap()
     
-    // Обновление только если вкладка активна, каждые 5 секунд
     const interval = setInterval(() => {
       if (isVisible) {
         fetchMap()
       }
     }, 5000)
     
-    // Таймер обратного отсчета
     const countdown = setInterval(() => {
       setNextUpdate(prev => prev > 0 ? prev - 1 : 5)
     }, 1000)
@@ -114,42 +104,66 @@ export default function Map() {
       const mapScale = canvas.width / worldSize
 
       // Рисуем всех игроков
-      console.log('[MAP] Drawing players:', mapData.players.length)
-      mapData.players.forEach((player, index) => {
-        console.log(`[MAP] Player ${index}:`, player.name, player.position)
-        
-        if (!player.position) {
-          console.warn(`[MAP] Player ${player.name} has no position!`)
-          return
-        }
+      mapData.players.forEach((player) => {
+        if (!player.position) return
         
         const { x, z } = player.position
         
         const canvasX = (x + worldSize / 2) * mapScale
         const canvasY = (worldSize / 2 - z) * mapScale
-        
-        console.log(`[MAP] Drawing ${player.name} at canvas coords:`, canvasX, canvasY)
 
-        const dotSize = Math.max(8, 10 / scale)
+        // Разные размеры точек для разнообразия
+        const baseDotSize = player.team ? 14 : 12
+        const dotSize = Math.max(baseDotSize, baseDotSize / scale)
+
+        // Рисуем тень
+        ctx.beginPath()
+        ctx.arc(canvasX + 2, canvasY + 2, dotSize, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
+        ctx.fill()
 
         // Рисуем точку игрока
         ctx.beginPath()
         ctx.arc(canvasX, canvasY, dotSize, 0, Math.PI * 2)
-        ctx.fillStyle = player.team ? '#4CAF50' : '#FF5252'
+        
+        // Градиент для точки
+        const gradient = ctx.createRadialGradient(canvasX, canvasY, 0, canvasX, canvasY, dotSize)
+        if (player.team) {
+          gradient.addColorStop(0, '#66ff66')
+          gradient.addColorStop(1, '#4CAF50')
+        } else {
+          gradient.addColorStop(0, '#ff6666')
+          gradient.addColorStop(1, '#FF5252')
+        }
+        ctx.fillStyle = gradient
         ctx.fill()
+        
+        // Обводка
         ctx.strokeStyle = '#fff'
-        ctx.lineWidth = Math.max(2, 3 / scale)
+        ctx.lineWidth = Math.max(3, 4 / scale)
         ctx.stroke()
+        
+        // Внутренняя точка
+        ctx.beginPath()
+        ctx.arc(canvasX, canvasY, dotSize / 3, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+        ctx.fill()
 
         // Рисуем имя игрока
-        if (scale >= 0.7) {
-          const fontSize = Math.max(11, 13 / scale)
-          ctx.font = `bold ${fontSize}px Arial`
+        if (scale >= 0.6) {
+          const fontSize = Math.max(14, 16 / scale)
+          ctx.font = `bold ${fontSize}px Arial, sans-serif`
           ctx.fillStyle = '#fff'
           ctx.strokeStyle = '#000'
-          ctx.lineWidth = Math.max(2.5, 4 / scale)
-          ctx.strokeText(player.name, canvasX + dotSize + 6, canvasY + 5)
-          ctx.fillText(player.name, canvasX + dotSize + 6, canvasY + 5)
+          ctx.lineWidth = Math.max(4, 5 / scale)
+          ctx.lineJoin = 'round'
+          ctx.miterLimit = 2
+          
+          const textX = canvasX + dotSize + 8
+          const textY = canvasY + 6
+          
+          ctx.strokeText(player.name, textX, textY)
+          ctx.fillText(player.name, textX, textY)
         }
       })
     }
@@ -163,13 +177,37 @@ export default function Map() {
     }
   }, [mapData, scale])
 
+  // Ограничение перетаскивания
+  const clampOffset = (newOffset: { x: number; y: number }, currentScale: number) => {
+    if (!canvasRef.current) return newOffset
+
+    const canvas = canvasRef.current
+    const containerWidth = window.innerWidth
+    const containerHeight = window.innerHeight
+    
+    const scaledWidth = canvas.width * currentScale
+    const scaledHeight = canvas.height * currentScale
+    
+    // Минимальные и максимальные значения offset
+    const minX = containerWidth - scaledWidth - 100
+    const maxX = 100
+    const minY = containerHeight - scaledHeight - 100
+    const maxY = 100
+    
+    return {
+      x: Math.max(minX, Math.min(maxX, newOffset.x)),
+      y: Math.max(minY, Math.min(maxY, newOffset.y))
+    }
+  }
+
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!mapData || !canvasRef.current || !containerRef.current) return
 
     if (isDragging) {
       const dx = e.clientX - dragStart.x
       const dy = e.clientY - dragStart.y
-      setOffset({ x: offset.x + dx, y: offset.y + dy })
+      const newOffset = clampOffset({ x: offset.x + dx, y: offset.y + dy }, scale)
+      setOffset(newOffset)
       setDragStart({ x: e.clientX, y: e.clientY })
       return
     }
@@ -193,7 +231,7 @@ export default function Map() {
       const canvasY = (worldSize / 2 - z) * mapScale
 
       const distance = Math.sqrt((mouseX - canvasX) ** 2 + (mouseY - canvasY) ** 2)
-      if (distance < 15) {
+      if (distance < 20) {
         setHoveredPlayer(player)
         found = true
         break
@@ -214,10 +252,26 @@ export default function Map() {
     setIsDragging(false)
   }
 
+  const handleWheel = (e: WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    const newScale = Math.max(0.5, Math.min(3, scale * delta))
+    setScale(newScale)
+    
+    // Ограничиваем offset при зуме
+    setOffset(prev => clampOffset(prev, newScale))
+  }
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    container.addEventListener('wheel', handleWheel, { passive: false })
+    return () => container.removeEventListener('wheel', handleWheel)
+  }, [scale, offset])
+
   const zoomToPlayer = (player: Player) => {
     if (!player.position || !canvasRef.current || !mapData) return
-    
-    console.log('[MAP] Zooming to player:', player.name, player.position)
     
     const canvas = canvasRef.current
     const worldSize = mapData.worldSize
@@ -225,37 +279,20 @@ export default function Map() {
     
     const { x, z } = player.position
     
-    // Вычисляем позицию игрока на canvas
     const canvasX = (x + worldSize / 2) * mapScale
     const canvasY = (worldSize / 2 - z) * mapScale
     
-    console.log('[MAP] Canvas position:', canvasX, canvasY)
-    console.log('[MAP] Canvas size:', canvas.width, canvas.height)
-    
-    // Устанавливаем зум
     const targetScale = 2
     setScale(targetScale)
     
-    // Центрируем на игроке
-    // Нужно сместить canvas так, чтобы точка игрока оказалась в центре экрана
     const containerWidth = window.innerWidth
     const containerHeight = window.innerHeight
     
-    // Вычисляем смещение: центр экрана минус позиция игрока (с учетом зума)
     const offsetX = (containerWidth / 2) - (canvasX * targetScale)
     const offsetY = (containerHeight / 2) - (canvasY * targetScale)
     
-    console.log('[MAP] Setting offset:', offsetX, offsetY)
-    
-    setOffset({ x: offsetX, y: offsetY })
+    setOffset(clampOffset({ x: offsetX, y: offsetY }, targetScale))
     setShowPlayerList(false)
-  }
-
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? 0.9 : 1.1
-    const newScale = Math.max(0.5, Math.min(3, scale * delta))
-    setScale(newScale)
   }
 
   if (loading) {
@@ -346,7 +383,7 @@ export default function Map() {
       {showPlayerList && mapData && (
         <div style={{
           position: 'absolute',
-          top: 140,
+          top: 160,
           left: 20,
           background: 'rgba(0, 0, 0, 0.9)',
           padding: '15px',
@@ -389,12 +426,13 @@ export default function Map() {
               }}
             >
               <div style={{
-                width: 10,
-                height: 10,
+                width: 12,
+                height: 12,
                 borderRadius: '50%',
                 background: player.team ? '#4CAF50' : '#FF5252',
                 border: '2px solid #fff',
-                flexShrink: 0
+                flexShrink: 0,
+                boxShadow: player.team ? '0 0 8px #4CAF50' : '0 0 8px #FF5252'
               }} />
               {player.avatar && (
                 <img 
@@ -424,47 +462,6 @@ export default function Map() {
         </div>
       )}
 
-      {/* Легенда */}
-      <div style={{
-        position: 'absolute',
-        top: 20,
-        right: 20,
-        background: 'rgba(0, 0, 0, 0.85)',
-        padding: '15px 20px',
-        borderRadius: 12,
-        color: '#fff',
-        zIndex: 10,
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
-      }}>
-        <div style={{ marginBottom: 12, fontWeight: 'bold', fontSize: 14 }}>Легенда:</div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-          <div style={{ 
-            width: 14, 
-            height: 14, 
-            borderRadius: '50%', 
-            background: '#4CAF50',
-            marginRight: 10,
-            border: '2px solid #fff',
-            boxShadow: '0 0 8px rgba(76, 175, 80, 0.6)'
-          }} />
-          <span style={{ fontSize: 13 }}>В команде</span>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <div style={{ 
-            width: 14, 
-            height: 14, 
-            borderRadius: '50%', 
-            background: '#FF5252',
-            marginRight: 10,
-            border: '2px solid #fff',
-            boxShadow: '0 0 8px rgba(255, 82, 82, 0.6)'
-          }} />
-          <span style={{ fontSize: 13 }}>Соло</span>
-        </div>
-      </div>
-
       {/* Управление зумом */}
       <div style={{
         position: 'absolute',
@@ -483,7 +480,11 @@ export default function Map() {
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
       }}>
         <button
-          onClick={() => setScale(Math.min(3, scale * 1.2))}
+          onClick={() => {
+            const newScale = Math.min(3, scale * 1.2)
+            setScale(newScale)
+            setOffset(prev => clampOffset(prev, newScale))
+          }}
           style={{
             background: 'linear-gradient(135deg, #84cc16 0%, #65a30d 100%)',
             border: 'none',
@@ -496,8 +497,6 @@ export default function Map() {
             transition: 'all 0.2s',
             boxShadow: '0 2px 8px rgba(132, 204, 22, 0.3)'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           +
         </button>
@@ -513,13 +512,15 @@ export default function Map() {
             fontSize: 16,
             transition: 'all 0.2s'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
-          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
         >
           ⟲
         </button>
         <button
-          onClick={() => setScale(Math.max(0.5, scale * 0.8))}
+          onClick={() => {
+            const newScale = Math.max(0.5, scale * 0.8)
+            setScale(newScale)
+            setOffset(prev => clampOffset(prev, newScale))
+          }}
           style={{
             background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
             border: 'none',
@@ -532,8 +533,6 @@ export default function Map() {
             transition: 'all 0.2s',
             boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
           }}
-          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           −
         </button>
@@ -555,7 +554,6 @@ export default function Map() {
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => { setHoveredPlayer(null); setIsDragging(false) }}
-        onWheelCapture={handleWheel}
         style={{
           width: '100%',
           height: '100%',
@@ -564,8 +562,7 @@ export default function Map() {
           alignItems: 'center',
           overflow: 'hidden',
           cursor: isDragging ? 'grabbing' : 'grab',
-          userSelect: 'none',
-          touchAction: 'none'
+          userSelect: 'none'
         }}
       >
         <canvas
