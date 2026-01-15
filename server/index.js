@@ -19,6 +19,7 @@ app.use(express.static(path.join(__dirname, '../dist')));
 // === PATHS ===
 const DATA_DIR = path.join(__dirname, 'data');
 const SERVERS_FILE = path.join(DATA_DIR, 'servers.json');
+const REPORTS_FILE = path.join(DATA_DIR, 'reports.json');
 
 const STEAM_API_KEY = process.env.STEAM_API_KEY;
 
@@ -54,6 +55,10 @@ const saveJSON = (filePath, data) => {
 // === SERVERS DATA ===
 const loadServers = () => loadJSON(SERVERS_FILE, { servers: {} });
 const saveServers = (data) => saveJSON(SERVERS_FILE, data);
+
+// === REPORTS DATA ===
+const loadReports = () => loadJSON(REPORTS_FILE, { reports: [] });
+const saveReports = (data) => saveJSON(REPORTS_FILE, data);
 
 // === PER-SERVER DATA ===
 const loadServerPlayers = (serverId) => {
@@ -439,6 +444,72 @@ app.post('/api/sync', async (req, res) => {
   
   console.log(`Sync from ${server.name}: ${players.length} players (${added} new, ${updated} updated)`);
   res.json({ success: true, added, updated, total: players.length });
+});
+
+// Reports from plugin
+app.post('/api/reports', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const key = auth.slice(7);
+  const serversData = loadServers();
+  const server = Object.values(serversData.servers).find(s => s.secretKey === key);
+  if (!server) return res.status(401).json({ error: 'Invalid key' });
+
+  const { reports } = req.body;
+  if (!reports || !Array.isArray(reports)) return res.status(400).json({ error: 'Invalid reports format' });
+
+  const reportsData = loadReports();
+  const now = Date.now();
+  const playersDB = loadServerPlayers(server.id);
+
+  reports.forEach(r => {
+    const initiator = playersDB.players[r.initiator_steam_id] || { steam_name: 'Unknown' };
+    const target = playersDB.players[r.target_steam_id] || { steam_name: 'Unknown' };
+
+    const newReport = {
+      id: crypto.randomUUID(),
+      serverId: server.id,
+      serverName: server.name,
+      initiator_steam_id: r.initiator_steam_id,
+      initiator_name: initiator.steam_name,
+      target_steam_id: r.target_steam_id,
+      target_name: target.steam_name,
+      reason: r.reason,
+      message: r.message || '',
+      timestamp: now,
+      date: new Date(now).toISOString()
+    };
+    reportsData.reports.push(newReport);
+
+    // Update player stats
+    if (playersDB.players[r.target_steam_id]) {
+      if (!playersDB.players[r.target_steam_id].stats) {
+        playersDB.players[r.target_steam_id].stats = { kills: 0, deaths: 0, headshots: 0, bodyshots: 0, limbshots: 0, playtime_hours: 0, reports_count: 0, kd: 0 };
+      }
+      playersDB.players[r.target_steam_id].stats.reports_count = (playersDB.players[r.target_steam_id].stats.reports_count || 0) + 1;
+    }
+
+    addServerActivityLog(server.id, 'player_reported', {
+      initiator_id: r.initiator_steam_id,
+      initiator_name: initiator.steam_name,
+      target_id: r.target_steam_id,
+      target_name: target.steam_name,
+      reason: r.reason
+    });
+  });
+
+  saveReports(reportsData);
+  saveServerPlayers(server.id, playersDB);
+  res.json({ success: true });
+});
+
+// Get all reports (for web)
+app.get('/api/reports', (req, res) => {
+  const reportsData = loadReports();
+  // Return sorted by date
+  const sorted = [...reportsData.reports].sort((a, b) => b.timestamp - a.timestamp);
+  res.json(sorted);
 });
 
 

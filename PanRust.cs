@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using Oxide.Core;
+using Oxide.Game.Rust.Cui;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +20,8 @@ namespace Oxide.Plugins
 
         readonly List<ChatMsg> _chatQueue = new List<ChatMsg>(32);
         readonly List<KillDto> _killsQueue = new List<KillDto>(16);
+        readonly List<PluginReportDto> _reportsQueue = new List<PluginReportDto>();
+        readonly Dictionary<ulong, double> _reportCooldowns = new Dictionary<ulong, double>();
         readonly Dictionary<ulong, HitData> _wounds = new Dictionary<ulong, HitData>();
         readonly Dictionary<ulong, float> _sessions = new Dictionary<ulong, float>();
         readonly Dictionary<ulong, List<HitRecord>> _hitHistory = new Dictionary<ulong, List<HitRecord>>();
@@ -104,10 +107,26 @@ namespace Oxide.Plugins
 
         class Configuration
         {
-            public float UpdateInt = 5f, ChatInt = 1f, KillsInt = 5f, SaveInt = 60f;
+            public float UpdateInt = 5f, ChatInt = 1f, KillsInt = 5f, SaveInt = 60f, ReportsInt = 5f;
+            public List<string> report_ui_reasons = new List<string> { "Cheat", "Macros", "Abuse" };
+            public int report_ui_cooldown = 300;
         }
 
         class ChatMsg { public string si, n, m; public bool t; public long ts; }
+        
+        class PluginReportDto
+        {
+            public string initiator_steam_id;
+            public string target_steam_id;
+            public List<string> sub_targets_steam_ids;
+            public string message;
+            public string reason;
+        }
+
+        class PluginReportBatchPayload
+        {
+            public List<PluginReportDto> reports;
+        }
 
         class MuteData
         {
@@ -147,6 +166,7 @@ namespace Oxide.Plugins
             timer.Every(_config.UpdateInt, SendState);
             timer.Every(_config.ChatInt, SendChat);
             timer.Every(_config.KillsInt, SendKills);
+            timer.Every(_config.ReportsInt, SendReports);
             timer.Every(_config.SaveInt, Save);
             timer.Every(1f, FetchCmd);
         }
@@ -650,7 +670,7 @@ namespace Oxide.Plugins
                                     Puts($"[Unban] {unbanSteamId}");
                                 }
                                 break;
-
+                                
                             case "custom_action":
                                 if (!string.IsNullOrEmpty(cmd.command))
                                 {
@@ -663,6 +683,225 @@ namespace Oxide.Plugins
                 } catch (Exception ex) { Puts($"[FetchCmd Error] {ex.Message}"); }
             }, this, Oxide.Core.Libraries.RequestMethod.GET, Headers());
         }
+
+        void SendReports()
+        {
+            if (string.IsNullOrEmpty(_meta.Key) || _reportsQueue.Count == 0) return;
+            var reports = new List<PluginReportDto>(_reportsQueue); _reportsQueue.Clear();
+            var json = JsonConvert.SerializeObject(new { reports });
+            webrequest.Enqueue($"{API}/reports", json, (c, r) => { if (c != 200) _reportsQueue.AddRange(reports); }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+        }
+
+        #region UI Report
+        const string ReportLayer = "PR_ReportLayer";
+
+        [ChatCommand("rep")]
+        void CmdChatReport(BasePlayer player, string command, string[] args)
+        {
+            if (_reportCooldowns.ContainsKey(player.userID) && _reportCooldowns[player.userID] > CurrentTime())
+            {
+                var timeLeft = Math.Ceiling(_reportCooldowns[player.userID] - CurrentTime());
+                SendReply(player, $"Подождите {timeLeft} сек. перед следующим репортом.");
+                return;
+            }
+
+            DrawReportInterface(player);
+        }
+
+        void DrawReportInterface(BasePlayer player, int page = 0, string search = "", bool redraw = false)
+        {
+            var lineAmount = 6;
+            var lineMargin = 8;
+            var size = (float)(700 - lineMargin * lineAmount) / lineAmount;
+
+            var list = BasePlayer.activePlayerList.ToList();
+            var finalList = list.FindAll(v => v.displayName.ToLower().Contains(search.ToLower()) || v.UserIDString.Contains(search) || string.IsNullOrEmpty(search));
+
+            finalList = finalList.Skip(page * 18).Take(18).ToList();
+
+            if (finalList.Count == 0 && page > 0)
+            {
+                DrawReportInterface(player, page - 1, search, true);
+                return;
+            }
+
+            CuiElementContainer container = new CuiElementContainer();
+
+            if (!redraw)
+            {
+                container.Add(new CuiPanel
+                {
+                    CursorEnabled = true,
+                    RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1", OffsetMax = "0 0" },
+                    Image = { Color = "0 0 0 0.8", Material = "assets/content/ui/uibackgroundblur-ingamemenu.mat" }
+                }, "Overlay", ReportLayer, ReportLayer);
+
+                container.Add(new CuiButton()
+                {
+                    RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1", OffsetMax = "0 0" },
+                    Button = { Color = "0.2 0.2 0.2 0.5", Sprite = "assets/content/ui/ui.background.transparent.radial.psd", Close = ReportLayer },
+                    Text = { Text = "" }
+                }, ReportLayer);
+            }
+            else
+            {
+                CuiHelper.DestroyUi(player, ReportLayer + ".C");
+            }
+
+            container.Add(new CuiPanel
+            {
+                RectTransform = { AnchorMin = "0.5 0.5", AnchorMax = "0.5 0.5", OffsetMin = "-368 -200", OffsetMax = "368 142" },
+                Image = { Color = "0 0 0 0" }
+            }, ReportLayer, ReportLayer + ".C", ReportLayer + ".C");
+
+            // Header
+            container.Add(new CuiLabel
+            {
+                RectTransform = { AnchorMin = "0 1", AnchorMax = "1 1", OffsetMin = "0 7", OffsetMax = "0 47" },
+                Text = { Text = "Выберите игрока", Font = "robotocondensed-bold.ttf", Color = "0.8 0.8 0.8 1", FontSize = 24, Align = TextAnchor.MiddleLeft }
+            }, ReportLayer + ".C");
+
+            // Players Grid
+            for (var i = 0; i < finalList.Count; i++)
+            {
+                var target = finalList[i];
+                var x = i % 6;
+                var y = i / 6;
+
+                var min = $"{x * size + lineMargin * x} -{(y + 1) * size + lineMargin * y}";
+                var max = $"{(x + 1) * size + lineMargin * x} -{y * size + lineMargin * y}";
+
+                var panelName = ReportLayer + $".{target.UserIDString}";
+                container.Add(new CuiPanel
+                {
+                    RectTransform = { AnchorMin = "0 1", AnchorMax = "0 1", OffsetMin = min, OffsetMax = max },
+                    Image = { Color = "0.8 0.8 0.8 0.2" }
+                }, ReportLayer + ".C", panelName);
+
+                container.Add(new CuiElement
+                {
+                    Parent = panelName,
+                    Components = {
+                        new CuiRawImageComponent { SteamId = target.UserIDString, Sprite = "assets/icons/loading.png" },
+                        new CuiRectTransformComponent { AnchorMin = "0 0", AnchorMax = "1 1" }
+                    }
+                });
+
+                container.Add(new CuiPanel
+                {
+                    RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1" },
+                    Image = { Sprite = "assets/content/ui/ui.background.transparent.linear.psd", Color = "0.15 0.15 0.15 0.95" }
+                }, panelName);
+
+                container.Add(new CuiLabel
+                {
+                    RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1", OffsetMin = "6 5", OffsetMax = "0 0" },
+                    Text = { Text = target.displayName.Length > 14 ? target.displayName.Substring(0, 12) + ".." : target.displayName, Align = TextAnchor.LowerLeft, Font = "robotocondensed-bold.ttf", FontSize = 12, Color = "0.8 0.8 0.8 1" }
+                }, panelName);
+
+                container.Add(new CuiButton
+                {
+                    RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1" },
+                    Button = { Color = "0 0 0 0", Command = $"panrust.select {target.UserIDString} {min.Replace(' ', ',')} {max.Replace(' ', ',')} {x >= 3}" },
+                    Text = { Text = "" }
+                }, panelName);
+            }
+
+            CuiHelper.AddUi(player, container);
+        }
+
+        [ConsoleCommand("panrust.select")]
+        void CmdSelectPlayer(ConsoleSystem.Arg a)
+        {
+            var player = a.Player();
+            if (player == null || a.Args?.Length < 4) return;
+
+            var targetId = a.Args[0];
+            var min = a.Args[1].Replace(',', ' ');
+            var max = a.Args[2].Replace(',', ' ');
+            var leftAlign = bool.Parse(a.Args[3]);
+
+            DrawPlayerReportReasons(player, targetId, min, max, leftAlign);
+        }
+
+        void DrawPlayerReportReasons(BasePlayer player, string targetId, string min, string max, bool leftAlign)
+        {
+            BasePlayer target = BasePlayer.Find(targetId) ?? BasePlayer.FindSleeping(targetId);
+            if (target == null) return;
+
+            CuiHelper.DestroyUi(player, ReportLayer + ".T");
+            CuiElementContainer container = new CuiElementContainer();
+
+            container.Add(new CuiPanel
+            {
+                RectTransform = { AnchorMin = "0 1", AnchorMax = "0 1", OffsetMin = min, OffsetMax = max },
+                Image = { Color = "0 0 0 1" }
+            }, ReportLayer + ".C", ReportLayer + ".T");
+
+            container.Add(new CuiButton
+            {
+                RectTransform = { AnchorMin = "-10 -10", AnchorMax = "10 10" },
+                Button = { Color = "0 0 0 0.5", Material = "assets/content/ui/uibackgroundblur-ingamemenu.mat", Close = ReportLayer + ".T" },
+                Text = { Text = "" }
+                }, ReportLayer + ".T");
+
+            container.Add(new CuiLabel
+            {
+                RectTransform = { AnchorMin = leftAlign ? "0 0" : "1 0", AnchorMax = leftAlign ? "0 1" : "1 1", OffsetMin = leftAlign ? "-350 0" : "20 0", OffsetMax = leftAlign ? "-20 -5" : "350 -5" },
+                Text = { Text = "Выберите причину", Font = "robotocondensed-bold.ttf", Color = "0.8 0.8 0.8 1", FontSize = 20, Align = leftAlign ? TextAnchor.UpperRight : TextAnchor.UpperLeft }
+            }, ReportLayer + ".T");
+
+            for (var i = 0; i < _config.report_ui_reasons.Count; i++)
+            {
+                var reason = _config.report_ui_reasons[i];
+                var offXMin = 20 + i * 85;
+                var offXMax = 20 + (i + 1) * 80;
+
+                container.Add(new CuiButton
+                {
+                    RectTransform = { AnchorMin = leftAlign ? "0 0" : "1 0", AnchorMax = leftAlign ? "0 0" : "1 0", OffsetMin = $"{(leftAlign ? -offXMax : offXMin)} 15", OffsetMax = $"{(leftAlign ? -offXMin : offXMax)} 45" },
+                    Button = { Color = "0.8 0.8 0.8 0.3", Command = $"panrust.sendreport {target.UserIDString} \"{reason}\"" },
+                    Text = { Text = reason, Align = TextAnchor.MiddleCenter, Color = "0.8 0.8 0.8 1", Font = "robotocondensed-bold.ttf", FontSize = 14 }
+                }, ReportLayer + ".T");
+            }
+
+            CuiHelper.AddUi(player, container);
+        }
+
+        [ConsoleCommand("panrust.sendreport")]
+        void CmdSendReport(ConsoleSystem.Arg a)
+        {
+            var player = a.Player();
+            if (player == null || a.Args?.Length < 2) return;
+
+            var targetId = a.Args[0];
+            var reason = a.Args[1];
+
+            CuiHelper.DestroyUi(player, ReportLayer);
+            RA_ReportSend(player.UserIDString, targetId, reason);
+            
+            _reportCooldowns[player.userID] = CurrentTime() + _config.report_ui_cooldown;
+            SendReply(player, "Ваша жалоба отправлена. Спасибо!");
+        }
+
+        void RA_ReportSend(string initiator_steam_id, string target_steam_id, string reason, string message = "")
+        {
+            _reportsQueue.Add(new PluginReportDto
+            {
+                initiator_steam_id = initiator_steam_id,
+                target_steam_id = target_steam_id,
+                sub_targets_steam_ids = new List<string>(),
+                message = message,
+                reason = reason
+            });
+            
+            // Increment local stats
+            if (ulong.TryParse(target_steam_id, out _)) GetStats(target_steam_id).rp++;
+        }
+        #endregion
+
+        double CurrentTime() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        string GetTimeLeft(long ms) => ms <= 0 ? "0с" : ms < 60000 ? $"{ms / 1000}с" : ms < 3600000 ? $"{ms / 60000}м" : $"{ms / 3600000}ч";
 
         class Cmd 
         { 
