@@ -172,7 +172,6 @@ namespace Oxide.Plugins
                 return;
             }
             Puts("PanRust: Подключен");
-            FetchServerIp();
             
             // Map sync
             _mapImageUrl = MapUploader.ImageUrl;
@@ -497,59 +496,13 @@ namespace Oxide.Plugins
         #endregion
 
         #region API
-        string _serverIp = "";
-
-        bool IsValidIp(string ip)
-        {
-            if (string.IsNullOrEmpty(ip)) return false;
-            if (ip == "0.0.0.0" || ip == "127.0.0.1" || ip == "localhost") return false;
-            // Проверяем что это реальный IP адрес (4 числа через точку)
-            var parts = ip.Split('.');
-            if (parts.Length != 4) return false;
-            foreach (var part in parts)
-            {
-                if (!int.TryParse(part, out var num) || num < 0 || num > 255) return false;
-            }
-            return true;
-        }
-
-        void FetchServerIp()
-        {
-            // Сначала пробуем ConVar.Server.ip
-            var ip = ConVar.Server.ip;
-            if (IsValidIp(ip))
-            {
-                _serverIp = ip;
-                Puts($"Server IP from config: {_serverIp}");
-                return;
-            }
-            
-            // Если не задан или невалидный - получаем внешний IP через сервис
-            try
-            {
-                webrequest.Enqueue("https://api.ipify.org", null, (code, response) =>
-                {
-                    if (code == 200 && !string.IsNullOrEmpty(response))
-                    {
-                        _serverIp = response.Trim();
-                        Puts($"Server IP detected: {_serverIp}");
-                    }
-                }, this, Oxide.Core.Libraries.RequestMethod.GET);
-            }
-            catch (Exception ex)
-            {
-                PrintError($"[FetchServerIp] Error: {ex.Message}");
-            }
-        }
-
-        string GetServerAddress() => string.IsNullOrEmpty(_serverIp) ? "" : _serverIp;
 
         void Sync()
         {
             var pl = new List<object>();
             foreach (var p in BasePlayer.activePlayerList) pl.Add(MakePlayer(p, true));
             foreach (var p in BasePlayer.sleepingPlayerList) pl.Add(MakePlayer(p, false));
-            var json = JsonConvert.SerializeObject(new { hostname = GetServerAddress(), port = ConVar.Server.port, name = ConVar.Server.hostname, players = pl });
+            var json = JsonConvert.SerializeObject(new { hostname = ConVar.Server.hostname, port = ConVar.Server.port, name = ConVar.Server.hostname, players = pl });
             
             try
             {
@@ -577,7 +530,7 @@ namespace Oxide.Plugins
                 pl.Add(MakePlayer(p, true));
             }
             
-            var json = JsonConvert.SerializeObject(new { hostname = GetServerAddress(), port = ConVar.Server.port, name = ConVar.Server.hostname, online = BasePlayer.activePlayerList.Count, max_players = ConVar.Server.maxplayers, players = pl });
+            var json = JsonConvert.SerializeObject(new { hostname = ConVar.Server.hostname, port = ConVar.Server.port, name = ConVar.Server.hostname, online = BasePlayer.activePlayerList.Count, max_players = ConVar.Server.maxplayers, players = pl });
             
             try
             {
@@ -619,7 +572,7 @@ namespace Oxide.Plugins
             {
                 ["mapUrl"] = _mapImageUrl,
                 ["worldSize"] = World.Size,
-                ["hostname"] = GetServerAddress()
+                ["hostname"] = ConVar.Server.hostname
             };
 
             string json = JsonConvert.SerializeObject(data);
@@ -666,7 +619,7 @@ namespace Oxide.Plugins
             {
                 ["monuments"] = monuments,
                 ["worldSize"] = World.Size,
-                ["hostname"] = GetServerAddress()
+                ["hostname"] = ConVar.Server.hostname
             };
 
             string json = JsonConvert.SerializeObject(data);
