@@ -240,11 +240,6 @@ export default function Map() {
     }
   }, [mapData, scale])
 
-  // Без ограничений - полная свобода движения
-  const clampOffset = (newOffset: { x: number; y: number }, currentScale: number) => {
-    return newOffset
-  }
-
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!mapData || !canvasRef.current || !containerRef.current) return
 
