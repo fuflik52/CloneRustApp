@@ -34,6 +34,7 @@ export default function Map() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  const [activeTab, setActiveTab] = useState<'actions' | 'messages' | 'reports'>('actions')
   const [scale, setScale] = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
@@ -294,29 +295,295 @@ export default function Map() {
       </div>
 
       {selectedPlayer && (
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: 'rgba(0, 0, 0, 0.95)', padding: '20px', borderRadius: 12, color: '#fff', zIndex: 100, backdropFilter: 'blur(10px)', border: '2px solid #84cc16', minWidth: 300 }}>
-          <button onClick={() => setSelectedPlayer(null)} style={{ position: 'absolute', top: 10, right: 10, background: 'transparent', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer' }}>✕</button>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginBottom: 20 }}>
-            {selectedPlayer.avatar && <img src={selectedPlayer.avatar} alt="" style={{ width: 64, height: 64, borderRadius: '50%', border: '3px solid #84cc16' }} />}
-            <div>
-              <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 5 }}>{selectedPlayer.name}</div>
-              <div style={{ fontSize: 12, color: '#888' }}>{selectedPlayer.steam_id}</div>
+        <div style={{
+          position: 'absolute',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          background: '#1a1a1a',
+          padding: 0,
+          borderRadius: 12,
+          color: '#fff',
+          zIndex: 100,
+          border: '1px solid #333',
+          minWidth: 400,
+          maxWidth: 500,
+          maxHeight: '80vh',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column'
+        }}>
+          <div style={{ 
+            padding: '20px', 
+            borderBottom: '1px solid #333',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 15
+          }}>
+            <button
+              onClick={() => setSelectedPlayer(null)}
+              style={{
+                position: 'absolute',
+                top: 15,
+                right: 15,
+                background: 'transparent',
+                border: 'none',
+                color: '#888',
+                fontSize: 20,
+                cursor: 'pointer',
+                padding: 5
+              }}
+            >
+              ✕
+            </button>
+            
+            {selectedPlayer.avatar && (
+              <img 
+                src={selectedPlayer.avatar} 
+                alt="" 
+                style={{ 
+                  width: 64, 
+                  height: 64, 
+                  borderRadius: '50%',
+                  border: '2px solid #84cc16'
+                }}
+              />
+            )}
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 5 }}>
+                {selectedPlayer.name}
+              </div>
+              <div style={{ 
+                fontSize: 12, 
+                color: '#888',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8
+              }}>
+                <span>{selectedPlayer.steam_id}</span>
+                <button
+                  onClick={() => copyToClipboard(selectedPlayer.steam_id)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#84cc16',
+                    cursor: 'pointer',
+                    padding: 0,
+                    fontSize: 14
+                  }}
+                  title="Копировать Steam ID"
+                >
+                  {copiedText === selectedPlayer.steam_id ? '✓' : '📋'}
+                </button>
+              </div>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <button onClick={() => copyToClipboard(`/tp ${selectedPlayer.steam_id}`)} style={{ background: 'rgba(132, 204, 22, 0.2)', border: '2px solid #84cc16', color: '#84cc16', padding: '12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 2L2 7l10 5 10-5-10-5z"/>
-                <path d="M2 17l10 5 10-5"/>
-                <path d="M2 12l10 5 10-5"/>
-              </svg>
-              {copiedText === `/tp ${selectedPlayer.steam_id}` ? 'Скопировано!' : 'Телепорт к игроку'}
+          <div style={{ 
+            display: 'flex', 
+            borderBottom: '1px solid #333',
+            background: '#0f0f0f'
+          }}>
+            <button
+              onClick={() => setActiveTab('actions')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: activeTab === 'actions' ? '#1a1a1a' : 'transparent',
+                border: 'none',
+                borderBottom: activeTab === 'actions' ? '2px solid #84cc16' : '2px solid transparent',
+                color: activeTab === 'actions' ? '#84cc16' : '#888',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 'bold'
+              }}
+            >
+              Действия
             </button>
-            <button onClick={() => copyToClipboard(selectedPlayer.steam_id)} style={{ background: 'rgba(255, 255, 255, 0.1)', border: '1px solid rgba(255, 255, 255, 0.2)', color: '#fff', padding: '10px', borderRadius: 8, cursor: 'pointer', fontSize: 12 }}>
-              {copiedText === selectedPlayer.steam_id ? 'Скопировано!' : 'Копировать Steam ID'}
+            <button
+              onClick={() => setActiveTab('messages')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: activeTab === 'messages' ? '#1a1a1a' : 'transparent',
+                border: 'none',
+                borderBottom: activeTab === 'messages' ? '2px solid #84cc16' : '2px solid transparent',
+                color: activeTab === 'messages' ? '#84cc16' : '#888',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 'bold'
+              }}
+            >
+              Сообщения
             </button>
+            <button
+              onClick={() => setActiveTab('reports')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: activeTab === 'reports' ? '#1a1a1a' : 'transparent',
+                border: 'none',
+                borderBottom: activeTab === 'reports' ? '2px solid #84cc16' : '2px solid transparent',
+                color: activeTab === 'reports' ? '#84cc16' : '#888',
+                cursor: 'pointer',
+                fontSize: 13,
+                fontWeight: 'bold'
+              }}
+            >
+              Репорты
+            </button>
+          </div>
+
+          <div style={{ 
+            padding: '20px',
+            overflowY: 'auto',
+            maxHeight: 'calc(80vh - 200px)'
+          }}>
+            {activeTab === 'actions' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <button
+                  onClick={() => copyToClipboard(`/tp ${selectedPlayer.steam_id}`)}
+                  style={{
+                    background: 'rgba(132, 204, 22, 0.1)',
+                    border: '1px solid #84cc16',
+                    color: '#84cc16',
+                    padding: '12px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+                    <path d="M2 17l10 5 10-5"/>
+                    <path d="M2 12l10 5 10-5"/>
+                  </svg>
+                  {copiedText === `/tp ${selectedPlayer.steam_id}` ? 'Скопировано!' : 'Телепорт к игроку'}
+                </button>
+
+                <button
+                  style={{
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid #3b82f6',
+                    color: '#3b82f6',
+                    padding: '12px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                  Добавить заметку
+                </button>
+
+                <button
+                  style={{
+                    background: 'rgba(251, 146, 60, 0.1)',
+                    border: '1px solid #fb923c',
+                    color: '#fb923c',
+                    padding: '12px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                  </svg>
+                  Выдать мут
+                </button>
+
+                <button
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid #ef4444',
+                    color: '#ef4444',
+                    padding: '12px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M18 6L6 18M6 6l12 12"/>
+                  </svg>
+                  Кикнуть
+                </button>
+
+                <button
+                  style={{
+                    background: 'rgba(220, 38, 38, 0.1)',
+                    border: '1px solid #dc2626',
+                    color: '#dc2626',
+                    padding: '12px',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    fontSize: 13,
+                    fontWeight: 'bold',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 10
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                  </svg>
+                  Заблокировать
+                </button>
+              </div>
+            )}
+
+            {activeTab === 'messages' && (
+              <div style={{ 
+                color: '#888', 
+                textAlign: 'center', 
+                padding: '40px 20px',
+                fontSize: 14
+              }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 15px', opacity: 0.3 }}>
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                <div>Сообщения игрока</div>
+                <div style={{ fontSize: 12, marginTop: 5 }}>Загрузка...</div>
+              </div>
+            )}
+
+            {activeTab === 'reports' && (
+              <div style={{ 
+                color: '#888', 
+                textAlign: 'center', 
+                padding: '40px 20px',
+                fontSize: 14
+              }}>
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 15px', opacity: 0.3 }}>
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div>Репорты на игрока</div>
+                <div style={{ fontSize: 12, marginTop: 5 }}>Загрузка...</div>
+              </div>
+            )}
           </div>
         </div>
       )}
