@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useToast } from '../components/Toast'
+import { useServer } from '../App'
 
 interface Report {
   id: string
@@ -85,9 +86,11 @@ export default function Reports() {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const { showToast } = useToast()
+  const { serverId } = useServer()
 
   const fetchReports = () => {
-    fetch('/api/reports')
+    if (!serverId) return
+    fetch(`/api/servers/${serverId}/reports`)
       .then(res => res.json())
       .then(data => {
         setReports(data)
@@ -100,8 +103,11 @@ export default function Reports() {
   }
 
   useEffect(() => {
-    fetchReports()
-  }, [])
+    if (serverId) {
+      setLoading(true)
+      fetchReports()
+    }
+  }, [serverId])
 
   const deleteReport = async (id: string) => {
     if (!window.confirm('Вы уверены, что хотите удалить этот репорт?')) return
