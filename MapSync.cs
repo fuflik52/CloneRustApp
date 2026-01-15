@@ -12,7 +12,6 @@ namespace Oxide.Plugins
     class MapSync : RustPlugin
     {
         private string apiUrl = "http://localhost:3001/api";
-        private string secretKey = "YOUR_SECRET_KEY_HERE"; // Замените на ваш ключ
         private Timer updateTimer;
         private string mapImageUrl = null;
 
@@ -39,6 +38,12 @@ namespace Oxide.Plugins
 
         void SendMapUrl()
         {
+            if (secretKey == "YOUR_SECRET_KEY_HERE")
+            {
+                PrintWarning("Secret key not set! Use: mapsync.setkey <your_key>");
+                return;
+            }
+
             var data = new Dictionary<string, object>
             {
                 ["mapUrl"] = mapImageUrl,
@@ -53,6 +58,8 @@ namespace Oxide.Plugins
                 ["Authorization"] = $"Bearer {secretKey}"
             };
 
+            Puts($"Sending map URL to: {apiUrl}/map-url");
+
             webrequest.Enqueue(
                 $"{apiUrl}/map-url",
                 json,
@@ -62,9 +69,13 @@ namespace Oxide.Plugins
                     {
                         Puts("Map URL sent successfully");
                     }
+                    else if (code == 0)
+                    {
+                        PrintError($"Connection failed! Check API URL: {apiUrl}");
+                    }
                     else
                     {
-                        PrintWarning($"Failed to send map URL: {code}");
+                        PrintWarning($"Failed to send map URL: {code} - {response}");
                     }
                 },
                 this,
@@ -115,8 +126,7 @@ namespace Oxide.Plugins
 
             var headers = new Dictionary<string, string>
             {
-                ["Content-Type"] = "application/json",
-                ["Authorization"] = $"Bearer {secretKey}"
+                ["Content-Type"] = "application/json"
             };
 
             webrequest.Enqueue(
@@ -124,9 +134,13 @@ namespace Oxide.Plugins
                 json,
                 (code, response) =>
                 {
-                    if (code != 200)
+                    if (code == 200)
                     {
-                        PrintWarning($"Failed to update player positions: {code}");
+                        Puts("Player positions updated successfully");
+                    }
+                    else
+                    {
+                        PrintWarning($"Failed to update player positions: {code} - {response}");
                     }
                 },
                 this,
@@ -167,18 +181,6 @@ namespace Oxide.Plugins
             arg.ReplyWith($"API URL set to: {apiUrl}");
         }
 
-        // Команда для установки секретного ключа
-        [ConsoleCommand("mapsync.setkey")]
-        void SetKeyCommand(ConsoleSystem.Arg arg)
-        {
-            if (!arg.HasArgs())
-            {
-                arg.ReplyWith("Usage: mapsync.setkey <secret_key>");
-                return;
-            }
 
-            secretKey = arg.GetString(0);
-            arg.ReplyWith("Secret key updated!");
-        }
     }
 }

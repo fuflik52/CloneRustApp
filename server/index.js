@@ -302,13 +302,37 @@ app.get('/api/servers/:idOrSlug', (req, res) => {
 
 // Plugin sends state
 app.post('/api/state', async (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
-  
-  const key = auth.slice(7);
+  // Находим сервер по hostname или создаем новый
   const data = loadServers();
-  const server = Object.values(data.servers).find(s => s.secretKey === key);
-  if (!server) return res.status(401).json({ error: 'Invalid key' });
+  const hostname = req.body.hostname || req.body.name || 'Unknown Server';
+  
+  let server = Object.values(data.servers).find(s => 
+    s.hostname === hostname || s.name === hostname
+  );
+  
+  // Если сервер не найден, создаем новый
+  if (!server) {
+    const id = crypto.randomUUID();
+    const secretKey = crypto.randomBytes(32).toString('hex');
+    server = { 
+      id, 
+      name: hostname,
+      slug: hostname.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+      website: '',
+      logo: '',
+      secretKey, 
+      hostname, 
+      port: 0, 
+      online: 0, 
+      maxPlayers: 0, 
+      lastUpdate: null, 
+      status: 'offline', 
+      players: [], 
+      createdAt: Date.now() 
+    };
+    data.servers[id] = server;
+    console.log('Auto-created server:', server.name, server.id);
+  }
   
   const previousPlayers = new Set((server.players || []).map(p => p.steam_id));
   
@@ -1484,15 +1508,21 @@ app.get('/api/servers/:serverId/map', (req, res) => {
 
 // Plugin sends map URL
 app.post('/api/map-url', (req, res) => {
-  const auth = req.headers.authorization;
-  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  const { mapUrl, worldSize, hostname } = req.body;
   
-  const key = auth.slice(7);
   const data = loadServers();
-  const server = Object.values(data.servers).find(s => s.secretKey === key);
-  if (!server) return res.status(401).json({ error: 'Invalid key' });
+  let server = Object.values(data.servers).find(s => 
+    s.hostname === hostname || s.name === hostname
+  );
   
-  const { mapUrl, worldSize } = req.body;
+  if (!server && Object.keys(data.servers).length > 0) {
+    // Используем первый доступный сервер
+    server = Object.values(data.servers)[0];
+  }
+  
+  if (!server) {
+    return res.status(404).json({ error: 'Server not found' });
+  }
   
   if (mapUrl) {
     server.mapUrl = mapUrl;
