@@ -289,20 +289,24 @@ export default function Map() {
     
     const rect = containerRef.current.getBoundingClientRect()
     
+    // Позиция курсора относительно viewport
+    const mouseX = e.clientX
+    const mouseY = e.clientY
+    
     // Позиция курсора относительно контейнера
-    const mouseX = e.clientX - rect.left
-    const mouseY = e.clientY - rect.top
+    const containerMouseX = mouseX - rect.left
+    const containerMouseY = mouseY - rect.top
     
     // Позиция курсора в координатах канваса до зума
-    const canvasMouseX = (mouseX - offset.x) / scale
-    const canvasMouseY = (mouseY - offset.y) / scale
+    const canvasMouseX = (containerMouseX - offset.x) / scale
+    const canvasMouseY = (containerMouseY - offset.y) / scale
     
     const delta = e.deltaY > 0 ? 0.9 : 1.1
     const newScale = Math.max(0.1, Math.min(10, scale * delta))
     
     // Новая позиция offset чтобы курсор остался на том же месте (как в Figma)
-    const newOffsetX = mouseX - canvasMouseX * newScale
-    const newOffsetY = mouseY - canvasMouseY * newScale
+    const newOffsetX = containerMouseX - canvasMouseX * newScale
+    const newOffsetY = containerMouseY - canvasMouseY * newScale
     
     setScale(newScale)
     setOffset({ x: newOffsetX, y: newOffsetY })
@@ -389,68 +393,74 @@ export default function Map() {
       top: 0,
       left: 0
     }}>
-      {/* Информация о сервере */}
+      {/* Информация о сервере - компактный дизайн */}
       <div style={{
         position: 'absolute',
-        top: 20,
-        left: 20,
-        background: 'rgba(0, 0, 0, 0.85)',
-        padding: '15px 20px',
-        borderRadius: 12,
+        top: 15,
+        left: 15,
+        background: 'rgba(0, 0, 0, 0.7)',
+        padding: '10px 15px',
+        borderRadius: 8,
         color: '#fff',
         zIndex: 10,
         backdropFilter: 'blur(10px)',
         border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+        fontSize: 13,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12
       }}>
-        <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8, color: '#84cc16' }}>
-          {mapData?.serverName}
-        </div>
-        <div style={{ fontSize: 14, color: '#aaa' }}>
-          Игроков онлайн: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{mapData?.online || 0}</span>
-        </div>
-        <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
-          Обновление через {nextUpdate} сек
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#84cc16" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M12 6v6l4 2"/>
+        </svg>
+        <div>
+          <div style={{ fontWeight: 'bold', color: '#84cc16', marginBottom: 3 }}>
+            {mapData?.serverName}
+          </div>
+          <div style={{ fontSize: 11, color: '#888' }}>
+            Онлайн: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{mapData?.online || 0}</span> • 
+            Обновление: {nextUpdate}с
+          </div>
         </div>
         <button
           onClick={() => setShowPlayerList(!showPlayerList)}
           style={{
-            marginTop: 10,
-            background: 'linear-gradient(135deg, #84cc16 0%, #65a30d 100%)',
-            border: 'none',
-            color: '#fff',
-            padding: '8px 16px',
-            borderRadius: 8,
+            background: 'rgba(132, 204, 22, 0.2)',
+            border: '1px solid #84cc16',
+            color: '#84cc16',
+            padding: '6px 12px',
+            borderRadius: 6,
             cursor: 'pointer',
-            fontSize: 13,
+            fontSize: 11,
             fontWeight: 'bold',
-            width: '100%'
+            marginLeft: 8
           }}
         >
-          {showPlayerList ? 'Скрыть список' : 'Показать игроков'}
+          {showPlayerList ? '✕' : '👥'}
         </button>
       </div>
 
-      {/* Список игроков */}
+      {/* Список игроков - компактный */}
       {showPlayerList && mapData && (
         <div style={{
           position: 'absolute',
-          top: 160,
-          left: 20,
-          background: 'rgba(0, 0, 0, 0.9)',
-          padding: '15px',
-          borderRadius: 12,
+          top: 70,
+          left: 15,
+          background: 'rgba(0, 0, 0, 0.85)',
+          padding: '10px',
+          borderRadius: 8,
           color: '#fff',
           zIndex: 10,
           backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)',
           maxHeight: '60vh',
           overflowY: 'auto',
-          minWidth: 250
+          minWidth: 200,
+          maxWidth: 250
         }}>
-          <div style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 14 }}>
-            Игроки на карте ({mapData.players.length}):
+          <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 12, color: '#888' }}>
+            Игроки ({mapData.players.length})
           </div>
           {mapData.players.map((player) => (
             <div
@@ -459,11 +469,11 @@ export default function Map() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 10,
-                padding: '8px 10px',
-                marginBottom: 6,
+                gap: 8,
+                padding: '6px 8px',
+                marginBottom: 4,
                 background: 'rgba(255, 255, 255, 0.05)',
-                borderRadius: 8,
+                borderRadius: 6,
                 cursor: 'pointer',
                 transition: 'all 0.2s',
                 border: '1px solid transparent'
@@ -478,35 +488,28 @@ export default function Map() {
               }}
             >
               <div style={{
-                width: 12,
-                height: 12,
+                width: 8,
+                height: 8,
                 borderRadius: '50%',
-                background: player.team ? '#4CAF50' : '#FF5252',
-                border: '2px solid #fff',
-                flexShrink: 0,
-                boxShadow: player.team ? '0 0 8px #4CAF50' : '0 0 8px #FF5252'
+                background: player.online !== false ? '#f3c366' : '#ef4444',
+                border: '2px solid #3b311f',
+                flexShrink: 0
               }} />
               {player.avatar && (
                 <img 
                   src={player.avatar} 
                   alt="" 
                   style={{ 
-                    width: 32, 
-                    height: 32, 
+                    width: 24, 
+                    height: 24, 
                     borderRadius: '50%',
-                    border: '2px solid #84cc16'
+                    border: '1px solid #84cc16'
                   }}
                 />
               )}
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 13, fontWeight: 'bold' }}>
+              <div style={{ flex: 1, overflow: 'hidden' }}>
+                <div style={{ fontSize: 11, fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {player.name}
-                </div>
-                <div style={{ fontSize: 10, color: '#888' }}>
-                  {player.position ? 
-                    `X: ${Math.round(player.position.x)} Z: ${Math.round(player.position.z)}` : 
-                    'Нет позиции'
-                  }
                 </div>
               </div>
             </div>
@@ -514,22 +517,21 @@ export default function Map() {
         </div>
       )}
 
-      {/* Управление зумом */}
+      {/* Управление зумом - компактное */}
       <div style={{
         position: 'absolute',
-        bottom: 20,
-        right: 20,
-        background: 'rgba(0, 0, 0, 0.85)',
-        padding: '12px',
-        borderRadius: 12,
+        bottom: 15,
+        right: 15,
+        background: 'rgba(0, 0, 0, 0.7)',
+        padding: '8px',
+        borderRadius: 8,
         color: '#fff',
         zIndex: 10,
         backdropFilter: 'blur(10px)',
         display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
+        gap: 6,
         border: '1px solid rgba(255, 255, 255, 0.1)',
-        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+        alignItems: 'center'
       }}>
         <button
           onClick={() => {
@@ -537,36 +539,44 @@ export default function Map() {
             setScale(newScale)
           }}
           style={{
-            background: 'linear-gradient(135deg, #84cc16 0%, #65a30d 100%)',
-            border: 'none',
-            color: '#fff',
-            padding: '10px 14px',
-            borderRadius: 8,
+            background: 'rgba(132, 204, 22, 0.3)',
+            border: '1px solid #84cc16',
+            color: '#84cc16',
+            padding: '6px 10px',
+            borderRadius: 6,
             cursor: 'pointer',
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: 'bold',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(132, 204, 22, 0.3)'
+            lineHeight: 1
           }}
         >
           +
         </button>
+        <div style={{ 
+          fontSize: 11, 
+          color: '#888',
+          fontWeight: 'bold',
+          minWidth: 40,
+          textAlign: 'center'
+        }}>
+          {Math.round(scale * 100)}%
+        </div>
         <button
           onClick={() => { 
             setScale(1)
             setOffset({ x: 0, y: 0 })
           }}
           style={{
-            background: 'rgba(255, 255, 255, 0.15)',
+            background: 'rgba(255, 255, 255, 0.1)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
             color: '#fff',
-            padding: '10px 14px',
-            borderRadius: 8,
+            padding: '6px 10px',
+            borderRadius: 6,
             cursor: 'pointer',
-            fontSize: 16,
-            transition: 'all 0.2s'
+            fontSize: 14,
+            lineHeight: 1
           }}
-          title="Сбросить позицию и зум"
+          title="Сбросить"
         >
           ⟲
         </button>
@@ -576,29 +586,19 @@ export default function Map() {
             setScale(newScale)
           }}
           style={{
-            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-            border: 'none',
-            color: '#fff',
-            padding: '10px 14px',
-            borderRadius: 8,
+            background: 'rgba(239, 68, 68, 0.3)',
+            border: '1px solid #ef4444',
+            color: '#ef4444',
+            padding: '6px 10px',
+            borderRadius: 6,
             cursor: 'pointer',
-            fontSize: 20,
+            fontSize: 16,
             fontWeight: 'bold',
-            transition: 'all 0.2s',
-            boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
+            lineHeight: 1
           }}
         >
           −
         </button>
-        <div style={{ 
-          textAlign: 'center', 
-          fontSize: 13, 
-          marginTop: 4,
-          color: '#aaa',
-          fontWeight: 'bold'
-        }}>
-          {Math.round(scale * 100)}%
-        </div>
       </div>
 
       {/* Карта */}
@@ -636,51 +636,44 @@ export default function Map() {
         />
       </div>
 
-      {/* Tooltip при наведении на игрока */}
+      {/* Tooltip при наведении на игрока - компактный */}
       {hoveredPlayer && (
         <div style={{
           position: 'fixed',
-          left: mousePos.x + 15,
-          top: mousePos.y + 15,
-          background: 'rgba(0, 0, 0, 0.95)',
-          padding: '12px 16px',
-          borderRadius: 10,
+          left: mousePos.x + 12,
+          top: mousePos.y + 12,
+          background: 'rgba(0, 0, 0, 0.9)',
+          padding: '8px 12px',
+          borderRadius: 6,
           color: '#fff',
           zIndex: 100,
           pointerEvents: 'none',
           backdropFilter: 'blur(10px)',
           border: '1px solid rgba(255, 255, 255, 0.15)',
-          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.7)'
+          fontSize: 12
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {hoveredPlayer.avatar && (
               <img 
                 src={hoveredPlayer.avatar} 
                 alt="" 
                 style={{ 
-                  width: 40, 
-                  height: 40, 
+                  width: 28, 
+                  height: 28, 
                   borderRadius: '50%',
                   border: '2px solid #84cc16'
                 }}
               />
             )}
             <div>
-              <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 4 }}>
+              <div style={{ fontWeight: 'bold', fontSize: 13 }}>
                 {hoveredPlayer.name}
-              </div>
-              <div style={{ fontSize: 11, color: '#888' }}>
-                {hoveredPlayer.steam_id}
               </div>
               {hoveredPlayer.team && (
                 <div style={{ 
-                  fontSize: 10, 
+                  fontSize: 9, 
                   color: '#4CAF50',
-                  marginTop: 4,
-                  background: 'rgba(76, 175, 80, 0.2)',
-                  padding: '2px 6px',
-                  borderRadius: 4,
-                  display: 'inline-block'
+                  marginTop: 2
                 }}>
                   В команде
                 </div>
