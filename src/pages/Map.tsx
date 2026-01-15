@@ -141,7 +141,7 @@ export default function Map() {
       ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4)
 
       // Рисуем сетку координат как в Rust
-      const gridSize = Math.floor(canvas.width / 7) // Примерно 7x7 сетка как в Rust
+      const gridSize = Math.floor(canvas.width / 15) // 15x15 сетка - меньше квадраты, больше их
       const gridCount = Math.ceil(canvas.width / gridSize)
       
       // Линии сетки
@@ -290,10 +290,29 @@ export default function Map() {
 
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault()
+    
+    if (!canvasRef.current || !containerRef.current) return
+    
+    const canvas = canvasRef.current
+    const rect = canvas.getBoundingClientRect()
+    
+    // Позиция курсора относительно канваса
+    const mouseX = e.clientX - rect.left
+    const mouseY = e.clientY - rect.top
+    
+    // Позиция курсора в координатах канваса до зума
+    const canvasMouseX = (mouseX - offset.x) / scale
+    const canvasMouseY = (mouseY - offset.y) / scale
+    
     const delta = e.deltaY > 0 ? 0.9 : 1.1
     const newScale = Math.max(0.1, Math.min(10, scale * delta))
+    
+    // Новая позиция offset чтобы курсор остался на том же месте
+    const newOffsetX = mouseX - canvasMouseX * newScale
+    const newOffsetY = mouseY - canvasMouseY * newScale
+    
     setScale(newScale)
-    setOffset(offset)
+    setOffset({ x: newOffsetX, y: newOffsetY })
   }
 
   useEffect(() => {
