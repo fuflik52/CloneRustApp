@@ -47,6 +47,12 @@ namespace Oxide.Plugins
 
             string json = JsonConvert.SerializeObject(data);
             
+            var headers = new Dictionary<string, string>
+            {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = $"Bearer {secretKey}"
+            };
+
             webrequest.Enqueue(
                 $"{apiUrl}/map-url",
                 json,
@@ -62,12 +68,8 @@ namespace Oxide.Plugins
                     }
                 },
                 this,
-                RequestMethod.POST,
-                new Dictionary<string, string>
-                {
-                    ["Content-Type"] = "application/json",
-                    ["Authorization"] = $"Bearer {secretKey}"
-                }
+                Oxide.Core.Libraries.RequestMethod.POST,
+                headers
             );
         }
 
@@ -111,6 +113,12 @@ namespace Oxide.Plugins
 
             string json = JsonConvert.SerializeObject(stateData);
 
+            var headers = new Dictionary<string, string>
+            {
+                ["Content-Type"] = "application/json",
+                ["Authorization"] = $"Bearer {secretKey}"
+            };
+
             webrequest.Enqueue(
                 $"{apiUrl}/state",
                 json,
@@ -122,12 +130,8 @@ namespace Oxide.Plugins
                     }
                 },
                 this,
-                RequestMethod.POST,
-                new Dictionary<string, string>
-                {
-                    ["Content-Type"] = "application/json",
-                    ["Authorization"] = $"Bearer {secretKey}"
-                }
+                Oxide.Core.Libraries.RequestMethod.POST,
+                headers
             );
         }
 
