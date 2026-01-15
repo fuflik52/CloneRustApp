@@ -218,15 +218,8 @@
   font-size: 12px;
 }
 
-.arrow-icon {
-  width: 16px;
-  height: 16px;
-  fill: #4B5454;
-  transition: transform 0.2s;
-}
-
-.arrow-icon.open {
-  transform: rotate(90deg);
+.section-header .arrow-icon {
+  display: none;
 }
 
 .divider {

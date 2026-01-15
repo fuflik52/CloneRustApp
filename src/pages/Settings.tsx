@@ -21,13 +21,25 @@ const tabs = [
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('actions')
-  const [actions, setActions] = useState<CustomAction[]>([
-    { id: '1', name: 'Give', group: 'Items', enabled: true, accessLevel: 'safe' }
-  ])
+  const [actions, setActions] = useState<CustomAction[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
 
   const toggleAction = (id: string) => {
     setActions(prev => prev.map(a => a.id === id ? { ...a, enabled: !a.enabled } : a))
+  }
+
+  const deleteAction = (id: string) => {
+    setActions(prev => prev.filter(a => a.id !== id))
+  }
+
+  const getAccessLevelColor = (level: CustomAction['accessLevel']) => {
+    switch (level) {
+      case 'safe': return 'green'
+      case 'dangerous': return 'yellow'
+      case 'very-dangerous': return 'red'
+      case 'admin': return 'purple'
+      default: return 'red'
+    }
   }
 
   return (
@@ -75,32 +87,39 @@ export default function Settings() {
             </div>
 
             <div className="actions-list">
-              {actions.map(action => (
-                <div key={action.id} className="action-item">
-                  <div className="action-info">
-                    <div className="action-icon">
-                      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path fillRule="evenodd" clipRule="evenodd" d="M14.2426 3.03009C14.7784 3.16404 15.1042 3.70698 14.9702 4.24277L10.9702 20.2428C10.8363 20.7786 10.2934 21.1044 9.75756 20.9704C9.22176 20.8365 8.896 20.2935 9.02995 19.7577L13.03 3.7577C13.1639 3.22191 13.7068 2.89615 14.2426 3.03009ZM6.7072 7.29317C7.09772 7.68369 7.09772 8.31686 6.7072 8.70738L3.41431 12.0003L6.7072 15.2932C7.09772 15.6837 7.09772 16.3169 6.7072 16.7074C6.31668 17.0979 5.68351 17.0979 5.29299 16.7074L2.00009 13.4145C1.21904 12.6334 1.21905 11.3671 2.00009 10.5861L5.29299 7.29317C5.68351 6.90265 6.31668 6.90265 6.7072 7.29317ZM17.293 7.29317C17.6835 6.90265 18.3167 6.90265 18.7072 7.29317L22.0001 10.5861C22.7811 11.3671 22.7811 12.6334 22.0001 13.4145L18.7072 16.7074C18.3167 17.0979 17.6835 17.0979 17.293 16.7074C16.9025 16.3169 16.9025 15.6837 17.293 15.2932L20.5859 12.0003L17.293 8.70738C16.9025 8.31686 16.9025 7.68369 17.293 7.29317Z"/>
-                      </svg>
-                    </div>
-                    <div className="action-text">
-                      <p className="action-name">{action.name}</p>
-                      <p className="action-group">{action.group}</p>
-                    </div>
-                  </div>
-                  <div className="action-controls">
-                    <label className="custom-switch">
-                      <input type="checkbox" checked={action.enabled} onChange={() => toggleAction(action.id)} />
-                      <div className="slider"></div>
-                    </label>
-                    <button className="action-menu-btn">
-                      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                        <path fillRule="evenodd" clipRule="evenodd" d="M10 4C10 2.89543 10.8954 2 12 2C13.1046 2 14 2.89543 14 4C14 5.10457 13.1046 6 12 6C10.8954 6 10 5.10457 10 4ZM10 12C10 10.8954 10.8954 10 12 10C13.1046 10 14 10.8954 14 12C14 13.1046 13.1046 14 12 14C10.8954 14 10 13.1046 10 12ZM10 20C10 18.8954 10.8954 18 12 18C13.1046 18 14 18.8954 14 20C14 21.1046 13.1046 22 12 22C10.8954 22 10 21.1046 10 20Z"/>
-                      </svg>
-                    </button>
-                  </div>
+              {actions.length === 0 ? (
+                <div className="actions-empty">
+                  <p>Нет созданных действий</p>
+                  <span>Создайте новое действие или добавьте из списка</span>
                 </div>
-              ))}
+              ) : (
+                actions.map(action => (
+                  <div key={action.id} className={`action-item ${getAccessLevelColor(action.accessLevel)}`}>
+                    <div className="action-info">
+                      <div className="action-icon">
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path fillRule="evenodd" clipRule="evenodd" d="M14.2426 3.03009C14.7784 3.16404 15.1042 3.70698 14.9702 4.24277L10.9702 20.2428C10.8363 20.7786 10.2934 21.1044 9.75756 20.9704C9.22176 20.8365 8.896 20.2935 9.02995 19.7577L13.03 3.7577C13.1639 3.22191 13.7068 2.89615 14.2426 3.03009ZM6.7072 7.29317C7.09772 7.68369 7.09772 8.31686 6.7072 8.70738L3.41431 12.0003L6.7072 15.2932C7.09772 15.6837 7.09772 16.3169 6.7072 16.7074C6.31668 17.0979 5.68351 17.0979 5.29299 16.7074L2.00009 13.4145C1.21904 12.6334 1.21905 11.3671 2.00009 10.5861L5.29299 7.29317C5.68351 6.90265 6.31668 6.90265 6.7072 7.29317ZM17.293 7.29317C17.6835 6.90265 18.3167 6.90265 18.7072 7.29317L22.0001 10.5861C22.7811 11.3671 22.7811 12.6334 22.0001 13.4145L18.7072 16.7074C18.3167 17.0979 17.6835 17.0979 17.293 16.7074C16.9025 16.3169 16.9025 15.6837 17.293 15.2932L20.5859 12.0003L17.293 8.70738C16.9025 8.31686 16.9025 7.68369 17.293 7.29317Z"/>
+                        </svg>
+                      </div>
+                      <div className="action-text">
+                        <p className="action-name">{action.name}</p>
+                        <p className="action-group">{action.group || 'Без группы'}</p>
+                      </div>
+                    </div>
+                    <div className="action-controls">
+                      <label className="custom-switch">
+                        <input type="checkbox" checked={action.enabled} onChange={() => toggleAction(action.id)} />
+                        <div className="slider"></div>
+                      </label>
+                      <button className="action-menu-btn" onClick={() => deleteAction(action.id)}>
+                        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path fillRule="evenodd" clipRule="evenodd" d="M10 4C10 2.89543 10.8954 2 12 2C13.1046 2 14 2.89543 14 4C14 5.10457 13.1046 6 12 6C10.8954 6 10 5.10457 10 4ZM10 12C10 10.8954 10.8954 10 12 10C13.1046 10 14 10.8954 14 12C14 13.1046 13.1046 14 12 14C10.8954 14 10 13.1046 10 12ZM10 20C10 18.8954 10.8954 18 12 18C13.1046 18 14 18.8954 14 20C14 21.1046 13.1046 22 12 22C10.8954 22 10 21.1046 10 20Z"/>
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

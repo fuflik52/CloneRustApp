@@ -190,8 +190,42 @@
   transform: translateY(-50%);
   width: 3px;
   height: 60%;
-  background: #ef4444;
   border-radius: 0 2px 2px 0;
+}
+
+.action-item.green::before {
+  background: #22c55e;
+}
+
+.action-item.yellow::before {
+  background: #f59e0b;
+}
+
+.action-item.red::before {
+  background: #ef4444;
+}
+
+.action-item.purple::before {
+  background: #8b5cf6;
+}
+
+.actions-empty {
+  padding: 40px 20px;
+  text-align: center;
+  background: #161616;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.actions-empty p {
+  color: #888;
+  font-size: 14px;
+  margin: 0 0 4px 0;
+}
+
+.actions-empty span {
+  color: #555;
+  font-size: 13px;
 }
 
 .action-info {
