@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useServer } from '../App'
+import { useToast } from '../components/Toast'
 
 interface Player {
   steam_id: string
@@ -28,6 +29,7 @@ interface MapData {
 
 export default function Map() {
   const { serverId } = useServer()
+  const { showToast } = useToast()
   const [mapData, setMapData] = useState<MapData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -250,9 +252,9 @@ export default function Map() {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text)
       setCopiedText(text)
+      showToast('Скопировано в буфер обмена')
       setTimeout(() => setCopiedText(''), 2000)
     } else {
-      // Fallback для старых браузеров
       const textarea = document.createElement('textarea')
       textarea.value = text
       document.body.appendChild(textarea)
@@ -260,6 +262,7 @@ export default function Map() {
       document.execCommand('copy')
       document.body.removeChild(textarea)
       setCopiedText(text)
+      showToast('Скопировано в буфер обмена')
       setTimeout(() => setCopiedText(''), 2000)
     }
   }
@@ -373,7 +376,10 @@ export default function Map() {
                   }}
                   title="Копировать Steam ID"
                 >
-                  {copiedText === selectedPlayer.steam_id ? '✓' : '📋'}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
                 </button>
               </div>
             </div>
@@ -563,8 +569,7 @@ export default function Map() {
                 <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ margin: '0 auto 15px', opacity: 0.3 }}>
                   <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
-                <div>Сообщения игрока</div>
-                <div style={{ fontSize: 12, marginTop: 5 }}>Загрузка...</div>
+                <div>Нет сообщений</div>
               </div>
             )}
 
@@ -580,8 +585,7 @@ export default function Map() {
                   <line x1="12" y1="9" x2="12" y2="13"/>
                   <line x1="12" y1="17" x2="12.01" y2="17"/>
                 </svg>
-                <div>Репорты на игрока</div>
-                <div style={{ fontSize: 12, marginTop: 5 }}>Загрузка...</div>
+                <div>Нет репортов</div>
               </div>
             )}
           </div>
