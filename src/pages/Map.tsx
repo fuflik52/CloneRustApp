@@ -7,6 +7,7 @@ interface Player {
   avatar: string
   position: { x: number; y: number; z: number }
   team: string | null
+  online?: boolean
 }
 
 interface MapData {
@@ -172,55 +173,48 @@ export default function Map() {
         const canvasX = (x + worldSize / 2) * mapScale
         const canvasY = (worldSize / 2 - z) * mapScale
 
-        // Разные размеры точек для разнообразия
-        const baseDotSize = player.team ? 14 : 12
+        // Уменьшенный размер точек
+        const baseDotSize = 8 // Уменьшили с 12-14 до 8
         const dotSize = Math.max(baseDotSize, baseDotSize / scale)
 
         // Рисуем тень
         ctx.beginPath()
-        ctx.arc(canvasX + 2, canvasY + 2, dotSize, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
+        ctx.arc(canvasX + 1, canvasY + 1, dotSize, 0, Math.PI * 2)
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
         ctx.fill()
 
         // Рисуем точку игрока
         ctx.beginPath()
         ctx.arc(canvasX, canvasY, dotSize, 0, Math.PI * 2)
         
-        // Градиент для точки
-        const gradient = ctx.createRadialGradient(canvasX, canvasY, 0, canvasX, canvasY, dotSize)
-        if (player.team) {
-          gradient.addColorStop(0, '#66ff66')
-          gradient.addColorStop(1, '#4CAF50')
-        } else {
-          gradient.addColorStop(0, '#ff6666')
-          gradient.addColorStop(1, '#FF5252')
-        }
-        ctx.fillStyle = gradient
+        // Цвет точки: онлайн - желтый (#f3c366), оффлайн - красный
+        const dotColor = player.online !== false ? '#f3c366' : '#ef4444'
+        ctx.fillStyle = dotColor
         ctx.fill()
         
-        // Обводка
-        ctx.strokeStyle = '#fff'
-        ctx.lineWidth = Math.max(3, 4 / scale)
+        // Обводка - темно-коричневая для всех
+        ctx.strokeStyle = '#3b311f'
+        ctx.lineWidth = Math.max(2, 3 / scale)
         ctx.stroke()
         
-        // Внутренняя точка
+        // Внутренняя точка (маленькая)
         ctx.beginPath()
         ctx.arc(canvasX, canvasY, dotSize / 3, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.6)'
         ctx.fill()
 
         // Рисуем имя игрока
         if (scale >= 0.6) {
-          const fontSize = Math.max(14, 16 / scale)
+          const fontSize = Math.max(12, 14 / scale)
           ctx.font = `bold ${fontSize}px Arial, sans-serif`
           ctx.fillStyle = '#fff'
           ctx.strokeStyle = '#000'
-          ctx.lineWidth = Math.max(4, 5 / scale)
+          ctx.lineWidth = Math.max(3, 4 / scale)
           ctx.lineJoin = 'round'
           ctx.miterLimit = 2
           
-          const textX = canvasX + dotSize + 8
-          const textY = canvasY + 6
+          const textX = canvasX + dotSize + 6
+          const textY = canvasY + 4
           
           ctx.strokeText(player.name, textX, textY)
           ctx.fillText(player.name, textX, textY)
@@ -293,10 +287,9 @@ export default function Map() {
     
     if (!canvasRef.current || !containerRef.current) return
     
-    const canvas = canvasRef.current
-    const rect = canvas.getBoundingClientRect()
+    const rect = containerRef.current.getBoundingClientRect()
     
-    // Позиция курсора относительно канваса
+    // Позиция курсора относительно контейнера
     const mouseX = e.clientX - rect.left
     const mouseY = e.clientY - rect.top
     
@@ -307,7 +300,7 @@ export default function Map() {
     const delta = e.deltaY > 0 ? 0.9 : 1.1
     const newScale = Math.max(0.1, Math.min(10, scale * delta))
     
-    // Новая позиция offset чтобы курсор остался на том же месте
+    // Новая позиция offset чтобы курсор остался на том же месте (как в Figma)
     const newOffsetX = mouseX - canvasMouseX * newScale
     const newOffsetY = mouseY - canvasMouseY * newScale
     
