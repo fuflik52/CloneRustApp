@@ -103,6 +103,43 @@ export default function Map() {
       const worldSize = mapData.worldSize
       const mapScale = canvas.width / worldSize
 
+      // Красная зона (радиация) вокруг карты
+      const redZoneWidth = canvas.width * 0.08 // 8% от размера карты - средний отступ
+      
+      // Полупрозрачный красный градиент по краям
+      // Верхняя полоса
+      const gradientTop = ctx.createLinearGradient(0, 0, 0, redZoneWidth)
+      gradientTop.addColorStop(0, 'rgba(255, 50, 50, 0.5)')
+      gradientTop.addColorStop(1, 'rgba(255, 50, 50, 0)')
+      ctx.fillStyle = gradientTop
+      ctx.fillRect(0, 0, canvas.width, redZoneWidth)
+      
+      // Нижняя полоса
+      const gradientBottom = ctx.createLinearGradient(0, canvas.height - redZoneWidth, 0, canvas.height)
+      gradientBottom.addColorStop(0, 'rgba(255, 50, 50, 0)')
+      gradientBottom.addColorStop(1, 'rgba(255, 50, 50, 0.5)')
+      ctx.fillStyle = gradientBottom
+      ctx.fillRect(0, canvas.height - redZoneWidth, canvas.width, redZoneWidth)
+      
+      // Левая полоса
+      const gradientLeft = ctx.createLinearGradient(0, 0, redZoneWidth, 0)
+      gradientLeft.addColorStop(0, 'rgba(255, 50, 50, 0.5)')
+      gradientLeft.addColorStop(1, 'rgba(255, 50, 50, 0)')
+      ctx.fillStyle = gradientLeft
+      ctx.fillRect(0, 0, redZoneWidth, canvas.height)
+      
+      // Правая полоса
+      const gradientRight = ctx.createLinearGradient(canvas.width - redZoneWidth, 0, canvas.width, 0)
+      gradientRight.addColorStop(0, 'rgba(255, 50, 50, 0)')
+      gradientRight.addColorStop(1, 'rgba(255, 50, 50, 0.5)')
+      ctx.fillStyle = gradientRight
+      ctx.fillRect(canvas.width - redZoneWidth, 0, redZoneWidth, canvas.height)
+      
+      // Красная обводка по краю карты
+      ctx.strokeStyle = 'rgba(255, 50, 50, 0.8)'
+      ctx.lineWidth = 4
+      ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4)
+
       // Рисуем сетку координат как в Rust
       const gridSize = Math.floor(canvas.width / 7) // Примерно 7x7 сетка как в Rust
       const gridCount = Math.ceil(canvas.width / gridSize)
