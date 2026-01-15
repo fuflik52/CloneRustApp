@@ -549,8 +549,6 @@ namespace Oxide.Plugins
                 pl.Add(MakePlayer(p, false));
             }
             
-            Puts($"[SendState] Sending {pl.Count} players ({BasePlayer.activePlayerList.Count} active, {BasePlayer.sleepingPlayerList.Count} sleeping)");
-            
             var json = JsonConvert.SerializeObject(new { hostname = GetServerAddress(), port = ConVar.Server.port, name = ConVar.Server.hostname, online = BasePlayer.activePlayerList.Count, max_players = ConVar.Server.maxplayers, players = pl });
             webrequest.Enqueue($"{API}/state", json, (c, r) => { }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
         }
@@ -559,9 +557,6 @@ namespace Oxide.Plugins
         {
             var s = GetStats(p.UserIDString);
             var pos = p.transform.position;
-            
-            // Логируем позицию игрока
-            if (on) Puts($"[MakePlayer] {p.displayName} - Online: {on}, Pos: {pos.x}, {pos.y}, {pos.z}");
             
             return new
             {
@@ -670,7 +665,6 @@ namespace Oxide.Plugins
                                         foreach (var p in BasePlayer.activePlayerList)
                                             SendReply(p, $"Игрок <color=#5af>{target?.displayName ?? muteSteamId}</color> получил мут.\n<size=12>- причина: {cmd.reason}\n- срок: {duration}</size>");
                                     }
-                                    Puts($"[Mute] {muteSteamId} - {cmd.reason}");
                                 }
                                 break;
                                 
@@ -683,7 +677,6 @@ namespace Oxide.Plugins
                                         var target = BasePlayer.Find(unmuteSteamId);
                                         if (target?.IsConnected == true)
                                             SendReply(target, "Ваш мут снят.");
-                                        Puts($"[Unmute] {unmuteSteamId}");
                                     }
                                 }
                                 break;
@@ -697,7 +690,6 @@ namespace Oxide.Plugins
                                     {
                                         var kickReason = !string.IsNullOrEmpty(cmd.reason) ? cmd.reason : "Kicked by admin";
                                         target.Kick(kickReason);
-                                        Puts($"[Kick] {kickSteamId} - {kickReason}");
                                         if (cmd.broadcast)
                                         {
                                             foreach (var p in BasePlayer.activePlayerList)
@@ -733,8 +725,6 @@ namespace Oxide.Plugins
                                             target.Kick(banMsg);
                                         }
                                         
-                                        Puts($"[Ban] {banSteamId} - {banReason}");
-                                        
                                         if (cmd.broadcast)
                                         {
                                             foreach (var p in BasePlayer.activePlayerList)
@@ -750,7 +740,6 @@ namespace Oxide.Plugins
                                 {
                                     ServerUsers.Remove(unbanId);
                                     ServerUsers.Save();
-                                    Puts($"[Unban] {unbanSteamId}");
                                 }
                                 break;
                                 
@@ -758,12 +747,11 @@ namespace Oxide.Plugins
                                 if (!string.IsNullOrEmpty(cmd.command))
                                 {
                                     ConsoleSystem.Run(ConsoleSystem.Option.Server, cmd.command);
-                                    Puts($"[CustomAction] {cmd.command}");
                                 }
                                 break;
                         }
                     }
-                } catch (Exception ex) { Puts($"[FetchCmd Error] {ex.Message}"); }
+                } catch { }
             }, this, Oxide.Core.Libraries.RequestMethod.GET, Headers());
         }
 

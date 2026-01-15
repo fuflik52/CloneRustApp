@@ -33,7 +33,6 @@ export default function Map() {
   const [isVisible, setIsVisible] = useState(true)
   const [nextUpdate, setNextUpdate] = useState(5)
   const [showPlayerList, setShowPlayerList] = useState(false)
-  const [renderKey, setRenderKey] = useState(0)
 
   // Отслеживание видимости вкладки
   useEffect(() => {
@@ -56,7 +55,6 @@ export default function Map() {
           setMapData(data)
           setError('')
           setNextUpdate(5)
-          setRenderKey(prev => prev + 1) // Force re-render
         } else {
           setError('Не удалось загрузить карту')
         }
@@ -96,8 +94,6 @@ export default function Map() {
     img.crossOrigin = 'anonymous'
     
     img.onload = () => {
-      console.log('[MAP] Image loaded, drawing map with', mapData.players.length, 'players')
-      
       canvas.width = img.width
       canvas.height = img.height
 
@@ -107,20 +103,14 @@ export default function Map() {
       const worldSize = mapData.worldSize
       const mapScale = canvas.width / worldSize
 
-      console.log('[MAP] Drawing players...')
       // Рисуем всех игроков
       mapData.players.forEach((player) => {
-        if (!player.position) {
-          console.log('[MAP] Player', player.name, 'has no position')
-          return
-        }
+        if (!player.position) return
         
         const { x, z } = player.position
         
         const canvasX = (x + worldSize / 2) * mapScale
         const canvasY = (worldSize / 2 - z) * mapScale
-
-        console.log('[MAP] Drawing player', player.name, 'at canvas coords:', canvasX, canvasY)
 
         // Разные размеры точек для разнообразия
         const baseDotSize = player.team ? 14 : 12
@@ -176,20 +166,16 @@ export default function Map() {
           ctx.fillText(player.name, textX, textY)
         }
       })
-      
-      console.log('[MAP] Finished drawing', mapData.players.length, 'players')
     }
 
     img.onerror = () => {
-      console.error('[MAP] Failed to load map image')
       setError('Не удалось загрузить изображение карты')
     }
 
     if (mapData.mapUrl) {
-      console.log('[MAP] Loading map image:', mapData.mapUrl)
       img.src = mapData.mapUrl
     }
-  }, [mapData, scale]) // Перерисовываем при изменении данных или зума
+  }, [mapData, scale])
 
   // Ограничение перетаскивания - адаптивные границы в зависимости от зума
   const clampOffset = (newOffset: { x: number; y: number }, currentScale: number) => {
@@ -618,7 +604,6 @@ export default function Map() {
       >
         <canvas
           ref={canvasRef}
-          key={renderKey}
           style={{
             maxWidth: 'none',
             maxHeight: 'none',
