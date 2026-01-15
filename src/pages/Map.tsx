@@ -385,6 +385,11 @@ export default function Map() {
                   </svg>
                 </button>
               </div>
+              {selectedPlayer.position && (
+                <div style={{ fontSize: 11, color: '#666', marginTop: 4 }}>
+                  X: {Math.round(selectedPlayer.position.x)} Y: {Math.round(selectedPlayer.position.y)} Z: {Math.round(selectedPlayer.position.z)}
+                </div>
+              )}
             </div>
           </div>
 

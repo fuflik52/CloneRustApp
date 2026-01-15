@@ -645,6 +645,36 @@ namespace Oxide.Plugins
             }
         }
 
+        [ConsoleCommand("panrust.coords")]
+        void CmdConsoleCoords(ConsoleSystem.Arg arg)
+        {
+            if (arg.Args == null || arg.Args.Length < 1)
+            {
+                arg.ReplyWith("Format: panrust.coords <steamid>");
+                return;
+            }
+            
+            string id = arg.Args[0];
+            
+            // Проверяем онлайн игроков
+            var player = BasePlayer.Find(id);
+            if (player != null)
+            {
+                arg.ReplyWith($"Player {player.displayName} ({id}) position: {player.transform.position}");
+                return;
+            }
+            
+            // Проверяем спящих игроков
+            player = BasePlayer.FindSleeping(id);
+            if (player != null)
+            {
+                arg.ReplyWith($"Player {player.displayName} ({id}) [SLEEPING] position: {player.transform.position}");
+                return;
+            }
+            
+            arg.ReplyWith("Player not found (checked online and sleepers)");
+        }
+
         void SendChat()
         {
             if (string.IsNullOrEmpty(_meta.Key) || _chatQueue.Count == 0) return;
