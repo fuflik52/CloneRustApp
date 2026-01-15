@@ -245,6 +245,7 @@ export default function Players() {
   }, [contextMenu, openSubmenu, customActions.length])
 
   const executeCustomAction = async (action: CustomAction, confirmed = false) => {
+    setContextMenu(null) // Закрываем контекстное меню сразу при любом клике на действие
     if (!serverId || !selectedPlayer) return
     if (!selectedPlayer.online && !action.allowOffline) {
       showToast('Нельзя выполнить действие для офлайн игрока', 'info')
@@ -254,8 +255,14 @@ export default function Players() {
     if (action.confirmBefore && !confirmed) {
       setPendingAction(action)
       setShowActionConfirmModal(true)
-      setContextMenu(null)
+      // setContextMenu(null) // Убрали, чтобы не срабатывал клик-аутсайд или другие эффекты
       return
+    }
+
+    // Если подтверждено, закрываем модалку перед выполнением
+    if (confirmed) {
+      setShowActionConfirmModal(false)
+      setPendingAction(null)
     }
 
     try {
@@ -279,10 +286,6 @@ export default function Players() {
     } catch {
       showToast('Ошибка выполнения действия', 'error')
     }
-
-    setContextMenu(null)
-    setShowActionConfirmModal(false)
-    setPendingAction(null)
   }
 
   const handleMute = async () => {
