@@ -254,8 +254,10 @@ export default function Players() {
 
     if (action.confirmBefore && !confirmed) {
       setPendingAction(action)
-      setShowActionConfirmModal(true)
-      // setContextMenu(null) // Убрали, чтобы не срабатывал клик-аутсайд или другие эффекты
+      // Используем setTimeout, чтобы избежать срабатывания клика на новой модалке в том же цикле событий
+      setTimeout(() => {
+        setShowActionConfirmModal(true)
+      }, 0)
       return
     }
 
@@ -1397,7 +1399,10 @@ export default function Players() {
                         <button
                           key={action.id}
                           className="context-menu-item"
-                          onClick={() => executeCustomAction(action)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            executeCustomAction(action)
+                          }}
                         >
                           {action.name}
                         </button>
