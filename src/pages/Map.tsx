@@ -213,7 +213,9 @@ export default function Map() {
     for (const player of mapData.players) {
       if (!player.position) continue
       const { x, z } = player.position
-      const canvasX = ((halfSize + x) / worldSize) * canvas.width
+      // Добавляем ту же коррекцию для игроков
+      const OFFSET_X = 150
+      const canvasX = ((x + halfSize + OFFSET_X) / worldSize) * canvas.width
       const canvasY = ((halfSize - z) / worldSize) * canvas.height
       const distance = Math.sqrt((mouseX - canvasX) ** 2 + (mouseY - canvasY) ** 2)
       if (distance < 20) {
