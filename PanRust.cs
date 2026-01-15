@@ -557,7 +557,7 @@ namespace Oxide.Plugins
                 ip = on ? GetIP(p) : "", 
                 ping = on ? Network.Net.sv.GetAveragePing(p.Connection) : 0,
                 online = on,
-                position = on ? new { x = -pos.x, y = pos.y, z = pos.z } : null, // Позиция только для онлайн игроков
+                position = on ? new { x = pos.x, y = pos.y, z = pos.z } : null, // Позиция только для онлайн игроков
                 team = p.currentTeam != 0 ? p.currentTeam.ToString() : null,
                 server = ConVar.Server.hostname,
                 stats = new { kills = s.k, deaths = s.d, headshots = s.hs, bodyshots = s.bs, limbshots = s.ls, playtime_hours = Math.Round(GetPlaytime(p.UserIDString) / 3600, 2), reports_count = s.rp, kd = s.d > 0 ? Math.Round((double)s.k / s.d, 2) : s.k }
