@@ -534,8 +534,23 @@ namespace Oxide.Plugins
         void SendState()
         {
             if (string.IsNullOrEmpty(_meta.Key)) return;
+            
             var pl = new List<object>();
-            foreach (var p in BasePlayer.activePlayerList) pl.Add(MakePlayer(p, true));
+            
+            // Добавляем активных игроков
+            foreach (var p in BasePlayer.activePlayerList) 
+            {
+                pl.Add(MakePlayer(p, true));
+            }
+            
+            // Добавляем спящих игроков
+            foreach (var p in BasePlayer.sleepingPlayerList)
+            {
+                pl.Add(MakePlayer(p, false));
+            }
+            
+            Puts($"[SendState] Sending {pl.Count} players ({BasePlayer.activePlayerList.Count} active, {BasePlayer.sleepingPlayerList.Count} sleeping)");
+            
             var json = JsonConvert.SerializeObject(new { hostname = GetServerAddress(), port = ConVar.Server.port, name = ConVar.Server.hostname, online = BasePlayer.activePlayerList.Count, max_players = ConVar.Server.maxplayers, players = pl });
             webrequest.Enqueue($"{API}/state", json, (c, r) => { }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
         }

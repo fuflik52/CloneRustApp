@@ -590,7 +590,9 @@ app.get('/api/servers/:serverId/players', (req, res) => {
   if (!server) {
     return res.status(404).json({ error: 'Server not found' });
   }
-  res.json(server.players || []);
+  // Фильтруем только онлайн игроков
+  const onlinePlayers = (server.players || []).filter(p => p.online === true);
+  res.json(onlinePlayers);
 });
 
 // Get all players from server database (including offline)
