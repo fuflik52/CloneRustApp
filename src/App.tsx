@@ -19,7 +19,7 @@ import Staff from './pages/Staff'
 import Database from './pages/Database'
 import Profile from './pages/Profile'
 import Settings from './pages/Settings'
-import Map from './pages/Map'
+
 import { useState, useEffect, createContext, useContext } from 'react'
 
 // Контекст для текущего сервера
