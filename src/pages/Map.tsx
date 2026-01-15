@@ -217,29 +217,42 @@ export default function Map() {
   const zoomToPlayer = (player: Player) => {
     if (!player.position || !canvasRef.current || !mapData) return
     
+    console.log('[MAP] Zooming to player:', player.name, player.position)
+    
     const canvas = canvasRef.current
     const worldSize = mapData.worldSize
     const mapScale = canvas.width / worldSize
     
     const { x, z } = player.position
+    
+    // Вычисляем позицию игрока на canvas
     const canvasX = (x + worldSize / 2) * mapScale
     const canvasY = (worldSize / 2 - z) * mapScale
     
+    console.log('[MAP] Canvas position:', canvasX, canvasY)
+    console.log('[MAP] Canvas size:', canvas.width, canvas.height)
+    
+    // Устанавливаем зум
+    const targetScale = 2
+    setScale(targetScale)
+    
     // Центрируем на игроке
+    // Нужно сместить canvas так, чтобы точка игрока оказалась в центре экрана
     const containerWidth = window.innerWidth
     const containerHeight = window.innerHeight
     
-    const offsetX = (containerWidth / 2 - canvasX * 2) 
-    const offsetY = (containerHeight / 2 - canvasY * 2)
+    // Вычисляем смещение: центр экрана минус позиция игрока (с учетом зума)
+    const offsetX = (containerWidth / 2) - (canvasX * targetScale)
+    const offsetY = (containerHeight / 2) - (canvasY * targetScale)
     
-    setScale(2)
+    console.log('[MAP] Setting offset:', offsetX, offsetY)
+    
     setOffset({ x: offsetX, y: offsetY })
     setShowPlayerList(false)
   }
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault()
-    e.stopPropagation()
     const delta = e.deltaY > 0 ? 0.9 : 1.1
     const newScale = Math.max(0.5, Math.min(3, scale * delta))
     setScale(newScale)
@@ -538,11 +551,11 @@ export default function Map() {
       {/* Карта */}
       <div 
         ref={containerRef}
-        onWheel={handleWheel}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={() => { setHoveredPlayer(null); setIsDragging(false) }}
+        onWheelCapture={handleWheel}
         style={{
           width: '100%',
           height: '100%',
@@ -551,19 +564,23 @@ export default function Map() {
           alignItems: 'center',
           overflow: 'hidden',
           cursor: isDragging ? 'grabbing' : 'grab',
-          userSelect: 'none'
+          userSelect: 'none',
+          touchAction: 'none'
         }}
       >
         <canvas
           ref={canvasRef}
           style={{
-            maxWidth: '95%',
-            maxHeight: '95%',
+            maxWidth: 'none',
+            maxHeight: 'none',
+            width: 'auto',
+            height: 'auto',
             boxShadow: '0 8px 40px rgba(0, 0, 0, 0.7)',
             borderRadius: 8,
-            transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
-            transformOrigin: 'center center',
-            transition: isDragging ? 'none' : 'transform 0.1s ease-out'
+            transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+            transformOrigin: '0 0',
+            transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+            imageRendering: 'crisp-edges'
           }}
         />
       </div>
