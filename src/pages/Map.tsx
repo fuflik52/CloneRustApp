@@ -123,7 +123,9 @@ export default function Map() {
           if (Math.abs(x) > halfSize || Math.abs(z) > halfSize) return
           
           // Правильная конвертация координат Rust в координаты карты
-          const canvasX = ((x + halfSize) / worldSize) * canvas.width
+          // В Rust: центр карты (0,0), X вправо, Z вверх
+          // На canvas: (0,0) левый верхний угол
+          const canvasX = ((halfSize - x) / worldSize) * canvas.width
           const canvasY = ((halfSize - z) / worldSize) * canvas.height
           const dotSize = 5 // Уменьшенный размер точек
 
@@ -162,7 +164,7 @@ export default function Map() {
         mapData.monuments.forEach((monument) => {
           const { x, z } = monument
           const halfSize = worldSize / 2
-          const canvasX = ((x + halfSize) / worldSize) * canvas.width
+          const canvasX = ((halfSize - x) / worldSize) * canvas.width
           const canvasY = ((halfSize - z) / worldSize) * canvas.height
           const iconSize = 20
           
@@ -209,7 +211,7 @@ export default function Map() {
     for (const player of mapData.players) {
       if (!player.position) continue
       const { x, z } = player.position
-      const canvasX = ((x + halfSize) / worldSize) * canvas.width
+      const canvasX = ((halfSize - x) / worldSize) * canvas.width
       const canvasY = ((halfSize - z) / worldSize) * canvas.height
       const distance = Math.sqrt((mouseX - canvasX) ** 2 + (mouseY - canvasY) ** 2)
       if (distance < 20) {
