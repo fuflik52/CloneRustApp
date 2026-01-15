@@ -188,30 +188,27 @@ export default function Map() {
     const scaledWidth = canvas.width * currentScale
     const scaledHeight = canvas.height * currentScale
     
-    // При отдалении (scale < 1) карта должна быть ближе к центру
-    // При приближении (scale > 1) даем больше свободы движения
-    let minVisiblePx: number
-    
-    if (currentScale < 1) {
-      // Отдалено - карта должна быть почти по центру, минимум пустого места
-      minVisiblePx = Math.min(scaledWidth, scaledHeight) * 0.8
-    } else if (currentScale > 2) {
-      // Очень сильно приближено - максимальная свобода
-      minVisiblePx = 50
-    } else if (currentScale > 1.5) {
-      // Сильно приближено - большая свобода движения
-      minVisiblePx = 80
-    } else {
-      // Нормальный зум - средние границы
-      minVisiblePx = 150
-    }
-    
     // Если карта меньше контейнера, центрируем её
     if (scaledWidth <= containerWidth && scaledHeight <= containerHeight) {
       return {
         x: (containerWidth - scaledWidth) / 2,
         y: (containerHeight - scaledHeight) / 2
       }
+    }
+    
+    // При приближении даем полную свободу движения - убираем жесткие ограничения
+    // Позволяем прокручивать карту полностью за границы экрана
+    let minVisiblePx: number
+    
+    if (currentScale < 1) {
+      // Отдалено - карта должна быть почти по центру
+      minVisiblePx = Math.min(scaledWidth, scaledHeight) * 0.8
+    } else if (currentScale >= 1.5) {
+      // При сильном приближении - минимальные ограничения (можно прокручивать почти полностью)
+      minVisiblePx = 10
+    } else {
+      // Нормальный зум - средние границы
+      minVisiblePx = 100
     }
     
     // Ограничения: карта не может уйти полностью за границы
