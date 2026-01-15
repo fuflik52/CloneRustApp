@@ -457,13 +457,38 @@ export default function Players() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const playerId = params.get('player')
-    if (playerId && allPlayers.length > 0) {
-      const player = allPlayers.find(p => p.steam_id === playerId)
-      if (player && !selectedPlayer) {
-        handleSelectPlayer(player)
+    
+    if (playerId && !selectedPlayer) {
+      // Сначала ищем в списке онлайн игроков
+      const onlinePlayer = allPlayers.find(p => p.steam_id === playerId)
+      if (onlinePlayer) {
+        handleSelectPlayer(onlinePlayer)
+      } else {
+        // Если игрока нет онлайн, загружаем его данные из API
+        fetch(`/api/player/${playerId}/stats`)
+          .then(res => res.json())
+          .then(data => {
+            if (data && !data.error) {
+              const playerObj: Player = {
+                steam_id: data.steam_id,
+                name: data.steam_name || data.name || 'Unknown',
+                avatar: data.avatar || '',
+                ip: data.ips_history?.[0]?.ip || '',
+                country: data.country || '',
+                countryCode: data.countryCode || '',
+                city: data.city || '',
+                provider: data.provider || '',
+                online: false,
+                last_seen: data.last_seen,
+                playtime_hours: data.playtime_hours
+              }
+              handleSelectPlayer(playerObj)
+            }
+          })
+          .catch(err => console.error('Error fetching player stats:', err))
       }
     }
-  }, [allPlayers])
+  }, [allPlayers, selectedPlayer])
 
   // Загружаем Steam инфо при выборе игрока
   const handleSelectPlayer = async (player: Player) => {
@@ -492,6 +517,7 @@ export default function Players() {
     
     // Загружаем статистику
     loadPlayerStats(player.steam_id)
+    loadPlayerKills(player.steam_id)
   }
 
   const loadPlayerStats = async (steamId: string) => {

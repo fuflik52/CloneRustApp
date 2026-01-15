@@ -1384,6 +1384,65 @@ app.post('/api/servers/:serverId/actions/:actionId/execute', (req, res) => {
   res.json({ success: true, action: action.name });
 });
 
+// Get kills for specific player across all servers
+app.get('/api/player/:steamId/kills', (req, res) => {
+  const { steamId } = req.params;
+  const { limit = 50 } = req.query;
+  const data = loadServers();
+  const servers = Object.values(data.servers);
+  let allKills = [];
+
+  for (const server of servers) {
+    const activity = loadServerActivity(server.id);
+    const kills = activity.logs.filter(l => 
+      l.type === 'player_kill' && 
+      (l.data?.killer_steam_id === steamId || l.data?.victim_steam_id === steamId)
+    ).map(k => ({ ...k, serverName: server.name }));
+    allKills = allKills.concat(kills);
+  }
+
+  allKills.sort((a, b) => b.timestamp - a.timestamp);
+  res.json(allKills.slice(0, Number(limit)));
+});
+
+// Get reports for specific player
+app.get('/api/player/:steamId/reports', (req, res) => {
+  const reportsData = loadReports();
+  const reports = reportsData.reports.filter(r => r.target_steam_id === req.params.steamId);
+  const sorted = [...reports].sort((a, b) => b.timestamp - a.timestamp);
+  res.json(sorted);
+});
+
+// Get player stats/info across all servers
+app.get('/api/player/:steamId/stats', async (req, res) => {
+  const { steamId } = req.params;
+  const data = loadServers();
+  const servers = Object.values(data.servers);
+  let bestPlayerInfo = null;
+
+  for (const server of servers) {
+    const db = loadServerPlayers(server.id);
+    const player = db.players[steamId];
+    if (player) {
+      if (!bestPlayerInfo || player.last_seen > bestPlayerInfo.last_seen) {
+        bestPlayerInfo = { 
+          ...player, 
+          serverId: server.id, 
+          serverName: server.name,
+          playtime_hours: Math.round(player.total_playtime_seconds / 3600 * 10) / 10
+        };
+      }
+    }
+  }
+
+  if (!bestPlayerInfo) {
+    // If not in any DB, at least try to get Steam info
+    return res.status(404).json({ error: 'Player not found in database' });
+  }
+
+  res.json(bestPlayerInfo);
+});
+
 // SPA fallback
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));

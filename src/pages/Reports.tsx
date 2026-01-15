@@ -105,7 +105,7 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
   const { serverId } = useServer()
 
   const fetchReports = async () => {
-    if (!serverId) return
+    if (!serverId && !targetSteamId) return
     
     setLoading(true)
     setError(null)
