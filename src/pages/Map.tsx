@@ -125,7 +125,9 @@ export default function Map() {
           // Правильная конвертация координат Rust в координаты карты
           // В Rust: центр карты (0,0), X вправо, Z вверх
           // На canvas: (0,0) левый верхний угол
-          const canvasX = ((halfSize + x) / worldSize) * canvas.width
+          // Для корректного отображения на карте (которая может быть сгенерирована с X+half)
+          // используем ту же формулу: (x + half) / size
+          const canvasX = ((x + halfSize) / worldSize) * canvas.width
           const canvasY = ((halfSize - z) / worldSize) * canvas.height
           const dotSize = 5 // Уменьшенный размер точек
 
