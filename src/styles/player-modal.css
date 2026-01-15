@@ -432,31 +432,41 @@
 
 .activity-card {
   background: #272727;
-  border: 1px solid #333;
-  border-radius: 10px;
-  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
 }
 
 .activity-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+}
+
+.activity-date-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #888;
+  font-size: 13px;
+}
+
+.activity-date-wrapper svg {
+  width: 14px;
+  height: 14px;
+  fill: #666;
 }
 
 .activity-badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: #333;
-  padding: 6px 10px;
-  border-radius: 6px;
-  color: #ccc;
-  font-size: 12px;
-}
-
-.activity-badge svg {
-  fill: #888;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
 .activity-badge.red {
@@ -471,35 +481,32 @@
 
 .activity-card-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-  border-bottom: 1px solid #333;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
 }
 
 .activity-card-row:last-child {
-  border-bottom: none;
+  margin-bottom: 0;
 }
 
 .row-label {
   color: #666;
   font-size: 12px;
-  min-width: 130px;
 }
 
 .row-value {
   color: #fff;
   font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-weight: 500;
+}
+
+.row-value.blue {
+  color: #0099ff;
 }
 
 .activity-connector {
-  width: 2px;
-  height: 20px;
-  background: #333;
-  margin-left: 24px;
+  display: none; /* Убираем коннекторы как на фото */
 }
 
 .activity-info-box {
@@ -537,7 +544,7 @@
 }
 
 .activity-info-box svg {
-  fill: #0099ff;
+  fill: #888;
   flex-shrink: 0;
   margin-top: 2px;
   position: relative;
@@ -545,7 +552,7 @@
 }
 
 .activity-info-box span {
-  color: #d0e8ff;
+  color: #888;
   font-size: 13px;
   line-height: 1.5;
   position: relative;
@@ -1373,7 +1380,7 @@
 /* ==================== CONTEXT MENU ==================== */
 .player-context-menu {
   position: fixed;
-  background: #1e1e1e;
+  background: #2d2d2d;
   border: 1px solid #333;
   border-radius: 10px;
   padding: 6px;
@@ -1392,7 +1399,7 @@
   background: transparent;
   border: none;
   border-radius: 6px;
-  color: #ccc;
+  color: #c5c5c5;
   font-size: 13px;
   cursor: pointer;
   transition: background 0.15s;
@@ -1400,7 +1407,7 @@
 }
 
 .context-menu-item:hover {
-  background: #2a2a2a;
+  background: #3a3a3a;
   color: #fff;
 }
 
@@ -1449,7 +1456,7 @@
 
 .player-context-submenu {
   position: fixed;
-  background: #1e1e1e;
+  background: #2d2d2d;
   border: 1px solid #333;
   border-radius: 10px;
   padding: 6px;

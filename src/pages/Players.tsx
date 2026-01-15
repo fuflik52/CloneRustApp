@@ -839,22 +839,90 @@ export default function Players() {
                       <div className="activity-list">
                         <div className="activity-card">
                           <div className="activity-card-header">
-                            <div className="activity-badge"><CalendarIcon /> {new Date().toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })} в {new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+                            <div className="activity-date-wrapper">
+                              <CalendarIcon />
+                              <span>15.01 в 04:20:30</span>
+                            </div>
                             <div className="activity-badge red">Выход</div>
                           </div>
-                          <div className="activity-card-row"><span className="row-label">Длительность сеанса:</span><span className="row-value">5 минут</span></div>
-                          <div className="activity-card-row"><span className="row-label">Статус:</span><span className="row-value">Онлайн</span></div>
-                          <div className="activity-card-row"><span className="row-label">Причина выхода:</span><span className="row-value">Disconnected: disconnect</span></div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Длительность сеанса:</span>
+                            <span className="row-value">5 минут</span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Статус:</span>
+                            <span className="row-value">Онлайн</span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Причина выхода:</span>
+                            <span className="row-value">Disconnected: disconnect</span>
+                          </div>
                         </div>
-                        <div className="activity-connector"></div>
+
                         <div className="activity-card">
                           <div className="activity-card-header">
-                            <div className="activity-badge"><CalendarIcon /> {new Date().toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })} в {new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</div>
+                            <div className="activity-date-wrapper">
+                              <CalendarIcon />
+                              <span>15.01 в 04:20:30</span>
+                            </div>
                             <div className="activity-badge green">Вход</div>
                           </div>
-                          <div className="activity-card-row"><span className="row-label">IP адрес:</span><span className="row-value hyperlink">{selectedPlayer.ip}</span></div>
-                          <div className="activity-card-row"><span className="row-label">Сервер:</span><span className="row-value">{selectedPlayer.serverName || selectedPlayer.server}</span></div>
-                          <div className="activity-card-row"><span className="row-label">Тип клиента:</span><span className="row-value">Лицензия</span></div>
+                          <div className="activity-card-row">
+                            <span className="row-label">IP адрес:</span>
+                            <span className="row-value blue">{selectedPlayer.ip || '194.39.110.241'}</span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Сервер:</span>
+                            <span className="row-value">AIM ACADEMY</span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Тип клиента:</span>
+                            <span className="row-value">Лицензия</span>
+                          </div>
+                        </div>
+
+                        <div className="activity-card">
+                          <div className="activity-card-header">
+                            <div className="activity-date-wrapper">
+                              <CalendarIcon />
+                              <span>13.01 в 14:00:18</span>
+                            </div>
+                            <div className="activity-badge red">Выход</div>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Длительность сеанса:</span>
+                            <span className="row-value">минута</span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Статус:</span>
+                            <span className="row-value">Онлайн</span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Причина выхода:</span>
+                            <span className="row-value">Timed Out</span>
+                          </div>
+                        </div>
+
+                        <div className="activity-card">
+                          <div className="activity-card-header">
+                            <div className="activity-date-wrapper">
+                              <CalendarIcon />
+                              <span>13.01 в 13:57:26</span>
+                            </div>
+                            <div className="activity-badge green">Вход</div>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">IP адрес:</span>
+                            <span className="row-value blue">86.54.28.216</span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Сервер:</span>
+                            <span className="row-value">MAIN SERVER</span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Тип клиента:</span>
+                            <span className="row-value">Лицензия</span>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -868,13 +936,34 @@ export default function Players() {
                         </div>
                         <div className="activity-card">
                           <div className="activity-card-header">
-                            <div className="activity-badge"><CalendarIcon /> {new Date().toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })} в {new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}</div>
+                            <div className="activity-date-wrapper">
+                              <CalendarIcon />
+                              <span>15.01 в 04:20:30</span>
+                            </div>
                             <button className="activity-share-btn"><ShareIcon /></button>
                           </div>
-                          <div className="activity-card-row"><span className="row-label">IP адрес:</span><div className="row-value-copy"><span className="hyperlink">{selectedPlayer.ip}</span><button className="row-copy-btn" onClick={() => copyToClipboard(selectedPlayer.ip)}><CopySmallIcon /></button></div></div>
-                          <div className="activity-card-row"><span className="row-label">Страна:</span><span className="row-value">{selectedPlayer.countryCode && <img src={`https://hatscripts.github.io/circle-flags/flags/${selectedPlayer.countryCode}.svg`} className="mini-flag" />} {selectedPlayer.country}</span></div>
-                          <div className="activity-card-row"><span className="row-label">Город:</span><span className="row-value">{selectedPlayer.city}</span></div>
-                          <div className="activity-card-row"><span className="row-label">Провайдер:</span><span className="row-value">{selectedPlayer.provider}</span></div>
+                          <div className="activity-card-row">
+                            <span className="row-label">IP адрес:</span>
+                            <div className="row-value-copy">
+                              <span className="blue">{selectedPlayer.ip || '194.39.110.241'}</span>
+                              <button className="row-copy-btn" onClick={() => copyToClipboard(selectedPlayer.ip)}><CopySmallIcon /></button>
+                            </div>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Страна:</span>
+                            <span className="row-value">
+                              {selectedPlayer.countryCode && <img src={`https://hatscripts.github.io/circle-flags/flags/${selectedPlayer.countryCode}.svg`} className="mini-flag" />} 
+                              {selectedPlayer.country || 'N/A'}
+                            </span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Город:</span>
+                            <span className="row-value">{selectedPlayer.city || 'N/A'}</span>
+                          </div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Провайдер:</span>
+                            <span className="row-value">{selectedPlayer.provider || 'N/A'}</span>
+                          </div>
                         </div>
                       </div>
                     )}
@@ -888,10 +977,19 @@ export default function Players() {
                         </div>
                         <div className="activity-card">
                           <div className="activity-card-header">
-                            <div className="activity-badge"><CalendarIcon /> {new Date().toLocaleDateString('ru', { day: '2-digit', month: '2-digit' })} в {new Date().toLocaleTimeString('ru', { hour: '2-digit', minute: '2-digit' })}</div>
+                            <div className="activity-date-wrapper">
+                              <CalendarIcon />
+                              <span>15.01 в 04:20:30</span>
+                            </div>
                             <button className="activity-share-btn"><ShareIcon /></button>
                           </div>
-                          <div className="activity-card-row"><span className="row-label">Никнейм:</span><div className="row-value-copy"><span>{selectedPlayer.name}</span><button className="row-copy-btn" onClick={() => copyToClipboard(selectedPlayer.name)}><CopySmallIcon /></button></div></div>
+                          <div className="activity-card-row">
+                            <span className="row-label">Никнейм:</span>
+                            <div className="row-value-copy">
+                              <span>{selectedPlayer.name}</span>
+                              <button className="row-copy-btn" onClick={() => copyToClipboard(selectedPlayer.name)}><CopySmallIcon /></button>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
