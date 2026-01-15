@@ -114,16 +114,16 @@ export default function Reports() {
       <div className="reports-table-container">
         <div className="reports-table">
           <div className="table-header">
-            <div className="th" style={{ minWidth: 140, flex: '0 0 140px' }}>Дата</div>
-            <div className="th" style={{ minWidth: 160, flex: '0 0 180px' }}>Сервер</div>
-            <div className="th" style={{ minWidth: 240, flex: '1 1 280px' }}>Отправил жалобу</div>
-            <div className="th arrow-cell" style={{ minWidth: 40, flex: '0 0 40px' }}></div>
-            <div className="th" style={{ minWidth: 240, flex: '1 1 280px' }}>Подозреваемый</div>
-            <div className="th" style={{ minWidth: 20, flex: '0 0 20px' }}></div>
-            <div className="th" style={{ minWidth: 80, flex: '0 0 100px' }}>K/D</div>
-            <div className="th" style={{ minWidth: 100, flex: '0 0 120px' }}>Жалоб</div>
-            <div className="th" style={{ minWidth: 150, flex: '0 0 200px' }}>Причина</div>
-            <div className="th" style={{ minWidth: 60, flex: '0 0 80px' }}></div>
+            <div className="th date-col">Дата</div>
+            <div className="th server-col">Сервер</div>
+            <div className="th player-col">Отправил жалобу</div>
+            <div className="th arrow-col"></div>
+            <div className="th player-col">Подозреваемый</div>
+            <div className="th spacer-col"></div>
+            <div className="th kd-col">K/D</div>
+            <div className="th reports-col">Жалоб</div>
+            <div className="th reason-col">Причина</div>
+            <div className="th actions-col"></div>
           </div>
 
           <div className="table-body">
@@ -140,16 +140,16 @@ export default function Reports() {
                 const { date, time } = formatDateParts(report.timestamp)
                 return (
                   <div className="table-row" key={report.id}>
-                    <div className="td" style={{ minWidth: 140, flex: '0 0 140px' }}>
+                    <div className="td date-col">
                       <div className="date-cell">
                         <span className="date-main">{date}</span>
                         <span className="date-time">{time}</span>
                       </div>
                     </div>
-                    <div className="td" style={{ minWidth: 160, flex: '0 0 180px' }}>
+                    <div className="td server-col">
                       <span className="server-name">{report.serverName}</span>
                     </div>
-                    <div className="td" style={{ minWidth: 240, flex: '1 1 280px' }}>
+                    <div className="td player-col">
                       <div className="player-box">
                         <div className="player-avatar-wrap">
                           <img 
@@ -165,10 +165,10 @@ export default function Reports() {
                         </div>
                       </div>
                     </div>
-                    <div className="td arrow-cell" style={{ minWidth: 40, flex: '0 0 40px' }}>
+                    <div className="td arrow-cell arrow-col">
                       <ArrowIcon />
                     </div>
-                    <div className="td" style={{ minWidth: 240, flex: '1 1 280px' }}>
+                    <div className="td player-col">
                       <div className="player-box target">
                         <div className="player-avatar-wrap">
                           <img 
@@ -184,17 +184,17 @@ export default function Reports() {
                         </div>
                       </div>
                     </div>
-                    <div className="td" style={{ minWidth: 20, flex: '0 0 20px' }}></div>
-                    <div className="td" style={{ minWidth: 80, flex: '0 0 100px' }}>
+                    <div className="td spacer-col"></div>
+                    <div className="td kd-col">
                       <span className="kd-value">{(report.target_kd || 0).toFixed(2)}</span>
                     </div>
-                    <div className="td" style={{ minWidth: 100, flex: '0 0 120px' }}>
+                    <div className="td reports-col">
                       <span className="reports-count">{report.target_reports_count || 1} шт.</span>
                     </div>
-                    <div className="td" style={{ minWidth: 150, flex: '0 0 200px' }}>
+                    <div className="td reason-col">
                       <div className="reason-badge">{report.reason}</div>
                     </div>
-                    <div className="td actions-cell" style={{ minWidth: 60, flex: '0 0 80px' }}>
+                    <div className="td actions-cell actions-col">
                       <button className="delete-btn" onClick={() => deleteReport(report.id)} title="Удалить">
                         <TrashIcon />
                       </button>
@@ -228,7 +228,7 @@ export default function Reports() {
         }
         .reports-table {
           width: 100%;
-          overflow-x: auto;
+          overflow: hidden;
         }
         .table-header {
           display: flex;
@@ -237,11 +237,48 @@ export default function Reports() {
           width: 100%;
         }
         .th {
-          padding: 14px 16px;
+          padding: 14px 12px;
           color: #525252;
           font-size: 12px;
           font-weight: 500;
           text-transform: uppercase;
+          white-space: nowrap;
+        }
+        .th.date-col {
+          min-width: 120px;
+          flex: 0 0 140px;
+        }
+        .th.server-col {
+          min-width: 140px;
+          flex: 0 0 160px;
+        }
+        .th.player-col {
+          min-width: 200px;
+          flex: 1 1 0;
+        }
+        .th.arrow-col {
+          min-width: 30px;
+          flex: 0 0 40px;
+        }
+        .th.spacer-col {
+          min-width: 10px;
+          flex: 0 0 20px;
+        }
+        .th.kd-col {
+          min-width: 70px;
+          flex: 0 0 90px;
+        }
+        .th.reports-col {
+          min-width: 80px;
+          flex: 0 0 100px;
+        }
+        .th.reason-col {
+          min-width: 120px;
+          flex: 0 0 150px;
+        }
+        .th.actions-col {
+          min-width: 50px;
+          flex: 0 0 70px;
         }
         .table-body {
           background: #0f0f0f;
@@ -256,9 +293,46 @@ export default function Reports() {
           background: #1a1a1a;
         }
         .td {
-          padding: 12px 16px;
+          padding: 12px 12px;
           display: flex;
           align-items: center;
+          min-width: 0;
+        }
+        .td.date-col {
+          min-width: 120px;
+          flex: 0 0 140px;
+        }
+        .td.server-col {
+          min-width: 140px;
+          flex: 0 0 160px;
+        }
+        .td.player-col {
+          min-width: 200px;
+          flex: 1 1 0;
+        }
+        .td.arrow-col {
+          min-width: 30px;
+          flex: 0 0 40px;
+        }
+        .td.spacer-col {
+          min-width: 10px;
+          flex: 0 0 20px;
+        }
+        .td.kd-col {
+          min-width: 70px;
+          flex: 0 0 90px;
+        }
+        .td.reports-col {
+          min-width: 80px;
+          flex: 0 0 100px;
+        }
+        .td.reason-col {
+          min-width: 120px;
+          flex: 0 0 150px;
+        }
+        .td.actions-col {
+          min-width: 50px;
+          flex: 0 0 70px;
         }
         .date-cell {
           display: flex;
@@ -278,11 +352,16 @@ export default function Reports() {
           color: #525252;
           font-size: 13px;
           font-weight: 500;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .player-box {
           display: flex;
           align-items: center;
           gap: 10px;
+          min-width: 0;
+          width: 100%;
         }
         .player-avatar-wrap {
           position: relative;
@@ -328,6 +407,9 @@ export default function Reports() {
           color: #525252;
           font-size: 11px;
           font-family: monospace;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
         }
         .arrow-cell {
           justify-content: center;
