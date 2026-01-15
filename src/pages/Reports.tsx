@@ -20,6 +20,62 @@ interface Report {
   date: string
 }
 
+function DateIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M19 4H5C3.9 4 3 4.9 3 6V20C3 21.1 3.9 22 5 22H19C20.1 22 21 21.1 21 20V6C21 4.9 20.1 4 19 4ZM19 20H5V10H19V20ZM19 8H5V6H19V8ZM7 14H17V16H7V14ZM7 12H17V14H7V12Z"/>
+    </svg>
+  )
+}
+
+function ServerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M20 4H4C2.9 4 2 4.9 2 6V10H22V6C22 4.9 21.1 4 20 4ZM4 8C3.45 8 3 8.45 3 9C3 9.55 3.45 10 4 10C4.55 10 5 9.55 5 9C5 8.45 4.55 8 4 8ZM22 12H2V18C2 19.1 2.9 20 4 20H20C21.1 20 22 19.1 22 18V12ZM4 16C3.45 16 3 16.45 3 17C3 17.55 3.45 18 4 18C4.55 18 5 17.55 5 17C5 16.45 4.55 16 4 16Z"/>
+    </svg>
+  )
+}
+
+function ReporterIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M12 4C9.79 4 8 5.79 8 8C8 10.21 9.79 12 12 12C14.21 12 16 10.21 16 8C16 5.79 14.21 4 12 4ZM12 14C8.67 14 2 15.67 2 19V20C2 20.55 2.45 21 3 21H21C21.55 21 22 20.55 22 20V19C22 15.67 15.33 14 12 14Z"/>
+    </svg>
+  )
+}
+
+function SuspectIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M12 2C13.1 2 14 2.9 14 4C14 5.1 13.1 6 12 6C10.9 6 10 5.1 10 4C10 2.9 10.9 2 12 2ZM12 14C8.67 14 2 15.67 2 19V20C2 20.55 2.45 21 3 21H12V19H3.01C3.13 18.35 4.15 16.81 7.5 16.2C8.47 16 9.2 15.85 10 15.75V14ZM16 12V14H22V12H16ZM16 16V18H22V16H16ZM16 20V22H19V20H16Z"/>
+    </svg>
+  )
+}
+
+function KdIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M12 2L11 8H6L9 10L8 22L12 18L16 22L15 10L18 8H13L12 2Z"/>
+    </svg>
+  )
+}
+
+function ReportsCountIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2ZM16 18H8V16H16V18ZM16 14H8V12H16V14ZM13 9V3.5L18.5 9H13Z"/>
+    </svg>
+  )
+}
+
+function ReasonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12S6.48 22 12 22 22 17.52 22 12 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z"/>
+    </svg>
+  )
+}
+
 function ArrowIcon() {
   return (
     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#525252">
@@ -114,15 +170,36 @@ export default function Reports() {
       <div className="reports-table-container">
         <div className="reports-table">
           <div className="table-header">
-            <div className="th date-col">Дата</div>
-            <div className="th server-col">Сервер</div>
-            <div className="th player-col">Отправил жалобу</div>
+            <div className="th date-col">
+              <DateIcon />
+              <span>Дата</span>
+            </div>
+            <div className="th server-col">
+              <ServerIcon />
+              <span>Сервер</span>
+            </div>
+            <div className="th player-col">
+              <ReporterIcon />
+              <span>Отправил жалобу</span>
+            </div>
             <div className="th arrow-col"></div>
-            <div className="th player-col">Подозреваемый</div>
+            <div className="th player-col">
+              <SuspectIcon />
+              <span>Подозреваемый</span>
+            </div>
             <div className="th spacer-col"></div>
-            <div className="th kd-col">K/D</div>
-            <div className="th reports-col">Жалоб</div>
-            <div className="th reason-col">Причина</div>
+            <div className="th kd-col">
+              <KdIcon />
+              <span>K/D</span>
+            </div>
+            <div className="th reports-col">
+              <ReportsCountIcon />
+              <span>Жалоб</span>
+            </div>
+            <div className="th reason-col">
+              <ReasonIcon />
+              <span>Причина</span>
+            </div>
             <div className="th actions-col"></div>
           </div>
 
@@ -247,6 +324,18 @@ export default function Reports() {
           font-weight: 500;
           text-transform: uppercase;
           white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .th svg {
+          width: 16px;
+          height: 16px;
+          fill: #525252;
+          flex-shrink: 0;
+        }
+        .th span {
+          flex-shrink: 0;
         }
         .th.date-col {
           min-width: 120px;
