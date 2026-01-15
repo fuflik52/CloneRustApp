@@ -464,8 +464,8 @@ app.post('/api/reports', (req, res) => {
   const playersDB = loadServerPlayers(server.id);
 
   reports.forEach(r => {
-    const initiator = playersDB.players[r.initiator_steam_id] || { steam_name: 'Unknown' };
-    const target = playersDB.players[r.target_steam_id] || { steam_name: 'Unknown' };
+    const initiator = playersDB.players[r.initiator_steam_id] || { steam_name: 'Unknown', avatar: '' };
+    const target = playersDB.players[r.target_steam_id] || { steam_name: 'Unknown', avatar: '', stats: { kd: 0, reports_count: 0 } };
 
     const newReport = {
       id: crypto.randomUUID(),
@@ -473,8 +473,12 @@ app.post('/api/reports', (req, res) => {
       serverName: server.name,
       initiator_steam_id: r.initiator_steam_id,
       initiator_name: initiator.steam_name,
+      initiator_avatar: initiator.avatar || '',
       target_steam_id: r.target_steam_id,
       target_name: target.steam_name,
+      target_avatar: target.avatar || '',
+      target_kd: target.stats?.kd || 0,
+      target_reports_count: (target.stats?.reports_count || 0) + 1,
       reason: r.reason,
       message: r.message || '',
       timestamp: now,
@@ -510,6 +514,20 @@ app.get('/api/reports', (req, res) => {
   // Return sorted by date
   const sorted = [...reportsData.reports].sort((a, b) => b.timestamp - a.timestamp);
   res.json(sorted);
+});
+
+// Delete report
+app.delete('/api/reports/:id', (req, res) => {
+  const reportsData = loadReports();
+  const initialCount = reportsData.reports.length;
+  reportsData.reports = reportsData.reports.filter(r => r.id !== req.params.id);
+  
+  if (reportsData.reports.length < initialCount) {
+    saveReports(reportsData);
+    res.json({ success: true });
+  } else {
+    res.status(404).json({ error: 'Report not found' });
+  }
 });
 
 
