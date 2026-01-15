@@ -111,7 +111,6 @@ export default function Map() {
       ctx.drawImage(img, 0, 0)
 
       const worldSize = mapData.worldSize
-      const mapScale = canvas.width / worldSize
 
       if (mapData.players && mapData.players.length > 0) {
         mapData.players.forEach((player) => {
@@ -123,8 +122,9 @@ export default function Map() {
           const halfSize = worldSize / 2
           if (Math.abs(x) > halfSize || Math.abs(z) > halfSize) return
           
-          const canvasX = (x + worldSize / 2) * mapScale
-          const canvasY = (worldSize / 2 - z) * mapScale
+          // Правильная конвертация координат Rust в координаты карты
+          const canvasX = ((x + halfSize) / worldSize) * canvas.width
+          const canvasY = ((halfSize - z) / worldSize) * canvas.height
           const dotSize = 5 // Уменьшенный размер точек
 
           ctx.beginPath()
@@ -161,8 +161,9 @@ export default function Map() {
       if (mapData.monuments && mapData.monuments.length > 0) {
         mapData.monuments.forEach((monument) => {
           const { x, z } = monument
-          const canvasX = (x + worldSize / 2) * mapScale
-          const canvasY = (worldSize / 2 - z) * mapScale
+          const halfSize = worldSize / 2
+          const canvasX = ((x + halfSize) / worldSize) * canvas.width
+          const canvasY = ((halfSize - z) / worldSize) * canvas.height
           const iconSize = 20
           
           ctx.save()
@@ -203,13 +204,13 @@ export default function Map() {
     const mouseX = (e.clientX - rect.left) / scale
     const mouseY = (e.clientY - rect.top) / scale
     const worldSize = mapData.worldSize
-    const mapScale = canvas.width / worldSize
+    const halfSize = worldSize / 2
 
     for (const player of mapData.players) {
       if (!player.position) continue
       const { x, z } = player.position
-      const canvasX = (x + worldSize / 2) * mapScale
-      const canvasY = (worldSize / 2 - z) * mapScale
+      const canvasX = ((x + halfSize) / worldSize) * canvas.width
+      const canvasY = ((halfSize - z) / worldSize) * canvas.height
       const distance = Math.sqrt((mouseX - canvasX) ** 2 + (mouseY - canvasY) ** 2)
       if (distance < 20) {
         setSelectedPlayer(player)
