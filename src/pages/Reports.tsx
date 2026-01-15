@@ -114,10 +114,8 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
     const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 секунд таймаут
     
     try {
-      // Если есть targetSteamId, запрашиваем репорты конкретного игрока
-      const url = targetSteamId 
-        ? `/api/player/${targetSteamId}/reports`
-        : `/api/servers/${serverId}/reports`
+      // Всегда используем API сервера для фильтрации по текущему серверу
+      const url = `/api/servers/${serverId}/reports`
         
       const res = await fetch(url, {
         signal: controller.signal
@@ -129,7 +127,13 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
         throw new Error(`Ошибка ${res.status}: ${res.statusText}`)
       }
       
-      const data = await res.json()
+      let data = await res.json()
+      
+      // Если есть targetSteamId, фильтруем репорты по этому игроку
+      if (targetSteamId) {
+        data = data.filter((r: Report) => r.target_steam_id === targetSteamId)
+      }
+      
       setReports(data)
       setError(null)
     } catch (err: any) {
