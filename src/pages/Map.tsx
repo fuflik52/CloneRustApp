@@ -30,6 +30,16 @@ export default function Map() {
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const [isVisible, setIsVisible] = useState(true)
+
+  // Отслеживание видимости вкладки
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      setIsVisible(!document.hidden)
+    }
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
 
   useEffect(() => {
     if (!serverId) return
@@ -52,10 +62,16 @@ export default function Map() {
     }
 
     fetchMap()
-    const interval = setInterval(fetchMap, 5000) // Обновление каждые 5 секунд
+    
+    // Обновление только если вкладка активна, каждые 5 секунд
+    const interval = setInterval(() => {
+      if (isVisible) {
+        fetchMap()
+      }
+    }, 5000)
 
     return () => clearInterval(interval)
-  }, [serverId])
+  }, [serverId, isVisible])
 
   useEffect(() => {
     if (!mapData || !canvasRef.current) return
@@ -64,34 +80,29 @@ export default function Map() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // Загружаем изображение карты
     const img = new Image()
     img.crossOrigin = 'anonymous'
     
     img.onload = () => {
-      // Устанавливаем размер canvas
       canvas.width = img.width
       canvas.height = img.height
 
-      // Очищаем canvas
       ctx.clearRect(0, 0, canvas.width, canvas.height)
-
-      // Рисуем карту
       ctx.drawImage(img, 0, 0)
 
-      // Рисуем игроков
       const worldSize = mapData.worldSize
       const mapScale = canvas.width / worldSize
 
+      // Рисуем всех игроков
       mapData.players.forEach(player => {
+        if (!player.position) return
+        
         const { x, z } = player.position
         
-        // Конвертируем мировые координаты в координаты canvas
         const canvasX = (x + worldSize / 2) * mapScale
         const canvasY = (worldSize / 2 - z) * mapScale
 
-        // Размер точки зависит от зума
-        const dotSize = Math.max(6, 8 / scale)
+        const dotSize = Math.max(8, 10 / scale)
 
         // Рисуем точку игрока
         ctx.beginPath()
@@ -99,18 +110,18 @@ export default function Map() {
         ctx.fillStyle = player.team ? '#4CAF50' : '#FF5252'
         ctx.fill()
         ctx.strokeStyle = '#fff'
-        ctx.lineWidth = Math.max(1.5, 2 / scale)
+        ctx.lineWidth = Math.max(2, 3 / scale)
         ctx.stroke()
 
-        // Рисуем имя игрока (только если зум достаточно большой)
-        if (scale >= 0.8) {
-          const fontSize = Math.max(10, 12 / scale)
+        // Рисуем имя игрока
+        if (scale >= 0.7) {
+          const fontSize = Math.max(11, 13 / scale)
           ctx.font = `bold ${fontSize}px Arial`
           ctx.fillStyle = '#fff'
           ctx.strokeStyle = '#000'
-          ctx.lineWidth = Math.max(2, 3 / scale)
-          ctx.strokeText(player.name, canvasX + dotSize + 4, canvasY + 4)
-          ctx.fillText(player.name, canvasX + dotSize + 4, canvasY + 4)
+          ctx.lineWidth = Math.max(2.5, 4 / scale)
+          ctx.strokeText(player.name, canvasX + dotSize + 6, canvasY + 5)
+          ctx.fillText(player.name, canvasX + dotSize + 6, canvasY + 5)
         }
       })
     }
@@ -121,14 +132,6 @@ export default function Map() {
 
     if (mapData.mapUrl) {
       img.src = mapData.mapUrl
-    } else {
-      // Если нет URL карты, рисуем заглушку
-      ctx.fillStyle = '#1a1a1a'
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-      ctx.fillStyle = '#666'
-      ctx.font = '24px Arial'
-      ctx.textAlign = 'center'
-      ctx.fillText('Карта недоступна', canvas.width / 2, canvas.height / 2)
     }
   }, [mapData, scale])
 
@@ -153,15 +156,16 @@ export default function Map() {
     const worldSize = mapData.worldSize
     const mapScale = canvas.width / worldSize
 
-    // Проверяем, наведен ли курсор на игрока
     let found = false
     for (const player of mapData.players) {
+      if (!player.position) continue
+      
       const { x, z } = player.position
       const canvasX = (x + worldSize / 2) * mapScale
       const canvasY = (worldSize / 2 - z) * mapScale
 
       const distance = Math.sqrt((mouseX - canvasX) ** 2 + (mouseY - canvasY) ** 2)
-      if (distance < 10) {
+      if (distance < 15) {
         setHoveredPlayer(player)
         found = true
         break
@@ -184,6 +188,7 @@ export default function Map() {
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault()
+    e.stopPropagation()
     const delta = e.deltaY > 0 ? 0.9 : 1.1
     const newScale = Math.max(0.5, Math.min(3, scale * delta))
     setScale(newScale)
@@ -196,8 +201,9 @@ export default function Map() {
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100vh',
-        background: '#0a0a0a',
-        color: '#fff'
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+        color: '#fff',
+        fontSize: 18
       }}>
         <div>Загрузка карты...</div>
       </div>
@@ -211,8 +217,9 @@ export default function Map() {
         justifyContent: 'center', 
         alignItems: 'center', 
         height: '100vh',
-        background: '#0a0a0a',
-        color: '#ff5252'
+        background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
+        color: '#ff5252',
+        fontSize: 18
       }}>
         <div>{error}</div>
       </div>
@@ -223,27 +230,34 @@ export default function Map() {
     <div style={{
       width: '100vw',
       height: '100vh',
-      background: '#0a0a0a',
+      background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)',
       overflow: 'hidden',
-      position: 'relative'
+      position: 'fixed',
+      top: 0,
+      left: 0
     }}>
       {/* Информация о сервере */}
       <div style={{
         position: 'absolute',
         top: 20,
         left: 20,
-        background: 'rgba(0, 0, 0, 0.8)',
+        background: 'rgba(0, 0, 0, 0.85)',
         padding: '15px 20px',
-        borderRadius: 8,
+        borderRadius: 12,
         color: '#fff',
         zIndex: 10,
-        backdropFilter: 'blur(10px)'
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
       }}>
-        <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 5 }}>
+        <div style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 8, color: '#84cc16' }}>
           {mapData?.serverName}
         </div>
         <div style={{ fontSize: 14, color: '#aaa' }}>
-          Игроков онлайн: {mapData?.online || 0}
+          Игроков онлайн: <span style={{ color: '#4CAF50', fontWeight: 'bold' }}>{mapData?.online || 0}</span>
+        </div>
+        <div style={{ fontSize: 12, color: '#666', marginTop: 4 }}>
+          Обновление каждые 5 сек
         </div>
       </div>
 
@@ -252,35 +266,39 @@ export default function Map() {
         position: 'absolute',
         top: 20,
         right: 20,
-        background: 'rgba(0, 0, 0, 0.8)',
+        background: 'rgba(0, 0, 0, 0.85)',
         padding: '15px 20px',
-        borderRadius: 8,
+        borderRadius: 12,
         color: '#fff',
         zIndex: 10,
-        backdropFilter: 'blur(10px)'
+        backdropFilter: 'blur(10px)',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
       }}>
-        <div style={{ marginBottom: 10, fontWeight: 'bold' }}>Легенда:</div>
-        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 5 }}>
+        <div style={{ marginBottom: 12, fontWeight: 'bold', fontSize: 14 }}>Легенда:</div>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
           <div style={{ 
-            width: 12, 
-            height: 12, 
+            width: 14, 
+            height: 14, 
             borderRadius: '50%', 
             background: '#4CAF50',
-            marginRight: 8,
-            border: '2px solid #fff'
+            marginRight: 10,
+            border: '2px solid #fff',
+            boxShadow: '0 0 8px rgba(76, 175, 80, 0.6)'
           }} />
-          <span>В команде</span>
+          <span style={{ fontSize: 13 }}>В команде</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center' }}>
           <div style={{ 
-            width: 12, 
-            height: 12, 
+            width: 14, 
+            height: 14, 
             borderRadius: '50%', 
             background: '#FF5252',
-            marginRight: 8,
-            border: '2px solid #fff'
+            marginRight: 10,
+            border: '2px solid #fff',
+            boxShadow: '0 0 8px rgba(255, 82, 82, 0.6)'
           }} />
-          <span>Соло</span>
+          <span style={{ fontSize: 13 }}>Соло</span>
         </div>
       </div>
 
@@ -289,65 +307,79 @@ export default function Map() {
         position: 'absolute',
         bottom: 20,
         right: 20,
-        background: 'rgba(0, 0, 0, 0.8)',
-        padding: '10px',
-        borderRadius: 8,
+        background: 'rgba(0, 0, 0, 0.85)',
+        padding: '12px',
+        borderRadius: 12,
         color: '#fff',
         zIndex: 10,
         backdropFilter: 'blur(10px)',
         display: 'flex',
         flexDirection: 'column',
-        gap: 8
+        gap: 10,
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
       }}>
         <button
           onClick={() => setScale(Math.min(3, scale * 1.2))}
           style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            background: 'linear-gradient(135deg, #84cc16 0%, #65a30d 100%)',
+            border: 'none',
             color: '#fff',
-            padding: '8px 12px',
-            borderRadius: 4,
+            padding: '10px 14px',
+            borderRadius: 8,
             cursor: 'pointer',
-            fontSize: 18,
-            fontWeight: 'bold'
+            fontSize: 20,
+            fontWeight: 'bold',
+            transition: 'all 0.2s',
+            boxShadow: '0 2px 8px rgba(132, 204, 22, 0.3)'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           +
         </button>
         <button
           onClick={() => { setScale(1); setOffset({ x: 0, y: 0 }) }}
           style={{
-            background: 'rgba(255, 255, 255, 0.1)',
+            background: 'rgba(255, 255, 255, 0.15)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
             color: '#fff',
-            padding: '8px 12px',
-            borderRadius: 4,
+            padding: '10px 14px',
+            borderRadius: 8,
             cursor: 'pointer',
-            fontSize: 12
+            fontSize: 16,
+            transition: 'all 0.2s'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+          onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
         >
           ⟲
         </button>
         <button
           onClick={() => setScale(Math.max(0.5, scale * 0.8))}
           style={{
-            background: 'rgba(255, 255, 255, 0.1)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
+            background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+            border: 'none',
             color: '#fff',
-            padding: '8px 12px',
-            borderRadius: 4,
+            padding: '10px 14px',
+            borderRadius: 8,
             cursor: 'pointer',
-            fontSize: 18,
-            fontWeight: 'bold'
+            fontSize: 20,
+            fontWeight: 'bold',
+            transition: 'all 0.2s',
+            boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)'
           }}
+          onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
         >
           −
         </button>
         <div style={{ 
           textAlign: 'center', 
-          fontSize: 12, 
+          fontSize: 13, 
           marginTop: 4,
-          color: '#aaa'
+          color: '#aaa',
+          fontWeight: 'bold'
         }}>
           {Math.round(scale * 100)}%
         </div>
@@ -368,7 +400,8 @@ export default function Map() {
           justifyContent: 'center',
           alignItems: 'center',
           overflow: 'hidden',
-          cursor: isDragging ? 'grabbing' : 'grab'
+          cursor: isDragging ? 'grabbing' : 'grab',
+          userSelect: 'none'
         }}
       >
         <canvas
@@ -376,7 +409,8 @@ export default function Map() {
           style={{
             maxWidth: '95%',
             maxHeight: '95%',
-            boxShadow: '0 0 50px rgba(0, 0, 0, 0.5)',
+            boxShadow: '0 8px 40px rgba(0, 0, 0, 0.7)',
+            borderRadius: 8,
             transform: `scale(${scale}) translate(${offset.x / scale}px, ${offset.y / scale}px)`,
             transformOrigin: 'center center',
             transition: isDragging ? 'none' : 'transform 0.1s ease-out'
@@ -391,27 +425,48 @@ export default function Map() {
           left: mousePos.x + 15,
           top: mousePos.y + 15,
           background: 'rgba(0, 0, 0, 0.95)',
-          padding: '10px 15px',
-          borderRadius: 8,
+          padding: '12px 16px',
+          borderRadius: 10,
           color: '#fff',
           zIndex: 100,
           pointerEvents: 'none',
           backdropFilter: 'blur(10px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.7)'
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             {hoveredPlayer.avatar && (
               <img 
                 src={hoveredPlayer.avatar} 
                 alt="" 
-                style={{ width: 32, height: 32, borderRadius: '50%' }}
+                style={{ 
+                  width: 40, 
+                  height: 40, 
+                  borderRadius: '50%',
+                  border: '2px solid #84cc16'
+                }}
               />
             )}
             <div>
-              <div style={{ fontWeight: 'bold' }}>{hoveredPlayer.name}</div>
-              <div style={{ fontSize: 12, color: '#aaa' }}>
+              <div style={{ fontWeight: 'bold', fontSize: 14, marginBottom: 4 }}>
+                {hoveredPlayer.name}
+              </div>
+              <div style={{ fontSize: 11, color: '#888' }}>
                 {hoveredPlayer.steam_id}
               </div>
+              {hoveredPlayer.team && (
+                <div style={{ 
+                  fontSize: 10, 
+                  color: '#4CAF50',
+                  marginTop: 4,
+                  background: 'rgba(76, 175, 80, 0.2)',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  display: 'inline-block'
+                }}>
+                  В команде
+                </div>
+              )}
             </div>
           </div>
         </div>
