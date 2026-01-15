@@ -206,7 +206,7 @@
 }
 
 .action-item.purple::before {
-  background: #8b5cf6;
+  background: #a855f7;
 }
 
 .actions-empty {
@@ -501,7 +501,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #141414;
+  background: #2d2d2d;
   border: 1px solid #333;
   border-radius: 8px;
   padding: 12px 14px;
@@ -569,7 +569,7 @@
 .level-icon.green { fill: #22c55e; }
 .level-icon.yellow { fill: #f59e0b; }
 .level-icon.red { fill: #ef4444; }
-.level-icon.admin { fill: #8b5cf6; }
+.level-icon.admin { fill: #a855f7; }
 
 /* Checkboxes */
 .checkboxes {
@@ -839,13 +839,15 @@
   align-items: center;
   gap: 12px;
   padding: 16px 24px;
-  border-bottom: 1px solid #333;
+  background: #2d2d2d;
+  margin: 16px 24px;
+  border-radius: 8px;
 }
 
 .preset-search svg {
   width: 20px;
   height: 20px;
-  color: #666;
+  color: #888;
   flex-shrink: 0;
 }
 
@@ -859,13 +861,13 @@
 }
 
 .preset-search input::placeholder {
-  color: #666;
+  color: #888;
 }
 
 .preset-groups {
   display: flex;
   gap: 8px;
-  padding: 16px 24px;
+  padding: 0 24px 16px;
   overflow-x: auto;
   border-bottom: 1px solid #333;
 }
@@ -927,7 +929,7 @@
 .preset-item.green::before { background: #22c55e; }
 .preset-item.yellow::before { background: #f59e0b; }
 .preset-item.red::before { background: #ef4444; }
-.preset-item.purple::before { background: #8b5cf6; }
+.preset-item.purple::before { background: #a855f7; }
 
 .preset-item:hover {
   background: #3a3a3a;
