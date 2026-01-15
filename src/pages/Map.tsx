@@ -240,50 +240,9 @@ export default function Map() {
     }
   }, [mapData, scale])
 
-  // Ограничение перетаскивания - адаптивные границы в зависимости от зума
+  // Без ограничений - полная свобода движения
   const clampOffset = (newOffset: { x: number; y: number }, currentScale: number) => {
-    if (!canvasRef.current) return newOffset
-
-    const canvas = canvasRef.current
-    const containerWidth = window.innerWidth
-    const containerHeight = window.innerHeight
-    
-    const scaledWidth = canvas.width * currentScale
-    const scaledHeight = canvas.height * currentScale
-    
-    // Если карта меньше контейнера, центрируем её
-    if (scaledWidth <= containerWidth && scaledHeight <= containerHeight) {
-      return {
-        x: (containerWidth - scaledWidth) / 2,
-        y: (containerHeight - scaledHeight) / 2
-      }
-    }
-    
-    // При приближении даем полную свободу движения - убираем жесткие ограничения
-    // Позволяем прокручивать карту полностью за границы экрана
-    let minVisiblePx: number
-    
-    if (currentScale < 1) {
-      // Отдалено - карта должна быть почти по центру
-      minVisiblePx = Math.min(scaledWidth, scaledHeight) * 0.8
-    } else if (currentScale >= 1.5) {
-      // При сильном приближении - минимальные ограничения (можно прокручивать почти полностью)
-      minVisiblePx = 10
-    } else {
-      // Нормальный зум - средние границы
-      minVisiblePx = 100
-    }
-    
-    // Ограничения: карта не может уйти полностью за границы
-    const minX = containerWidth - scaledWidth - minVisiblePx
-    const maxX = minVisiblePx
-    const minY = containerHeight - scaledHeight - minVisiblePx
-    const maxY = minVisiblePx
-    
-    return {
-      x: Math.max(minX, Math.min(maxX, newOffset.x)),
-      y: Math.max(minY, Math.min(maxY, newOffset.y))
-    }
+    return newOffset
   }
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -292,8 +251,7 @@ export default function Map() {
     if (isDragging) {
       const dx = e.clientX - dragStart.x
       const dy = e.clientY - dragStart.y
-      const newOffset = clampOffset({ x: offset.x + dx, y: offset.y + dy }, scale)
-      setOffset(newOffset)
+      setOffset({ x: offset.x + dx, y: offset.y + dy })
       setDragStart({ x: e.clientX, y: e.clientY })
       return
     }
@@ -341,12 +299,9 @@ export default function Map() {
   const handleWheel = (e: WheelEvent) => {
     e.preventDefault()
     const delta = e.deltaY > 0 ? 0.9 : 1.1
-    const newScale = Math.max(0.5, Math.min(3, scale * delta))
+    const newScale = Math.max(0.1, Math.min(10, scale * delta))
     setScale(newScale)
-    
-    // Автоматически корректируем позицию при изменении зума
-    const correctedOffset = clampOffset(offset, newScale)
-    setOffset(correctedOffset)
+    setOffset(offset)
   }
 
   useEffect(() => {
@@ -356,15 +311,6 @@ export default function Map() {
     container.addEventListener('wheel', handleWheel, { passive: false })
     return () => container.removeEventListener('wheel', handleWheel)
   }, [scale, offset])
-
-  // Автоматически корректируем позицию при изменении зума
-  useEffect(() => {
-    if (!canvasRef.current) return
-    const correctedOffset = clampOffset(offset, scale)
-    if (correctedOffset.x !== offset.x || correctedOffset.y !== offset.y) {
-      setOffset(correctedOffset)
-    }
-  }, [scale])
 
   const zoomToPlayer = (player: Player) => {
     if (!player.position || !canvasRef.current || !mapData) return
@@ -387,7 +333,7 @@ export default function Map() {
     const offsetX = (containerWidth / 2) - (canvasX * targetScale)
     const offsetY = (containerHeight / 2) - (canvasY * targetScale)
     
-    setOffset(clampOffset({ x: offsetX, y: offsetY }, targetScale))
+    setOffset({ x: offsetX, y: offsetY })
     setShowPlayerList(false)
   }
 
@@ -577,9 +523,8 @@ export default function Map() {
       }}>
         <button
           onClick={() => {
-            const newScale = Math.min(3, scale * 1.2)
+            const newScale = Math.min(10, scale * 1.2)
             setScale(newScale)
-            setOffset(prev => clampOffset(prev, newScale))
           }}
           style={{
             background: 'linear-gradient(135deg, #84cc16 0%, #65a30d 100%)',
@@ -617,9 +562,8 @@ export default function Map() {
         </button>
         <button
           onClick={() => {
-            const newScale = Math.max(0.5, scale * 0.8)
+            const newScale = Math.max(0.1, scale * 0.8)
             setScale(newScale)
-            setOffset(prev => clampOffset(prev, newScale))
           }}
           style={{
             background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
