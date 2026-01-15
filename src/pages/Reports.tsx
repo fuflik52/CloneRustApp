@@ -214,8 +214,11 @@ export default function Reports() {
           margin-top: -40px;
           margin-bottom: 0;
           padding: 0;
-          width: calc(100% + 80px);
+          width: calc(100vw - 260px);
           max-width: none;
+        }
+        .main-content.collapsed .reports-page {
+          width: calc(100vw - 60px);
         }
         .reports-table-container {
           background: #151515;
@@ -235,9 +238,10 @@ export default function Reports() {
           border-bottom: 1px solid #262626;
           background: #151515;
           width: 100%;
+          box-sizing: border-box;
         }
         .th {
-          padding: 14px 12px;
+          padding: 14px 16px;
           color: #525252;
           font-size: 12px;
           font-weight: 500;
@@ -278,7 +282,7 @@ export default function Reports() {
         }
         .th.actions-col {
           min-width: 50px;
-          flex: 0 0 70px;
+          flex: 1 0 70px;
         }
         .table-body {
           background: #0f0f0f;
@@ -288,12 +292,13 @@ export default function Reports() {
           border-bottom: 1px solid #1a1a1a;
           transition: background 0.15s;
           width: 100%;
+          box-sizing: border-box;
         }
         .table-row:hover {
           background: #1a1a1a;
         }
         .td {
-          padding: 12px 12px;
+          padding: 12px 16px;
           display: flex;
           align-items: center;
           min-width: 0;
@@ -332,7 +337,7 @@ export default function Reports() {
         }
         .td.actions-col {
           min-width: 50px;
-          flex: 0 0 70px;
+          flex: 1 0 70px;
         }
         .date-cell {
           display: flex;
