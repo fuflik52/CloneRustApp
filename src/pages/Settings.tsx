@@ -29,6 +29,7 @@ export default function Settings() {
   const [activeTab, setActiveTab] = useState('actions')
   const [actions, setActions] = useState<CustomAction[]>([])
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showPresetModal, setShowPresetModal] = useState(false)
 
   // Загрузка действий из БД
   useEffect(() => {
@@ -136,7 +137,7 @@ export default function Settings() {
                 </svg>
                 <p>Создать новое действие</p>
               </button>
-              <button className="add-action-btn list">
+              <button className="add-action-btn list" onClick={() => setShowPresetModal(true)}>
                 <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                   <path fillRule="evenodd" clipRule="evenodd" d="M7 3C5.89543 3 5 3.89543 5 5V7H3C1.89543 7 1 7.89543 1 9V19C1 20.1046 1.89543 21 3 21H17C18.1046 21 19 20.1046 19 19V17H21C22.1046 17 23 16.1046 23 15V7C23 5.89543 22.1046 5 21 5L14.4142 5L13 3.58579C12.6249 3.21071 12.1162 3 11.5858 3H7ZM19 15H21V7H14.4142C13.8838 7 13.3751 6.78929 13 6.41421L11.5858 5H7V7H7.58579C8.11622 7 8.62493 7.21071 9 7.58579L10.4142 9L17 9C18.1046 9 19 9.89543 19 11V15Z"/>
                 </svg>
@@ -207,6 +208,10 @@ export default function Settings() {
 
       {showCreateModal && (
         <CreateActionModal onClose={() => setShowCreateModal(false)} onSave={saveAction} />
+      )}
+
+      {showPresetModal && (
+        <PresetActionsModal onClose={() => setShowPresetModal(false)} onSelect={saveAction} />
       )}
     </div>
   )
@@ -405,6 +410,130 @@ function CreateActionModal({ onClose, onSave }: CreateActionModalProps) {
               </button>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+// Готовые команды Rust
+const presetActions = [
+  // Администрирование
+  { name: 'Выдать Owner', group: 'Администрирование', command: 'ownerid {steam_id}', accessLevel: 'admin' as const, desc: 'Выдать права владельца' },
+  { name: 'Выдать Moderator', group: 'Администрирование', command: 'moderatorid {steam_id}', accessLevel: 'admin' as const, desc: 'Выдать права модератора' },
+  { name: 'Убрать Owner', group: 'Администрирование', command: 'removeowner {steam_id}', accessLevel: 'admin' as const, desc: 'Забрать права владельца' },
+  { name: 'Убрать Moderator', group: 'Администрирование', command: 'removemoderator {steam_id}', accessLevel: 'admin' as const, desc: 'Забрать права модератора' },
+  
+  // Управление игроком
+  { name: 'Кикнуть', group: 'Управление', command: 'kick {steam_id} "{reason}"', accessLevel: 'dangerous' as const, desc: 'Кикнуть игрока с сервера' },
+  { name: 'Забанить', group: 'Управление', command: 'ban {steam_id} "{reason}"', accessLevel: 'very-dangerous' as const, desc: 'Забанить игрока навсегда' },
+  { name: 'Разбанить', group: 'Управление', command: 'unban {steam_id}', accessLevel: 'dangerous' as const, desc: 'Разбанить игрока' },
+  { name: 'Убить игрока', group: 'Управление', command: 'kill {steam_id}', accessLevel: 'dangerous' as const, desc: 'Убить игрока' },
+  
+  // Телепортация
+  { name: 'ТП к игроку', group: 'Телепортация', command: 'teleport {staff_steam_id} {steam_id}', accessLevel: 'safe' as const, desc: 'Телепортироваться к игроку' },
+  { name: 'ТП игрока к себе', group: 'Телепортация', command: 'teleport {steam_id} {staff_steam_id}', accessLevel: 'dangerous' as const, desc: 'Телепортировать игрока к себе' },
+  
+  // Инвентарь
+  { name: 'Очистить инвентарь', group: 'Инвентарь', command: 'inventory.clearinventory {steam_id}', accessLevel: 'very-dangerous' as const, desc: 'Очистить весь инвентарь игрока' },
+  { name: 'Выдать предмет', group: 'Инвентарь', command: 'inventory.giveto {steam_id} {item} {amount}', accessLevel: 'dangerous' as const, desc: 'Выдать предмет игроку' },
+  
+  // Здоровье
+  { name: 'Вылечить', group: 'Здоровье', command: 'heal {steam_id}', accessLevel: 'safe' as const, desc: 'Полностью вылечить игрока' },
+  { name: 'Воскресить', group: 'Здоровье', command: 'respawn {steam_id}', accessLevel: 'safe' as const, desc: 'Воскресить игрока' },
+  
+  // Постройки
+  { name: 'Удалить постройки', group: 'Постройки', command: 'ent kill', accessLevel: 'very-dangerous' as const, desc: 'Удалить объект перед собой' },
+  { name: 'Авторизовать в шкафу', group: 'Постройки', command: 'entauth {steam_id}', accessLevel: 'dangerous' as const, desc: 'Авторизовать игрока в шкафу' },
+  
+  // Информация
+  { name: 'Информация об игроке', group: 'Информация', command: 'playerinfo {steam_id}', accessLevel: 'safe' as const, desc: 'Показать информацию об игроке' },
+  
+  // Oxide/uMod плагины
+  { name: 'Мут (BetterChat)', group: 'Плагины', command: 'mute {steam_id} {time}', accessLevel: 'dangerous' as const, desc: 'Замутить игрока (BetterChat)' },
+  { name: 'Размут (BetterChat)', group: 'Плагины', command: 'unmute {steam_id}', accessLevel: 'safe' as const, desc: 'Размутить игрока (BetterChat)' },
+  { name: 'Заморозить', group: 'Плагины', command: 'freeze {steam_id}', accessLevel: 'dangerous' as const, desc: 'Заморозить игрока (Freeze)' },
+  { name: 'Разморозить', group: 'Плагины', command: 'unfreeze {steam_id}', accessLevel: 'safe' as const, desc: 'Разморозить игрока (Freeze)' },
+  { name: 'Vanish', group: 'Плагины', command: 'vanish', accessLevel: 'safe' as const, desc: 'Стать невидимым (Vanish)' },
+  { name: 'Godmode', group: 'Плагины', command: 'god {steam_id}', accessLevel: 'dangerous' as const, desc: 'Включить бессмертие (Godmode)' },
+]
+
+interface PresetActionsModalProps {
+  onClose: () => void
+  onSelect: (action: Omit<CustomAction, 'id'>) => void
+}
+
+function PresetActionsModal({ onClose, onSelect }: PresetActionsModalProps) {
+  const [search, setSearch] = useState('')
+  const [selectedGroup, setSelectedGroup] = useState<string | null>(null)
+
+  const groups = [...new Set(presetActions.map(a => a.group))]
+  
+  const filteredActions = presetActions.filter(a => {
+    const matchesSearch = !search || 
+      a.name.toLowerCase().includes(search.toLowerCase()) ||
+      a.command.toLowerCase().includes(search.toLowerCase())
+    const matchesGroup = !selectedGroup || a.group === selectedGroup
+    return matchesSearch && matchesGroup
+  })
+
+  const handleSelect = (preset: typeof presetActions[0]) => {
+    onSelect({
+      name: preset.name,
+      group: preset.group,
+      enabled: true,
+      accessLevel: preset.accessLevel,
+      commands: [preset.command],
+      allowOffline: false,
+      selectServer: false,
+      confirmBefore: preset.accessLevel === 'very-dangerous' || preset.accessLevel === 'admin'
+    })
+  }
+
+  const getAccessColor = (level: string) => {
+    switch (level) {
+      case 'safe': return 'green'
+      case 'dangerous': return 'yellow'
+      case 'very-dangerous': return 'red'
+      case 'admin': return 'purple'
+      default: return 'green'
+    }
+  }
+
+  return (
+    <div className="settings-modal-overlay" onClick={onClose}>
+      <div className="preset-modal" onClick={e => e.stopPropagation()}>
+        <div className="preset-header">
+          <h3>Добавить из списка</h3>
+          <button className="close-btn" onClick={onClose}>
+            <svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+          </button>
+        </div>
+        
+        <div className="preset-search">
+          <svg viewBox="0 0 24 24"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+          <input type="text" placeholder="Поиск команды..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+
+        <div className="preset-groups">
+          <button className={`group-btn ${!selectedGroup ? 'active' : ''}`} onClick={() => setSelectedGroup(null)}>Все</button>
+          {groups.map(g => (
+            <button key={g} className={`group-btn ${selectedGroup === g ? 'active' : ''}`} onClick={() => setSelectedGroup(g)}>{g}</button>
+          ))}
+        </div>
+
+        <div className="preset-list">
+          {filteredActions.map((preset, i) => (
+            <div key={i} className={`preset-item ${getAccessColor(preset.accessLevel)}`} onClick={() => handleSelect(preset)}>
+              <div className="preset-info">
+                <p className="preset-name">{preset.name}</p>
+                <p className="preset-desc">{preset.desc}</p>
+                <code className="preset-cmd">{preset.command}</code>
+              </div>
+              <svg viewBox="0 0 24 24" className="add-icon"><path d="M12 5v14m-7-7h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+            </div>
+          ))}
         </div>
       </div>
     </div>
