@@ -103,6 +103,69 @@ export default function Map() {
       const worldSize = mapData.worldSize
       const mapScale = canvas.width / worldSize
 
+      // Рисуем сетку координат как в Rust
+      const gridSize = Math.floor(canvas.width / 7) // Примерно 7x7 сетка как в Rust
+      const gridCount = Math.ceil(canvas.width / gridSize)
+      
+      // Линии сетки
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)'
+      ctx.lineWidth = 1
+      
+      for (let i = 0; i <= gridCount; i++) {
+        const pos = i * gridSize
+        // Вертикальные линии
+        ctx.beginPath()
+        ctx.moveTo(pos, 0)
+        ctx.lineTo(pos, canvas.height)
+        ctx.stroke()
+        
+        // Горизонтальные линии
+        ctx.beginPath()
+        ctx.moveTo(0, pos)
+        ctx.lineTo(canvas.width, pos)
+        ctx.stroke()
+      }
+      
+      // Координаты (буквы и цифры)
+      const fontSize = Math.max(18, 24 / scale)
+      ctx.font = `bold ${fontSize}px Arial, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      
+      const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+      
+      for (let i = 0; i < gridCount; i++) {
+        const centerPos = i * gridSize + gridSize / 2
+        
+        // Буквы по горизонтали (сверху и снизу)
+        if (i < letters.length) {
+          const letter = letters[i]
+          
+          // Тень для текста
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+          ctx.fillText(letter, centerPos + 2, 30 + 2)
+          ctx.fillText(letter, centerPos + 2, canvas.height - 30 + 2)
+          
+          // Основной текст
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+          ctx.fillText(letter, centerPos, 30)
+          ctx.fillText(letter, centerPos, canvas.height - 30)
+        }
+        
+        // Цифры по вертикали (слева и справа)
+        const number = i.toString()
+        
+        // Тень для текста
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'
+        ctx.fillText(number, 30 + 2, centerPos + 2)
+        ctx.fillText(number, canvas.width - 30 + 2, centerPos + 2)
+        
+        // Основной текст
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+        ctx.fillText(number, 30, centerPos)
+        ctx.fillText(number, canvas.width - 30, centerPos)
+      }
+
       // Рисуем всех игроков
       mapData.players.forEach((player) => {
         if (!player.position) return
