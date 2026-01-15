@@ -13,73 +13,27 @@ interface Report {
   target_name: string
   target_avatar?: string
   target_kd?: number
+  target_reports_count?: number
   reason: string
   message: string
   timestamp: number
   date: string
 }
 
-function DonutChart({ kills, deaths }: { kills: number, deaths: number }) {
-  const [animatedProgress, setAnimatedProgress] = useState(0)
-  const total = kills + deaths || 1
-  
-  useEffect(() => {
-    setAnimatedProgress(0)
-    const timer = setTimeout(() => {
-      setAnimatedProgress(1)
-    }, 50)
-    return () => clearTimeout(timer)
-  }, [kills, deaths])
-  
-  const radius = 50
-  const cx = 60
-  const cy = 60
-  const innerRadius = 32
-  const circumference = 2 * Math.PI * radius
-  
-  const killsPercent = (kills / total) * animatedProgress
-  const deathsPercent = (deaths / total) * animatedProgress
-  
-  const deathsOffset = circumference * (1 - deathsPercent)
-  
+function ArrowIcon() {
   return (
-    <svg width="40" height="40" viewBox="0 0 120 120" style={{ transform: 'rotate(-90deg)' }}>
-      <circle
-        cx={cx}
-        cy={cy}
-        r={(radius + innerRadius) / 2}
-        fill="none"
-        stroke="#333"
-        strokeWidth={radius - innerRadius}
-      />
-      <circle
-        cx={cx}
-        cy={cy}
-        r={(radius + innerRadius) / 2}
-        fill="none"
-        stroke="#6F6F6F"
-        strokeWidth={radius - innerRadius}
-        strokeDasharray={circumference}
-        strokeDashoffset={deathsOffset}
-        style={{ transition: 'stroke-dashoffset 0.8s ease-out' }}
-      />
-      <circle
-        cx={cx}
-        cy={cy}
-        r={(radius + innerRadius) / 2}
-        fill="none"
-        stroke="#BBC94E"
-        strokeWidth={radius - innerRadius}
-        strokeDasharray={`${circumference * killsPercent} ${circumference}`}
-        strokeDashoffset={-circumference * deathsPercent}
-        style={{ transition: 'stroke-dasharray 0.8s ease-out, stroke-dashoffset 0.8s ease-out' }}
-      />
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#525252">
+      <path fillRule="evenodd" clipRule="evenodd" d="M9.29289 7.29289C9.68342 6.90237 10.3166 6.90237 10.7071 7.29289L14.1768 10.7626C14.8602 11.446 14.8602 12.554 14.1768 13.2374L10.7071 16.7071C10.3166 17.0976 9.68342 17.0976 9.29289 16.7071C8.90237 16.3166 8.90237 15.6834 9.29289 15.2929L12.5858 12L9.29289 8.70711C8.90237 8.31658 8.90237 7.68342 9.29289 7.29289Z"/>
     </svg>
   )
 }
 
 function TrashIcon() {
-  return <svg viewBox="0 0 24 24" width="18" height="18"><path d="M6 19C6 20.1 6.9 21 8 21H16C17.1 21 18 20.1 18 19V7H6V19ZM19 4H15.5L14.5 3H9.5L8.5 4H5V6H19V4Z" fill="currentColor"/></svg>
+  return (
+    <svg viewBox="0 0 24 24" width="20" height="20">
+      <path d="M5.93777 20.0665L6.93555 20L5.93777 20.0665ZM18.0622 20.0665L17.0644 20L18.0622 20.0665ZM3 5C2.44772 5 2 5.44772 2 6C2 6.55228 2.44772 7 3 7V5ZM21 7C21.5523 7 22 6.55228 22 6C22 5.44772 21.5523 5 21 5V7ZM11 11C11 10.4477 10.5523 10 10 10C9.44772 10 9 10.4477 9 11H11ZM9 16C9 16.5523 9.44772 17 10 17C10.5523 17 11 16.5523 11 16H9ZM15 11C15 10.4477 14.5523 10 14 10C13.4477 10 13 10.4477 13 11H15ZM13 16C13 16.5523 13.4477 17 14 17C14.5523 17 15 16.5523 15 16H13ZM14.9056 6.24926C15.0432 6.78411 15.5884 7.1061 16.1233 6.96844C16.6581 6.83078 16.9801 6.28559 16.8424 5.75074L14.9056 6.24926ZM4.00221 6.06652L4.93998 20.133L6.93555 20L5.99779 5.93348L4.00221 6.06652ZM6.93555 22H17.0644V20H6.93555V22ZM19.06 20.133L19.9978 6.06652L18.0022 5.93348L17.0644 20L19.06 20.133ZM19 5H5V7H19V5ZM3 7H5V5H3V7ZM19 7H21V5H19V7ZM17.0644 22C18.1174 22 18.99 21.1836 19.06 20.133L17.0644 20L17.0644 20V22ZM4.93998 20.133C5.01002 21.1836 5.88262 22 6.93555 22V20L6.93555 20L4.93998 20.133ZM9 11V16H11V11H9ZM13 11V16H15V11H13ZM12 4C13.3965 4 14.5725 4.95512 14.9056 6.24926L16.8424 5.75074C16.2874 3.59442 14.3312 2 12 2V4ZM9.09447 6.24926C9.42756 4.95512 10.6035 4 12 4V2C9.66885 2 7.7126 3.59442 7.1576 5.75074L9.09447 6.24926Z" fill="currentColor"/>
+    </svg>
+  )
 }
 
 export default function Reports() {
@@ -110,8 +64,6 @@ export default function Reports() {
   }, [serverId])
 
   const deleteReport = async (id: string) => {
-    if (!window.confirm('Вы уверены, что хотите удалить этот репорт?')) return
-    
     try {
       const res = await fetch(`/api/reports/${id}`, { method: 'DELETE' })
       if (res.ok) {
@@ -120,235 +72,275 @@ export default function Reports() {
       } else {
         showToast('Ошибка при удалении репорта', 'error')
       }
-    } catch (err) {
+    } catch {
       showToast('Ошибка сети', 'error')
     }
   }
 
-  const formatDate = (timestamp: number) => {
+  const formatDateParts = (timestamp: number) => {
     const date = new Date(timestamp)
-    return date.toLocaleString('ru-RU', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+    const dateStr = date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })
+    const timeStr = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    return { date: dateStr, time: timeStr }
   }
 
   return (
     <div className="page">
-      <div className="page-header">
-        <div>
-          <h1 className="page-title">Репорты</h1>
-          <p className="page-desc">Жалобы игроков на читерство и другие нарушения</p>
+      <div className="reports-table-container">
+        <div className="reports-table">
+          <div className="table-header">
+            <div className="th" style={{ minWidth: 100, maxWidth: 140 }}>Дата</div>
+            <div className="th" style={{ minWidth: 120, maxWidth: 160 }}>Сервер</div>
+            <div className="th" style={{ minWidth: 200, maxWidth: 240 }}>Отправил жалобу</div>
+            <div className="th" style={{ minWidth: 20, maxWidth: 80 }}></div>
+            <div className="th" style={{ minWidth: 200, maxWidth: 240 }}>Подозреваемый</div>
+            <div className="th" style={{ minWidth: 0, maxWidth: 50 }}></div>
+            <div className="th" style={{ minWidth: 100, maxWidth: 100 }}>K/D</div>
+            <div className="th" style={{ minWidth: 100, maxWidth: 100 }}>Жалоб</div>
+            <div className="th" style={{ minWidth: 150, maxWidth: 250 }}>Причина</div>
+            <div className="th" style={{ minWidth: 100, flex: 1 }}></div>
+          </div>
+
+          <div className="table-body">
+            {loading ? (
+              <div className="table-empty">Загрузка репортов...</div>
+            ) : reports.length === 0 ? (
+              <div className="table-empty">Репортов пока нет</div>
+            ) : (
+              reports.map(report => {
+                const { date, time } = formatDateParts(report.timestamp)
+                return (
+                  <div className="table-row" key={report.id}>
+                    <div className="td" style={{ minWidth: 100, maxWidth: 140 }}>
+                      <div className="date-cell">
+                        <span className="date-main">{date}</span>
+                        <span className="date-time">{time}</span>
+                      </div>
+                    </div>
+                    <div className="td" style={{ minWidth: 120, maxWidth: 160 }}>
+                      <span className="server-name">{report.serverName}</span>
+                    </div>
+                    <div className="td" style={{ minWidth: 200, maxWidth: 240 }}>
+                      <div className="player-box">
+                        <div className="player-avatar-wrap">
+                          <img 
+                            src={report.initiator_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
+                            alt="" 
+                            className="player-avatar"
+                          />
+                          <div className="status-badge offline"></div>
+                        </div>
+                        <div className="player-info">
+                          <span className="player-name">{report.initiator_name}</span>
+                          <span className="player-steamid">{report.initiator_steam_id}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="td arrow-cell" style={{ minWidth: 20, maxWidth: 80 }}>
+                      <ArrowIcon />
+                    </div>
+                    <div className="td" style={{ minWidth: 200, maxWidth: 240 }}>
+                      <div className="player-box target">
+                        <div className="player-avatar-wrap">
+                          <img 
+                            src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
+                            alt="" 
+                            className="player-avatar"
+                          />
+                          <div className="status-badge offline"></div>
+                        </div>
+                        <div className="player-info">
+                          <span className="player-name">{report.target_name}</span>
+                          <span className="player-steamid">{report.target_steam_id}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="td" style={{ minWidth: 0, maxWidth: 50 }}></div>
+                    <div className="td" style={{ minWidth: 100, maxWidth: 100 }}>
+                      <span className="kd-value">{(report.target_kd || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="td" style={{ minWidth: 100, maxWidth: 100 }}>
+                      <span className="reports-count">{report.target_reports_count || 1} шт.</span>
+                    </div>
+                    <div className="td" style={{ minWidth: 150, maxWidth: 250 }}>
+                      <div className="reason-badge">{report.reason}</div>
+                    </div>
+                    <div className="td actions-cell" style={{ minWidth: 100, flex: 1 }}>
+                      <button className="delete-btn" onClick={() => deleteReport(report.id)} title="Удалить">
+                        <TrashIcon />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="reports-container">
-        {loading ? (
-          <div className="loading">Загрузка репортов...</div>
-        ) : reports.length === 0 ? (
-          <div className="empty-state">Репортов пока нет</div>
-        ) : (
-          <table className="players-table">
-            <thead>
-              <tr>
-                <th>Дата</th>
-                <th>Сервер</th>
-                <th>Отправитель</th>
-                <th>Подозреваемый</th>
-                <th>K/D</th>
-                <th>Причина</th>
-                <th>Сообщение</th>
-                <th style={{ width: '50px' }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map(report => (
-                <tr key={report.id}>
-                  <td className="date-cell">
-                    <div className="report-date">{formatDate(report.timestamp)}</div>
-                  </td>
-                  <td>
-                    <div className="report-server">{report.serverName}</div>
-                  </td>
-                  <td>
-                    <div className="player-cell">
-                      <img 
-                        src={report.initiator_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
-                        alt="" 
-                        className="player-avatar-small"
-                      />
-                      <div className="player-info">
-                        <div className="player-name">{report.initiator_name}</div>
-                        <div className="player-steamid">{report.initiator_steam_id}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td>
-                    <div className="player-cell">
-                      <img 
-                        src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
-                        alt="" 
-                        className="player-avatar-small"
-                      />
-                      <div className="player-info">
-                        <div className="player-name">{report.target_name}</div>
-                        <div className="player-steamid">{report.target_steam_id}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="kd-cell">
-                    <div className="kd-wrapper">
-                      <DonutChart kills={report.target_kd ? Math.round(report.target_kd * 10) : 0} deaths={10} />
-                      <span className="kd-value">{(report.target_kd || 0).toFixed(2)}</span>
-                    </div>
-                  </td>
-                  <td>
-                    <span className="reason-badge">{report.reason}</span>
-                  </td>
-                  <td>
-                    <div className="report-message" title={report.message}>{report.message || '-'}</div>
-                  </td>
-                  <td>
-                    <button className="action-btn delete" onClick={() => deleteReport(report.id)} title="Удалить репорт">
-                      <TrashIcon />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
-
       <style>{`
-        .reports-container {
-          background: #1a1a1a;
-          border-radius: 12px;
+        .reports-table-container {
+          background: #151515;
+          border-radius: 8px;
           overflow: hidden;
-          margin-top: 20px;
-          border: 1px solid #333;
+          border: 1px solid #262626;
         }
-        .players-table {
+        .reports-table {
           width: 100%;
-          border-collapse: collapse;
-          text-align: left;
+          overflow-x: auto;
         }
-        .players-table th {
-          padding: 16px;
-          color: #737373;
-          font-size: 12px;
-          font-weight: 600;
-          text-transform: uppercase;
-          border-bottom: 1px solid #333;
-        }
-        .players-table td {
-          padding: 12px 16px;
+        .table-header {
+          display: flex;
           border-bottom: 1px solid #262626;
-          vertical-align: middle;
+          background: #151515;
         }
-        .player-cell {
+        .th {
+          padding: 14px 16px;
+          color: #525252;
+          font-size: 12px;
+          font-weight: 500;
+          text-transform: uppercase;
+          flex-shrink: 0;
+        }
+        .table-body {
+          background: #0f0f0f;
+        }
+        .table-row {
+          display: flex;
+          border-bottom: 1px solid #1a1a1a;
+          transition: background 0.15s;
+        }
+        .table-row:hover {
+          background: #1a1a1a;
+        }
+        .td {
+          padding: 12px 16px;
           display: flex;
           align-items: center;
-          gap: 12px;
+          flex-shrink: 0;
         }
-        .player-avatar-small {
-          width: 32px;
-          height: 32px;
-          border-radius: 6px;
-          background: #333;
+        .date-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
         }
-        .player-avatar-small.red-border {
-          border: 1px solid #ef4444;
+        .date-main {
+          color: #a3a3a3;
+          font-size: 13px;
+          font-weight: 500;
+        }
+        .date-time {
+          color: #525252;
+          font-size: 12px;
+        }
+        .server-name {
+          color: #525252;
+          font-size: 13px;
+          font-weight: 500;
+        }
+        .player-box {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .player-avatar-wrap {
+          position: relative;
+          width: 36px;
+          height: 36px;
+        }
+        .player-avatar {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: #262626;
+        }
+        .status-badge {
+          position: absolute;
+          bottom: -2px;
+          right: -2px;
+          width: 12px;
+          height: 12px;
+          border-radius: 50%;
+          border: 2px solid #0f0f0f;
+        }
+        .status-badge.offline {
+          background: #525252;
+        }
+        .status-badge.online {
+          background: #22c55e;
         }
         .player-info {
           display: flex;
           flex-direction: column;
+          gap: 2px;
+          min-width: 0;
         }
         .player-name {
           color: #e5e5e5;
-          font-weight: 500;
-          font-size: 14px;
-        }
-        .player-name-red {
-          color: #ef4444;
-          font-weight: 600;
-          font-size: 14px;
-        }
-        .player-steamid {
-          color: #737373;
-          font-size: 11px;
-        }
-        .kd-cell {
-          width: 100px;
-        }
-        .kd-wrapper {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .kd-value {
-          color: #BBC94E;
-          font-weight: 600;
-          font-size: 14px;
-        }
-        .reason-badge {
-          background: rgba(239, 68, 68, 0.15);
-          color: #ef4444;
-          padding: 4px 8px;
-          border-radius: 6px;
-          font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          border: 1px solid rgba(239, 68, 68, 0.3);
-        }
-        .report-message {
-          color: #a3a3a3;
           font-size: 13px;
-          max-width: 250px;
+          font-weight: 500;
+          white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
-          white-space: nowrap;
         }
-        .date-cell {
-          white-space: nowrap;
+        .player-steamid {
+          color: #525252;
+          font-size: 11px;
+          font-family: monospace;
         }
-        .report-date {
-          color: #737373;
+        .arrow-cell {
+          justify-content: center;
+        }
+        .kd-value {
+          color: #a3a3a3;
           font-size: 13px;
+          font-weight: 500;
+          font-variant-numeric: tabular-nums;
+          text-decoration: underline;
+          text-decoration-style: dashed;
+          text-underline-offset: 4px;
+          text-decoration-color: #404040;
+          cursor: help;
         }
-        .report-server {
-          color: #3b82f6;
-          font-weight: 600;
+        .reports-count {
+          color: #a3a3a3;
           font-size: 13px;
+          font-weight: 500;
         }
-        .action-btn {
-          background: transparent;
-          border: none;
-          color: #737373;
-          cursor: pointer;
-          padding: 8px;
+        .reason-badge {
+          background: #262626;
+          color: #a3a3a3;
+          padding: 6px 12px;
           border-radius: 6px;
-          transition: all 0.2s;
+          font-size: 12px;
+          font-weight: 500;
+          border: 1px solid #333;
+        }
+        .actions-cell {
+          justify-content: flex-end;
+        }
+        .delete-btn {
+          background: transparent;
+          border: 1px solid #333;
+          color: #525252;
+          cursor: pointer;
+          padding: 6px 8px;
+          border-radius: 6px;
+          transition: all 0.15s;
           display: flex;
           align-items: center;
           justify-content: center;
         }
-        .action-btn:hover {
-          background: rgba(255, 255, 255, 0.05);
-          color: #fff;
+        .delete-btn:hover {
+          background: #1a1a1a;
+          border-color: #404040;
+          color: #a3a3a3;
         }
-        .action-btn.delete:hover {
-          background: rgba(239, 68, 68, 0.1);
-          color: #ef4444;
-        }
-        .loading, .empty-state {
-          padding: 60px;
+        .table-empty {
+          padding: 60px 20px;
           text-align: center;
-          color: #737373;
-          font-size: 15px;
+          color: #525252;
+          font-size: 14px;
         }
       `}</style>
     </div>
