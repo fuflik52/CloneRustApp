@@ -1515,6 +1515,7 @@ app.get('/api/servers/:serverId/map', (req, res) => {
   res.json({
     mapUrl: server.mapUrl || '', // URL карты из плагина MapImageUrl
     worldSize: server.worldSize || 4000, // Размер карты (по умолчанию 4000)
+    monuments: server.monuments || [], // Монументы
     players,
     serverName: server.name,
     online: server.online || 0
@@ -1548,6 +1549,37 @@ app.post('/api/map-url', (req, res) => {
   }
   
   saveServers(data);
+  res.json({ success: true });
+});
+
+// Plugin sends monuments info
+app.post('/api/monuments', (req, res) => {
+  const { monuments, worldSize, hostname } = req.body;
+  
+  const data = loadServers();
+  let server = Object.values(data.servers).find(s => 
+    s.hostname === hostname || s.name === hostname
+  );
+  
+  if (!server && Object.keys(data.servers).length > 0) {
+    // Используем первый доступный сервер
+    server = Object.values(data.servers)[0];
+  }
+  
+  if (!server) {
+    return res.status(404).json({ error: 'Server not found' });
+  }
+  
+  if (monuments) {
+    server.monuments = monuments;
+  }
+  
+  if (worldSize) {
+    server.worldSize = worldSize;
+  }
+  
+  saveServers(data);
+  console.log(`Monuments received for ${server.name}: ${monuments?.length || 0} monuments`);
   res.json({ success: true });
 });
 

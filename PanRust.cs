@@ -29,6 +29,7 @@ namespace Oxide.Plugins
         
         // Map sync
         string _mapImageUrl = null;
+        bool _monumentsSent = false;
 
         #region Data
         
@@ -180,6 +181,9 @@ namespace Oxide.Plugins
                 Puts($"Map URL: {_mapImageUrl}");
                 SendMapUrl();
             }
+            
+            // Send monuments info
+            timer.Once(3f, () => SendMonuments());
             
             timer.Once(2f, Sync);
             timer.Every(_config.UpdateInt, SendState);
@@ -631,6 +635,60 @@ namespace Oxide.Plugins
             catch (Exception ex)
             {
                 PrintError($"[SendMapUrl] Error: {ex.Message}");
+            }
+        }
+
+        void SendMonuments()
+        {
+            if (string.IsNullOrEmpty(_meta.Key) || _monumentsSent) return;
+            
+            var monuments = new List<object>();
+            
+            // Получаем все монументы на карте
+            foreach (var monument in UnityEngine.Object.FindObjectsOfType<MonumentInfo>())
+            {
+                if (monument == null) continue;
+                
+                var pos = monument.transform.position;
+                var monumentData = new Dictionary<string, object>
+                {
+                    ["name"] = monument.displayPhrase?.english ?? monument.name ?? "Unknown",
+                    ["x"] = pos.x,
+                    ["y"] = pos.y,
+                    ["z"] = pos.z,
+                    ["type"] = monument.Type.ToString()
+                };
+                
+                monuments.Add(monumentData);
+            }
+            
+            var data = new Dictionary<string, object>
+            {
+                ["monuments"] = monuments,
+                ["worldSize"] = World.Size,
+                ["hostname"] = GetServerAddress()
+            };
+
+            string json = JsonConvert.SerializeObject(data);
+            
+            try
+            {
+                webrequest.Enqueue($"{API}/monuments", json, (c, r) => 
+                { 
+                    if (c == 200) 
+                    {
+                        _monumentsSent = true;
+                        Puts($"Monuments sent successfully ({monuments.Count} monuments)");
+                    }
+                    else if (c != 0) 
+                    {
+                        PrintWarning($"Failed to send monuments: {c}");
+                    }
+                }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            }
+            catch (Exception ex)
+            {
+                PrintError($"[SendMonuments] Error: {ex.Message}");
             }
         }
 

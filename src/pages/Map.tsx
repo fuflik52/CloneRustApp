@@ -10,10 +10,19 @@ interface Player {
   online?: boolean
 }
 
+interface Monument {
+  name: string
+  x: number
+  y: number
+  z: number
+  type: string
+}
+
 interface MapData {
   mapUrl: string
   worldSize: number
   players: Player[]
+  monuments: Monument[]
   serverName: string
   online: number
 }
@@ -26,6 +35,7 @@ export default function Map() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [hoveredPlayer, setHoveredPlayer] = useState<Player | null>(null)
+  const [hoveredMonument, setHoveredMonument] = useState<Monument | null>(null)
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
   const [scale, setScale] = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
@@ -225,6 +235,53 @@ export default function Map() {
           ctx.fillText(player.name, textX, textY)
         }
       })
+
+      // Рисуем монументы
+      if (mapData.monuments && mapData.monuments.length > 0) {
+        mapData.monuments.forEach((monument) => {
+          const { x, z } = monument
+          
+          const canvasX = (x + worldSize / 2) * mapScale
+          const canvasY = (worldSize / 2 - z) * mapScale
+
+          // Размер иконки монумента
+          const iconSize = Math.max(16, 20 / scale)
+          
+          // Рисуем иконку монумента
+          ctx.font = `${iconSize}px Arial`
+          ctx.textAlign = 'center'
+          ctx.textBaseline = 'middle'
+          
+          // Тень для иконки
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
+          ctx.shadowBlur = 4
+          ctx.shadowOffsetX = 2
+          ctx.shadowOffsetY = 2
+          
+          ctx.fillText(getMonumentIcon(monument.name), canvasX, canvasY)
+          
+          // Сброс тени
+          ctx.shadowColor = 'transparent'
+          ctx.shadowBlur = 0
+          ctx.shadowOffsetX = 0
+          ctx.shadowOffsetY = 0
+          
+          // Рисуем название монумента при зуме
+          if (scale >= 1.2) {
+            const fontSize = Math.max(10, 12 / scale)
+            ctx.font = `bold ${fontSize}px Arial, sans-serif`
+            ctx.fillStyle = '#fff'
+            ctx.strokeStyle = '#000'
+            ctx.lineWidth = Math.max(2, 3 / scale)
+            ctx.textAlign = 'center'
+            
+            const textY = canvasY + iconSize + 8
+            
+            ctx.strokeText(monument.name, canvasX, textY)
+            ctx.fillText(monument.name, canvasX, textY)
+          }
+        })
+      }
     }
 
     img.onerror = () => {
@@ -257,24 +314,48 @@ export default function Map() {
     const worldSize = mapData.worldSize
     const mapScale = canvas.width / worldSize
 
-    let found = false
-    for (const player of mapData.players) {
-      if (!player.position) continue
-      
-      const { x, z } = player.position
-      const canvasX = (x + worldSize / 2) * mapScale
-      const canvasY = (worldSize / 2 - z) * mapScale
+    let foundPlayer = false
+    let foundMonument = false
+    
+    // Проверяем монументы (приоритет выше чем игроки)
+    if (mapData.monuments && mapData.monuments.length > 0) {
+      for (const monument of mapData.monuments) {
+        const { x, z } = monument
+        const canvasX = (x + worldSize / 2) * mapScale
+        const canvasY = (worldSize / 2 - z) * mapScale
 
-      const distance = Math.sqrt((mouseX - canvasX) ** 2 + (mouseY - canvasY) ** 2)
-      if (distance < 20) {
-        setHoveredPlayer(player)
-        found = true
-        break
+        const distance = Math.sqrt((mouseX - canvasX) ** 2 + (mouseY - canvasY) ** 2)
+        if (distance < 25) {
+          setHoveredMonument(monument)
+          setHoveredPlayer(null)
+          foundMonument = true
+          break
+        }
       }
     }
 
-    if (!found) {
+    // Проверяем игроков только если не нашли монумент
+    if (!foundMonument) {
+      for (const player of mapData.players) {
+        if (!player.position) continue
+        
+        const { x, z } = player.position
+        const canvasX = (x + worldSize / 2) * mapScale
+        const canvasY = (worldSize / 2 - z) * mapScale
+
+        const distance = Math.sqrt((mouseX - canvasX) ** 2 + (mouseY - canvasY) ** 2)
+        if (distance < 20) {
+          setHoveredPlayer(player)
+          setHoveredMonument(null)
+          foundPlayer = true
+          break
+        }
+      }
+    }
+
+    if (!foundPlayer && !foundMonument) {
       setHoveredPlayer(null)
+      setHoveredMonument(null)
     }
   }
 
@@ -699,6 +780,92 @@ export default function Map() {
           </div>
         </div>
       )}
+
+      {/* Tooltip при наведении на монумент */}
+      {hoveredMonument && (
+        <div style={{
+          position: 'fixed',
+          left: mousePos.x + 12,
+          top: mousePos.y + 12,
+          background: 'rgba(0, 0, 0, 0.9)',
+          padding: '8px 12px',
+          borderRadius: 6,
+          color: '#fff',
+          zIndex: 100,
+          pointerEvents: 'none',
+          backdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          fontSize: 12
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 20 }}>{getMonumentIcon(hoveredMonument.name)}</span>
+            <div>
+              <div style={{ fontWeight: 'bold', fontSize: 13 }}>
+                {hoveredMonument.name}
+              </div>
+              <div style={{ fontSize: 10, color: '#888', marginTop: 2 }}>
+                {hoveredMonument.type}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
+}
+
+function getMonumentIcon(name: string): string {
+  const icons: Record<string, string> = {
+    'Airfield': '✈️',
+    'Launch Site': '🚀',
+    'Military Tunnel': '🎖️',
+    'Military Tunnels': '🎖️',
+    'Power Plant': '⚡',
+    'Water Treatment': '💧',
+    'Water Treatment Plant': '💧',
+    'Train Yard': '🚂',
+    'Trainyard': '🚂',
+    'Dome': '🏛️',
+    'The Dome': '🏛️',
+    'Satellite Dish': '📡',
+    'Satellite': '📡',
+    'Supermarket': '🏪',
+    'Gas Station': '⛽',
+    'Lighthouse': '🗼',
+    'Harbor': '⚓',
+    'Large Harbor': '⚓',
+    'Junkyard': '🏚️',
+    'Mining Outpost': '⛏️',
+    'Quarry': '🏗️',
+    'Sewer Branch': '🚰',
+    'Underwater Lab': '🔬',
+    'Fishing Village': '🎣',
+    'Bandit Camp': '🏕️',
+    'Outpost': '🏘️',
+    'Arctic Research Base': '🧊',
+    'Oil Rig': '🛢️',
+    'Large Oil Rig': '🛢️',
+    'Small Oil Rig': '🛢️',
+    'Cargo Ship': '🚢',
+    'Excavator': '🏗️',
+    'Giant Excavator Pit': '🏗️',
+    'Ranch': '🐄',
+    'Barn': '🌾',
+    'Missile Silo': '🚀',
+    'Abandoned Cabins': '🏚️',
+    'Abandoned Supermarket': '🏪',
+    'Oxums Gas Station': '⛽',
+    'Stables': '🐴'
+  }
+  
+  // Проверяем точное совпадение
+  if (icons[name]) return icons[name]
+  
+  // Проверяем частичное совпадение
+  const lowerName = name.toLowerCase()
+  for (const [key, icon] of Object.entries(icons)) {
+    if (lowerName.includes(key.toLowerCase())) return icon
+  }
+  
+  return '📍'
 }
