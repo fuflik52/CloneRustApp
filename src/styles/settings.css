@@ -426,6 +426,7 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
+  position: relative;
 }
 
 .form-group label {
@@ -434,14 +435,14 @@
 }
 
 .form-group input {
-  background: #141414;
+  background: #272727;
   border: 1px solid #333;
   border-radius: 8px;
   padding: 12px 14px;
   color: #fff;
   font-size: 14px;
   outline: none;
-  transition: border-color 0.15s;
+  transition: all 0.2s ease;
 }
 
 .form-group input::placeholder {
@@ -455,10 +456,11 @@
 .suggester-input {
   display: flex;
   align-items: center;
-  background: #141414;
+  background: #272727;
   border: 1px solid #333;
   border-radius: 8px;
   padding: 0 12px;
+  transition: all 0.2s ease;
 }
 
 .suggester-input input {
@@ -500,12 +502,12 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #141414;
+  background: #272727;
   border: 1px solid #333;
   border-radius: 8px;
   padding: 12px 14px;
   cursor: pointer;
-} cursor: pointer;
+  transition: all 0.2s ease;
 }
 
 .select-value {
@@ -536,11 +538,13 @@
   top: calc(100% + 4px);
   left: 0;
   right: 0;
-  background: #2d2d2d;
+  background: #272727;
   border: 1px solid #333;
   border-radius: 8px;
   overflow: hidden;
-  z-index: 10;
+  z-index: 100;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: slideDown 0.2s ease forwards;
 }
 
 .select-option {
@@ -553,7 +557,11 @@
 }
 
 .select-option:hover {
-  background: #2a2a2a;
+  background: #1A1A1A;
+}
+
+.select-option.selected {
+  background: #1A1A1A;
 }
 
 .select-option span {
@@ -839,9 +847,10 @@
   align-items: center;
   gap: 12px;
   padding: 16px 24px;
-  background: #2d2d2d;
+  background: #272727;
   margin: 16px 24px;
   border-radius: 8px;
+  transition: all 0.2s ease;
 }
 
 .preset-search svg {
