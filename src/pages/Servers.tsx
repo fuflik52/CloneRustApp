@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useToast } from '../components/Toast'
+import { useServer } from '../App'
 
 interface Server {
   id: string
@@ -43,17 +44,22 @@ export default function Servers() {
   const [copiedKey, setCopiedKey] = useState('')
   const [deleteConfirm, setDeleteConfirm] = useState<Server | null>(null)
   const { showToast } = useToast()
+  const { serverId } = useServer()
 
   useEffect(() => {
     fetchServers()
     const interval = setInterval(fetchServers, 5000)
     return () => clearInterval(interval)
-  }, [])
+  }, [serverId])
 
   const fetchServers = async () => {
+    if (!serverId) return
     try {
-      const res = await fetch('/api/servers')
-      if (res.ok) setServers(await res.json())
+      const res = await fetch(`/api/servers/${serverId}`)
+      if (res.ok) {
+        const server = await res.json()
+        setServers([server])
+      }
     } catch {}
   }
 
