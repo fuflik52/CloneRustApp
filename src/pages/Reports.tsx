@@ -114,16 +114,16 @@ export default function Reports() {
       <div className="reports-table-container">
         <div className="reports-table">
           <div className="table-header">
-            <div className="th" style={{ minWidth: 100, maxWidth: 140 }}>Дата</div>
-            <div className="th" style={{ minWidth: 120, maxWidth: 160 }}>Сервер</div>
-            <div className="th" style={{ minWidth: 200, maxWidth: 240 }}>Отправил жалобу</div>
-            <div className="th" style={{ minWidth: 20, maxWidth: 80 }}></div>
-            <div className="th" style={{ minWidth: 200, maxWidth: 240 }}>Подозреваемый</div>
-            <div className="th" style={{ minWidth: 0, maxWidth: 50 }}></div>
-            <div className="th" style={{ minWidth: 100, maxWidth: 100 }}>K/D</div>
-            <div className="th" style={{ minWidth: 100, maxWidth: 100 }}>Жалоб</div>
-            <div className="th" style={{ minWidth: 150, maxWidth: 250 }}>Причина</div>
-            <div className="th" style={{ minWidth: 100, flex: 1 }}></div>
+            <div className="th" style={{ minWidth: 140, flex: '0 0 140px' }}>Дата</div>
+            <div className="th" style={{ minWidth: 160, flex: '0 0 180px' }}>Сервер</div>
+            <div className="th" style={{ minWidth: 240, flex: '1 1 280px' }}>Отправил жалобу</div>
+            <div className="th arrow-cell" style={{ minWidth: 40, flex: '0 0 40px' }}></div>
+            <div className="th" style={{ minWidth: 240, flex: '1 1 280px' }}>Подозреваемый</div>
+            <div className="th" style={{ minWidth: 20, flex: '0 0 20px' }}></div>
+            <div className="th" style={{ minWidth: 80, flex: '0 0 100px' }}>K/D</div>
+            <div className="th" style={{ minWidth: 100, flex: '0 0 120px' }}>Жалоб</div>
+            <div className="th" style={{ minWidth: 150, flex: '0 0 200px' }}>Причина</div>
+            <div className="th" style={{ minWidth: 60, flex: '0 0 80px' }}></div>
           </div>
 
           <div className="table-body">
@@ -140,16 +140,16 @@ export default function Reports() {
                 const { date, time } = formatDateParts(report.timestamp)
                 return (
                   <div className="table-row" key={report.id}>
-                    <div className="td" style={{ minWidth: 100, maxWidth: 140 }}>
+                    <div className="td" style={{ minWidth: 140, flex: '0 0 140px' }}>
                       <div className="date-cell">
                         <span className="date-main">{date}</span>
                         <span className="date-time">{time}</span>
                       </div>
                     </div>
-                    <div className="td" style={{ minWidth: 120, maxWidth: 160 }}>
+                    <div className="td" style={{ minWidth: 160, flex: '0 0 180px' }}>
                       <span className="server-name">{report.serverName}</span>
                     </div>
-                    <div className="td" style={{ minWidth: 200, maxWidth: 240 }}>
+                    <div className="td" style={{ minWidth: 240, flex: '1 1 280px' }}>
                       <div className="player-box">
                         <div className="player-avatar-wrap">
                           <img 
@@ -165,10 +165,10 @@ export default function Reports() {
                         </div>
                       </div>
                     </div>
-                    <div className="td arrow-cell" style={{ minWidth: 20, maxWidth: 80 }}>
+                    <div className="td arrow-cell" style={{ minWidth: 40, flex: '0 0 40px' }}>
                       <ArrowIcon />
                     </div>
-                    <div className="td" style={{ minWidth: 200, maxWidth: 240 }}>
+                    <div className="td" style={{ minWidth: 240, flex: '1 1 280px' }}>
                       <div className="player-box target">
                         <div className="player-avatar-wrap">
                           <img 
@@ -184,17 +184,17 @@ export default function Reports() {
                         </div>
                       </div>
                     </div>
-                    <div className="td" style={{ minWidth: 0, maxWidth: 50 }}></div>
-                    <div className="td" style={{ minWidth: 100, maxWidth: 100 }}>
+                    <div className="td" style={{ minWidth: 20, flex: '0 0 20px' }}></div>
+                    <div className="td" style={{ minWidth: 80, flex: '0 0 100px' }}>
                       <span className="kd-value">{(report.target_kd || 0).toFixed(2)}</span>
                     </div>
-                    <div className="td" style={{ minWidth: 100, maxWidth: 100 }}>
+                    <div className="td" style={{ minWidth: 100, flex: '0 0 120px' }}>
                       <span className="reports-count">{report.target_reports_count || 1} шт.</span>
                     </div>
-                    <div className="td" style={{ minWidth: 150, maxWidth: 250 }}>
+                    <div className="td" style={{ minWidth: 150, flex: '0 0 200px' }}>
                       <div className="reason-badge">{report.reason}</div>
                     </div>
-                    <div className="td actions-cell" style={{ minWidth: 100, flex: 1 }}>
+                    <div className="td actions-cell" style={{ minWidth: 60, flex: '0 0 80px' }}>
                       <button className="delete-btn" onClick={() => deleteReport(report.id)} title="Удалить">
                         <TrashIcon />
                       </button>
@@ -234,6 +234,7 @@ export default function Reports() {
           display: flex;
           border-bottom: 1px solid #262626;
           background: #151515;
+          width: 100%;
         }
         .th {
           padding: 14px 16px;
@@ -241,7 +242,6 @@ export default function Reports() {
           font-size: 12px;
           font-weight: 500;
           text-transform: uppercase;
-          flex-shrink: 0;
         }
         .table-body {
           background: #0f0f0f;
@@ -250,6 +250,7 @@ export default function Reports() {
           display: flex;
           border-bottom: 1px solid #1a1a1a;
           transition: background 0.15s;
+          width: 100%;
         }
         .table-row:hover {
           background: #1a1a1a;
@@ -258,7 +259,6 @@ export default function Reports() {
           padding: 12px 16px;
           display: flex;
           align-items: center;
-          flex-shrink: 0;
         }
         .date-cell {
           display: flex;
