@@ -207,18 +207,6 @@
 }
 
 .section-header {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 0;
-}
-
-.section-title {
-  color: #4B5454;
-  font-size: 12px;
-}
-
-.section-header .arrow-icon {
   display: none;
 }
 

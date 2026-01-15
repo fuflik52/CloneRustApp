@@ -204,7 +204,7 @@ function CreateActionModal({ onClose, onSave }: CreateActionModalProps) {
   const canProceed = step === 1 ? name.trim() !== '' : commands.some(c => c.trim() !== '')
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="settings-modal-overlay" onClick={onClose}>
       <div className="action-modal" onClick={e => e.stopPropagation()}>
         <div className="modal-card">
           <div className="modal-card-header">
