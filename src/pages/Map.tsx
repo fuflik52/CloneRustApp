@@ -191,7 +191,7 @@ export default function Map() {
     }
   }, [mapData, scale]) // Перерисовываем при изменении данных или зума
 
-  // Ограничение перетаскивания - оставляем минимум 200px видимой части карты
+  // Ограничение перетаскивания - адаптивные границы в зависимости от зума
   const clampOffset = (newOffset: { x: number; y: number }, currentScale: number) => {
     if (!canvasRef.current) return newOffset
 
@@ -202,7 +202,28 @@ export default function Map() {
     const scaledWidth = canvas.width * currentScale
     const scaledHeight = canvas.height * currentScale
     
-    const minVisiblePx = 200 // Минимум 200px карты должно быть видно
+    // При отдалении (scale < 1) карта должна быть ближе к центру
+    // При приближении (scale > 1) даем больше свободы движения
+    let minVisiblePx: number
+    
+    if (currentScale < 1) {
+      // Отдалено - карта должна быть почти по центру, минимум пустого места
+      minVisiblePx = Math.min(scaledWidth, scaledHeight) * 0.8
+    } else if (currentScale > 1.5) {
+      // Сильно приближено - можно двигать свободно
+      minVisiblePx = 100
+    } else {
+      // Нормальный зум - средние границы
+      minVisiblePx = 200
+    }
+    
+    // Если карта меньше контейнера, центрируем её
+    if (scaledWidth <= containerWidth && scaledHeight <= containerHeight) {
+      return {
+        x: (containerWidth - scaledWidth) / 2,
+        y: (containerHeight - scaledHeight) / 2
+      }
+    }
     
     // Ограничения: карта не может уйти полностью за границы
     const minX = containerWidth - scaledWidth - minVisiblePx
@@ -274,8 +295,9 @@ export default function Map() {
     const newScale = Math.max(0.5, Math.min(3, scale * delta))
     setScale(newScale)
     
-    // Ограничиваем offset при зуме
-    setOffset(prev => clampOffset(prev, newScale))
+    // Автоматически корректируем позицию при изменении зума
+    const correctedOffset = clampOffset(offset, newScale)
+    setOffset(correctedOffset)
   }
 
   useEffect(() => {
@@ -285,6 +307,15 @@ export default function Map() {
     container.addEventListener('wheel', handleWheel, { passive: false })
     return () => container.removeEventListener('wheel', handleWheel)
   }, [scale, offset])
+
+  // Автоматически корректируем позицию при изменении зума
+  useEffect(() => {
+    if (!canvasRef.current) return
+    const correctedOffset = clampOffset(offset, scale)
+    if (correctedOffset.x !== offset.x || correctedOffset.y !== offset.y) {
+      setOffset(correctedOffset)
+    }
+  }, [scale])
 
   const zoomToPlayer = (player: Player) => {
     if (!player.position || !canvasRef.current || !mapData) return
