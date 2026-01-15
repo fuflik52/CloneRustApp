@@ -109,7 +109,7 @@ namespace Oxide.Plugins
         {
             public float UpdateInt = 5f, ChatInt = 1f, KillsInt = 5f, SaveInt = 60f, ReportsInt = 5f;
             public List<string> report_ui_reasons = new List<string> { "Cheat", "Macros", "Abuse" };
-            public int report_ui_cooldown = 300;
+            public int report_ui_cooldown = 60;
         }
 
         class ChatMsg { public string si, n, m; public bool t; public long ts; }
@@ -730,7 +730,7 @@ namespace Oxide.Plugins
             if (_reportCooldowns.ContainsKey(player.userID) && _reportCooldowns[player.userID] > CurrentTime())
             {
                 var timeLeft = Math.Ceiling(_reportCooldowns[player.userID] - CurrentTime());
-                SendReply(player, $"Подождите {timeLeft} сек. перед следующим репортом.");
+                ShowNotification(player, $"Подождите {timeLeft} сек. перед следующим репортом");
                 return;
             }
 
@@ -946,14 +946,14 @@ namespace Oxide.Plugins
             container.Add(new CuiPanel
             {
                 RectTransform = { AnchorMin = "0 1", AnchorMax = "0 1", OffsetMin = min, OffsetMax = max },
-                Image = { Color = "0.8 0.2 0.2 0.3" } // Reddish semi-transparent selection
+                Image = { Color = HexToRustFormat("#84cc1633") } // Зелёный полупрозрачный как выделение
             }, ReportLayer + ".C", ReportLayer + ".T");
 
             container.Add(new CuiElement
             {
                 Parent = ReportLayer + ".T",
                 Components = {
-                    new CuiOutlineComponent { Color = "0.8 0.2 0.2 1", Distance = "1 1" },
+                    new CuiOutlineComponent { Color = HexToRustFormat("#84cc16"), Distance = "1 1" }, // Зелёная рамка
                     new CuiRectTransformComponent { AnchorMin = "0 0", AnchorMax = "1 1" }
                 }
             });
@@ -961,7 +961,7 @@ namespace Oxide.Plugins
             container.Add(new CuiButton
             {
                 RectTransform = { AnchorMin = "-10 -10", AnchorMax = "10 10" },
-                Button = { Color = "0 0 0 0.5", Material = "assets/content/ui/uibackgroundblur-ingamemenu.mat", Close = ReportLayer + ".T" },
+                Button = { Color = "0 0 0 0", Close = ReportLayer + ".T" },
                 Text = { Text = "" }
                 }, ReportLayer + ".T");
 
@@ -1003,7 +1003,7 @@ namespace Oxide.Plugins
             RA_ReportSend(player.UserIDString, targetId, reason);
             
             _reportCooldowns[player.userID] = CurrentTime() + _config.report_ui_cooldown;
-            SendReply(player, "Ваша жалоба отправлена. Спасибо!");
+            ShowNotification(player, "Ваша жалоба отправлена. Спасибо!");
         }
 
         void RA_ReportSend(string initiator_steam_id, string target_steam_id, string reason, string message = "")
@@ -1023,6 +1023,15 @@ namespace Oxide.Plugins
         #endregion
 
         double CurrentTime() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+
+        void ShowNotification(BasePlayer player, string message, float duration = 3f)
+        {
+            // Проигрываем звук
+            Effect.server.Run("assets/bundled/prefabs/fx/notice/loot.copy.fx.prefab", player.transform.position);
+            
+            // Показываем toast уведомление
+            player.ShowToast(GameTip.Styles.Blue_Normal, message);
+        }
 
         class Cmd 
         { 

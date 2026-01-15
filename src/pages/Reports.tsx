@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react'
 import { useToast } from '../components/Toast'
-import { useServer } from '../App'
 
 interface Report {
   id: string
@@ -17,12 +16,6 @@ interface Report {
   message: string
   timestamp: number
   date: string
-}
-
-interface Server {
-  id: string
-  name: string
-  status: string
 }
 
 function DonutChart({ kills, deaths }: { kills: number, deaths: number }) {
@@ -192,10 +185,10 @@ export default function Reports() {
                       <img 
                         src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
                         alt="" 
-                        className="player-avatar-small red-border"
+                        className="player-avatar-small"
                       />
                       <div className="player-info">
-                        <div className="player-name-red">{report.target_name}</div>
+                        <div className="player-name">{report.target_name}</div>
                         <div className="player-steamid">{report.target_steam_id}</div>
                       </div>
                     </div>
