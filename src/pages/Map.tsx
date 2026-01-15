@@ -90,92 +90,96 @@ export default function Map() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    
-    img.onload = () => {
-      canvas.width = img.width
-      canvas.height = img.height
+    const drawMap = () => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      
+      img.onload = () => {
+        canvas.width = img.width
+        canvas.height = img.height
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height)
-      ctx.drawImage(img, 0, 0)
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.drawImage(img, 0, 0)
 
-      const worldSize = mapData.worldSize
-      const mapScale = canvas.width / worldSize
+        const worldSize = mapData.worldSize
+        const mapScale = canvas.width / worldSize
 
-      // Рисуем всех игроков
-      mapData.players.forEach((player) => {
-        if (!player.position) return
-        
-        const { x, z } = player.position
-        
-        const canvasX = (x + worldSize / 2) * mapScale
-        const canvasY = (worldSize / 2 - z) * mapScale
-
-        // Разные размеры точек для разнообразия
-        const baseDotSize = player.team ? 14 : 12
-        const dotSize = Math.max(baseDotSize, baseDotSize / scale)
-
-        // Рисуем тень
-        ctx.beginPath()
-        ctx.arc(canvasX + 2, canvasY + 2, dotSize, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
-        ctx.fill()
-
-        // Рисуем точку игрока
-        ctx.beginPath()
-        ctx.arc(canvasX, canvasY, dotSize, 0, Math.PI * 2)
-        
-        // Градиент для точки
-        const gradient = ctx.createRadialGradient(canvasX, canvasY, 0, canvasX, canvasY, dotSize)
-        if (player.team) {
-          gradient.addColorStop(0, '#66ff66')
-          gradient.addColorStop(1, '#4CAF50')
-        } else {
-          gradient.addColorStop(0, '#ff6666')
-          gradient.addColorStop(1, '#FF5252')
-        }
-        ctx.fillStyle = gradient
-        ctx.fill()
-        
-        // Обводка
-        ctx.strokeStyle = '#fff'
-        ctx.lineWidth = Math.max(3, 4 / scale)
-        ctx.stroke()
-        
-        // Внутренняя точка
-        ctx.beginPath()
-        ctx.arc(canvasX, canvasY, dotSize / 3, 0, Math.PI * 2)
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
-        ctx.fill()
-
-        // Рисуем имя игрока
-        if (scale >= 0.6) {
-          const fontSize = Math.max(14, 16 / scale)
-          ctx.font = `bold ${fontSize}px Arial, sans-serif`
-          ctx.fillStyle = '#fff'
-          ctx.strokeStyle = '#000'
-          ctx.lineWidth = Math.max(4, 5 / scale)
-          ctx.lineJoin = 'round'
-          ctx.miterLimit = 2
+        // Рисуем всех игроков
+        mapData.players.forEach((player) => {
+          if (!player.position) return
           
-          const textX = canvasX + dotSize + 8
-          const textY = canvasY + 6
+          const { x, z } = player.position
           
-          ctx.strokeText(player.name, textX, textY)
-          ctx.fillText(player.name, textX, textY)
-        }
-      })
+          const canvasX = (x + worldSize / 2) * mapScale
+          const canvasY = (worldSize / 2 - z) * mapScale
+
+          // Разные размеры точек для разнообразия
+          const baseDotSize = player.team ? 14 : 12
+          const dotSize = Math.max(baseDotSize, baseDotSize / scale)
+
+          // Рисуем тень
+          ctx.beginPath()
+          ctx.arc(canvasX + 2, canvasY + 2, dotSize, 0, Math.PI * 2)
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'
+          ctx.fill()
+
+          // Рисуем точку игрока
+          ctx.beginPath()
+          ctx.arc(canvasX, canvasY, dotSize, 0, Math.PI * 2)
+          
+          // Градиент для точки
+          const gradient = ctx.createRadialGradient(canvasX, canvasY, 0, canvasX, canvasY, dotSize)
+          if (player.team) {
+            gradient.addColorStop(0, '#66ff66')
+            gradient.addColorStop(1, '#4CAF50')
+          } else {
+            gradient.addColorStop(0, '#ff6666')
+            gradient.addColorStop(1, '#FF5252')
+          }
+          ctx.fillStyle = gradient
+          ctx.fill()
+          
+          // Обводка
+          ctx.strokeStyle = '#fff'
+          ctx.lineWidth = Math.max(3, 4 / scale)
+          ctx.stroke()
+          
+          // Внутренняя точка
+          ctx.beginPath()
+          ctx.arc(canvasX, canvasY, dotSize / 3, 0, Math.PI * 2)
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.8)'
+          ctx.fill()
+
+          // Рисуем имя игрока
+          if (scale >= 0.6) {
+            const fontSize = Math.max(14, 16 / scale)
+            ctx.font = `bold ${fontSize}px Arial, sans-serif`
+            ctx.fillStyle = '#fff'
+            ctx.strokeStyle = '#000'
+            ctx.lineWidth = Math.max(4, 5 / scale)
+            ctx.lineJoin = 'round'
+            ctx.miterLimit = 2
+            
+            const textX = canvasX + dotSize + 8
+            const textY = canvasY + 6
+            
+            ctx.strokeText(player.name, textX, textY)
+            ctx.fillText(player.name, textX, textY)
+          }
+        })
+      }
+
+      img.onerror = () => {
+        setError('Не удалось загрузить изображение карты')
+      }
+
+      if (mapData.mapUrl) {
+        img.src = mapData.mapUrl
+      }
     }
 
-    img.onerror = () => {
-      setError('Не удалось загрузить изображение карты')
-    }
-
-    if (mapData.mapUrl) {
-      img.src = mapData.mapUrl
-    }
-  }, [mapData, scale])
+    drawMap()
+  }, [mapData, scale]) // Перерисовываем при изменении данных или зума
 
   // Ограничение перетаскивания
   const clampOffset = (newOffset: { x: number; y: number }, currentScale: number) => {
