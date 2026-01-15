@@ -20,10 +20,10 @@ interface Player {
   steam_id: string
   name: string
   ip: string
-  ping: number
+  ping?: number
   online: boolean
-  position: string
-  server: string
+  position?: string
+  server?: string
   serverName?: string
   country?: string
   countryCode?: string
@@ -31,7 +31,9 @@ interface Player {
   provider?: string
   avatar?: string
   firstSeen?: string
-  stats?: PlayerStats
+  last_seen?: number
+  playtime_hours?: number
+  stats?: PlayerStats | null
 }
 
 interface SteamInfo {
