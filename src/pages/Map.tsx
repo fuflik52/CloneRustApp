@@ -195,12 +195,15 @@ export default function Map() {
     if (currentScale < 1) {
       // Отдалено - карта должна быть почти по центру, минимум пустого места
       minVisiblePx = Math.min(scaledWidth, scaledHeight) * 0.8
+    } else if (currentScale > 2) {
+      // Очень сильно приближено - максимальная свобода
+      minVisiblePx = 50
     } else if (currentScale > 1.5) {
-      // Сильно приближено - можно двигать свободно
-      minVisiblePx = 100
+      // Сильно приближено - большая свобода движения
+      minVisiblePx = 80
     } else {
       // Нормальный зум - средние границы
-      minVisiblePx = 200
+      minVisiblePx = 150
     }
     
     // Если карта меньше контейнера, центрируем её
