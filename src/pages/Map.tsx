@@ -350,7 +350,7 @@ export default function Map() {
           <div style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 14 }}>
             Игроки на карте ({mapData.players.length}):
           </div>
-          {mapData.players.map((player, index) => (
+          {mapData.players.map((player) => (
             <div
               key={player.steam_id}
               onClick={() => zoomToPlayer(player)}
