@@ -142,6 +142,13 @@ namespace Oxide.Plugins
         {
             base.LoadConfig();
             try { _config = Config.ReadObject<Configuration>(); } catch { _config = new Configuration(); }
+            
+            // Deduplicate reasons
+            if (_config.report_ui_reasons != null)
+            {
+                _config.report_ui_reasons = _config.report_ui_reasons.Distinct().ToList();
+            }
+            
             SaveConfig();
         }
         protected override void LoadDefaultConfig() => _config = new Configuration();
@@ -957,14 +964,16 @@ namespace Oxide.Plugins
             for (var i = 0; i < _config.report_ui_reasons.Count; i++)
             {
                 var reason = _config.report_ui_reasons[i];
-                var offXMin = 20 + i * 85;
-                var offXMax = 20 + (i + 1) * 80;
+                var width = 80;
+                var margin = 8;
+                var offXMin = 20 + i * (width + margin);
+                var offXMax = offXMin + width;
 
                 container.Add(new CuiButton
                 {
                     RectTransform = { AnchorMin = leftAlign ? "0 0" : "1 0", AnchorMax = leftAlign ? "0 0" : "1 0", OffsetMin = $"{(leftAlign ? -offXMax : offXMin)} 15", OffsetMax = $"{(leftAlign ? -offXMin : offXMax)} 45" },
-                    Button = { Color = "0.8 0.8 0.8 0.3", Command = $"panrust.sendreport {target.UserIDString} \"{reason}\"" },
-                    Text = { Text = reason, Align = TextAnchor.MiddleCenter, Color = "0.8 0.8 0.8 1", Font = "robotocondensed-bold.ttf", FontSize = 14 }
+                    Button = { Color = HexToRustFormat("#D0C6BD33"), Command = $"panrust.sendreport {target.UserIDString} \"{reason}\"" },
+                    Text = { Text = reason, Align = TextAnchor.MiddleCenter, Color = HexToRustFormat("#D0C6BD"), Font = "robotocondensed-bold.ttf", FontSize = 14 }
                 }, ReportLayer + ".T");
             }
 
