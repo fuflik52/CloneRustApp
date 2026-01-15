@@ -247,6 +247,9 @@ export default function Map() {
           // Размер иконки монумента
           const iconSize = Math.max(16, 20 / scale)
           
+          // Сохраняем контекст
+          ctx.save()
+          
           // Рисуем иконку монумента
           ctx.font = `${iconSize}px Arial`
           ctx.textAlign = 'center'
@@ -260,14 +263,13 @@ export default function Map() {
           
           ctx.fillText(getMonumentIcon(monument.name), canvasX, canvasY)
           
-          // Сброс тени
-          ctx.shadowColor = 'transparent'
-          ctx.shadowBlur = 0
-          ctx.shadowOffsetX = 0
-          ctx.shadowOffsetY = 0
+          // Восстанавливаем контекст
+          ctx.restore()
           
           // Рисуем название монумента при зуме
           if (scale >= 1.2) {
+            ctx.save()
+            
             const fontSize = Math.max(10, 12 / scale)
             ctx.font = `bold ${fontSize}px Arial, sans-serif`
             ctx.fillStyle = '#fff'
@@ -279,6 +281,8 @@ export default function Map() {
             
             ctx.strokeText(monument.name, canvasX, textY)
             ctx.fillText(monument.name, canvasX, textY)
+            
+            ctx.restore()
           }
         })
       }
