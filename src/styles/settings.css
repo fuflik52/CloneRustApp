@@ -365,7 +365,7 @@
 .modal-card {
   background: #1a1a1a;
   border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid #333;
   overflow: hidden;
 }
 
@@ -374,7 +374,7 @@
   justify-content: space-between;
   align-items: flex-start;
   padding: 20px 24px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid #333;
 }
 
 .header-text {
@@ -399,7 +399,7 @@
 .header-icon {
   width: 40px;
   height: 40px;
-  background: #0d0d0d;
+  background: #141414;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -434,8 +434,8 @@
 }
 
 .form-group input {
-  background: #0d0d0d;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #141414;
+  border: 1px solid #333;
   border-radius: 8px;
   padding: 12px 14px;
   color: #fff;
@@ -445,18 +445,18 @@
 }
 
 .form-group input::placeholder {
-  color: #555;
+  color: #666;
 }
 
 .form-group input:focus {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: #0099ff;
 }
 
 .suggester-input {
   display: flex;
   align-items: center;
-  background: #0d0d0d;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #141414;
+  border: 1px solid #333;
   border-radius: 8px;
   padding: 0 12px;
 }
@@ -471,7 +471,7 @@
 .suggester-input svg {
   width: 24px;
   height: 24px;
-  fill: rgba(255, 255, 255, 0.25);
+  fill: #666;
   flex-shrink: 0;
 }
 
@@ -501,8 +501,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #0d0d0d;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #141414;
+  border: 1px solid #333;
   border-radius: 8px;
   padding: 12px 14px;
   cursor: pointer;
@@ -510,7 +510,7 @@
 
 .select-activator span {
   font-size: 14px;
-  color: #888;
+  color: #fff;
 }
 
 .select-activator .arrow {
@@ -531,7 +531,7 @@
   left: 0;
   right: 0;
   background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid #333;
   border-radius: 8px;
   overflow: hidden;
   z-index: 10;
@@ -547,7 +547,7 @@
 }
 
 .select-option:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: #2a2a2a;
 }
 
 .select-option span {
@@ -589,8 +589,8 @@
 .checkbox-mark {
   width: 20px;
   height: 20px;
-  background: #252525;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #141414;
+  border: 1px solid #333;
   border-radius: 4px;
   display: flex;
   align-items: center;
@@ -649,8 +649,8 @@
 }
 
 .commands-inputs input {
-  background: #0d0d0d;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #141414;
+  border: 1px solid #333;
   border-radius: 8px;
   padding: 12px 14px;
   color: #fff;
@@ -659,7 +659,11 @@
 }
 
 .commands-inputs input::placeholder {
-  color: #555;
+  color: #666;
+}
+
+.commands-inputs input:focus {
+  border-color: #0099ff;
 }
 
 /* Variables */
@@ -699,7 +703,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 24px;
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid #333;
 }
 
 .steps-indicator {
@@ -725,17 +729,17 @@
 
 .btn-default {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid #333;
   border-radius: 8px;
   padding: 10px 20px;
-  color: #aaa;
+  color: #888;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.15s;
 }
 
 .btn-default:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: #2a2a2a;
   color: #fff;
 }
 
