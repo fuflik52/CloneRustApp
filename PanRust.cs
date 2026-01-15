@@ -510,14 +510,21 @@ namespace Oxide.Plugins
             }
             
             // Если не задан или невалидный - получаем внешний IP через сервис
-            webrequest.Enqueue("https://api.ipify.org", null, (code, response) =>
+            try
             {
-                if (code == 200 && !string.IsNullOrEmpty(response))
+                webrequest.Enqueue("https://api.ipify.org", null, (code, response) =>
                 {
-                    _serverIp = response.Trim();
-                    Puts($"Server IP detected: {_serverIp}");
-                }
-            }, this, Oxide.Core.Libraries.RequestMethod.GET);
+                    if (code == 200 && !string.IsNullOrEmpty(response))
+                    {
+                        _serverIp = response.Trim();
+                        Puts($"Server IP detected: {_serverIp}");
+                    }
+                }, this, Oxide.Core.Libraries.RequestMethod.GET);
+            }
+            catch (Exception ex)
+            {
+                PrintError($"[FetchServerIp] Error: {ex.Message}");
+            }
         }
 
         string GetServerAddress() => string.IsNullOrEmpty(_serverIp) ? "" : _serverIp;
@@ -528,7 +535,18 @@ namespace Oxide.Plugins
             foreach (var p in BasePlayer.activePlayerList) pl.Add(MakePlayer(p, true));
             foreach (var p in BasePlayer.sleepingPlayerList) pl.Add(MakePlayer(p, false));
             var json = JsonConvert.SerializeObject(new { hostname = GetServerAddress(), port = ConVar.Server.port, name = ConVar.Server.hostname, players = pl });
-            webrequest.Enqueue($"{API}/sync", json, (c, r) => { if (c != 200) Puts($"Sync err: {c}"); }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            
+            try
+            {
+                webrequest.Enqueue($"{API}/sync", json, (c, r) => 
+                { 
+                    if (c != 200) Puts($"Sync err: {c}"); 
+                }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            }
+            catch (Exception ex)
+            {
+                PrintError($"[Sync] Error: {ex.Message}");
+            }
         }
 
         void SendState()
@@ -545,7 +563,18 @@ namespace Oxide.Plugins
             }
             
             var json = JsonConvert.SerializeObject(new { hostname = GetServerAddress(), port = ConVar.Server.port, name = ConVar.Server.hostname, online = BasePlayer.activePlayerList.Count, max_players = ConVar.Server.maxplayers, players = pl });
-            webrequest.Enqueue($"{API}/state", json, (c, r) => { }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            
+            try
+            {
+                webrequest.Enqueue($"{API}/state", json, (c, r) => 
+                { 
+                    if (c != 200 && c != 0) PrintWarning($"[SendState] Failed: {c}");
+                }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            }
+            catch (Exception ex)
+            {
+                PrintError($"[SendState] Error: {ex.Message}");
+            }
         }
 
         object MakePlayer(BasePlayer p, bool on)
@@ -579,11 +608,19 @@ namespace Oxide.Plugins
             };
 
             string json = JsonConvert.SerializeObject(data);
-            webrequest.Enqueue($"{API}/map-url", json, (c, r) => 
-            { 
-                if (c == 200) Puts("Map URL sent successfully");
-                else if (c != 0) PrintWarning($"Failed to send map URL: {c}");
-            }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            
+            try
+            {
+                webrequest.Enqueue($"{API}/map-url", json, (c, r) => 
+                { 
+                    if (c == 200) Puts("Map URL sent successfully");
+                    else if (c != 0) PrintWarning($"Failed to send map URL: {c}");
+                }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            }
+            catch (Exception ex)
+            {
+                PrintError($"[SendMapUrl] Error: {ex.Message}");
+            }
         }
 
         void SendChat()
@@ -591,7 +628,19 @@ namespace Oxide.Plugins
             if (string.IsNullOrEmpty(_meta.Key) || _chatQueue.Count == 0) return;
             var msgs = new List<ChatMsg>(_chatQueue); _chatQueue.Clear();
             var json = JsonConvert.SerializeObject(new { messages = msgs, server = ConVar.Server.hostname });
-            webrequest.Enqueue($"{API}/chat", json, (c, r) => { if (c != 200) _chatQueue.AddRange(msgs); }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            
+            try
+            {
+                webrequest.Enqueue($"{API}/chat", json, (c, r) => 
+                { 
+                    if (c != 200) _chatQueue.AddRange(msgs); 
+                }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            }
+            catch (Exception ex)
+            {
+                _chatQueue.AddRange(msgs);
+                PrintError($"[SendChat] Error: {ex.Message}");
+            }
         }
 
         void SendKills()
@@ -599,7 +648,19 @@ namespace Oxide.Plugins
             if (string.IsNullOrEmpty(_meta.Key) || _killsQueue.Count == 0) return;
             var kills = new List<KillDto>(_killsQueue); _killsQueue.Clear();
             var json = JsonConvert.SerializeObject(new { kills, server = ConVar.Server.hostname });
-            webrequest.Enqueue($"{API}/kills", json, (c, r) => { if (c != 200) _killsQueue.AddRange(kills); }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            
+            try
+            {
+                webrequest.Enqueue($"{API}/kills", json, (c, r) => 
+                { 
+                    if (c != 200) _killsQueue.AddRange(kills); 
+                }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            }
+            catch (Exception ex)
+            {
+                _killsQueue.AddRange(kills);
+                PrintError($"[SendKills] Error: {ex.Message}");
+            }
         }
 
         void FetchCmd()
@@ -759,7 +820,19 @@ namespace Oxide.Plugins
             if (string.IsNullOrEmpty(_meta.Key) || _reportsQueue.Count == 0) return;
             var reports = new List<PluginReportDto>(_reportsQueue); _reportsQueue.Clear();
             var json = JsonConvert.SerializeObject(new { reports });
-            webrequest.Enqueue($"{API}/reports", json, (c, r) => { if (c != 200) _reportsQueue.AddRange(reports); }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            
+            try
+            {
+                webrequest.Enqueue($"{API}/reports", json, (c, r) => 
+                { 
+                    if (c != 200) _reportsQueue.AddRange(reports); 
+                }, this, Oxide.Core.Libraries.RequestMethod.POST, Headers());
+            }
+            catch (Exception ex)
+            {
+                _reportsQueue.AddRange(reports);
+                PrintError($"[SendReports] Error: {ex.Message}");
+            }
         }
 
         #region UI Report
