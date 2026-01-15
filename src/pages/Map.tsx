@@ -164,8 +164,10 @@ export default function Map() {
         ctx.stroke()
       }
 
-      // Рисуем всех игроков
+      // Рисуем только онлайн игроков
       mapData.players.forEach((player) => {
+        // Пропускаем оффлайн игроков
+        if (player.online === false) return
         if (!player.position) return
         
         const { x, z } = player.position
@@ -174,7 +176,7 @@ export default function Map() {
         const canvasY = (worldSize / 2 - z) * mapScale
 
         // Уменьшенный размер точек
-        const baseDotSize = 8 // Уменьшили с 12-14 до 8
+        const baseDotSize = 8
         const dotSize = Math.max(baseDotSize, baseDotSize / scale)
 
         // Рисуем тень
@@ -183,16 +185,13 @@ export default function Map() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
         ctx.fill()
 
-        // Рисуем точку игрока
+        // Рисуем точку игрока (желтый цвет для онлайн)
         ctx.beginPath()
         ctx.arc(canvasX, canvasY, dotSize, 0, Math.PI * 2)
-        
-        // Цвет точки: онлайн - желтый (#f3c366), оффлайн - красный
-        const dotColor = player.online !== false ? '#f3c366' : '#ef4444'
-        ctx.fillStyle = dotColor
+        ctx.fillStyle = '#f3c366'
         ctx.fill()
         
-        // Обводка - темно-коричневая для всех
+        // Обводка - темно-коричневая
         ctx.strokeStyle = '#3b311f'
         ctx.lineWidth = Math.max(2, 3 / scale)
         ctx.stroke()
@@ -460,9 +459,9 @@ export default function Map() {
           maxWidth: 250
         }}>
           <div style={{ fontWeight: 'bold', marginBottom: 8, fontSize: 12, color: '#888' }}>
-            Игроки ({mapData.players.length})
+            Онлайн ({mapData.players.filter(p => p.online !== false).length})
           </div>
-          {mapData.players.map((player) => (
+          {mapData.players.filter(p => p.online !== false).map((player) => (
             <div
               key={player.steam_id}
               onClick={() => zoomToPlayer(player)}
@@ -491,7 +490,7 @@ export default function Map() {
                 width: 8,
                 height: 8,
                 borderRadius: '50%',
-                background: player.online !== false ? '#f3c366' : '#ef4444',
+                background: '#f3c366',
                 border: '2px solid #3b311f',
                 flexShrink: 0
               }} />
