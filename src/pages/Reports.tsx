@@ -92,7 +92,12 @@ function TrashIcon() {
   )
 }
 
-export default function Reports() {
+interface ReportsProps {
+  targetSteamId?: string
+  isPlayerProfile?: boolean
+}
+
+export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps = {}) {
   const [reports, setReports] = useState<Report[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -109,7 +114,12 @@ export default function Reports() {
     const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 секунд таймаут
     
     try {
-      const res = await fetch(`/api/servers/${serverId}/reports`, {
+      // Если есть targetSteamId, запрашиваем репорты конкретного игрока
+      const url = targetSteamId 
+        ? `/api/player/${targetSteamId}/reports`
+        : `/api/servers/${serverId}/reports`
+        
+      const res = await fetch(url, {
         signal: controller.signal
       })
       
@@ -139,10 +149,10 @@ export default function Reports() {
   }
 
   useEffect(() => {
-    if (serverId) {
+    if (serverId || targetSteamId) {
       fetchReports()
     }
-  }, [serverId])
+  }, [serverId, targetSteamId])
 
   const deleteReport = async (id: string) => {
     try {
@@ -166,7 +176,7 @@ export default function Reports() {
   }
 
   return (
-    <div className="page reports-page">
+    <div className={`page reports-page ${isPlayerProfile ? 'in-profile' : ''}`}>
       <div className="reports-table-container">
         <div className="reports-table">
           <div className="table-header">
@@ -174,24 +184,32 @@ export default function Reports() {
               <DateIcon />
               <span>Дата</span>
             </div>
-            <div className="th server-col">
-              <ServerIcon />
-              <span>Сервер</span>
-            </div>
+            {!isPlayerProfile && (
+              <div className="th server-col">
+                <ServerIcon />
+                <span>Сервер</span>
+              </div>
+            )}
             <div className="th player-col">
               <ReporterIcon />
               <span>Отправил жалобу</span>
             </div>
-            <div className="th arrow-col"></div>
-            <div className="th player-col">
-              <SuspectIcon />
-              <span>Подозреваемый</span>
-            </div>
+            {!isPlayerProfile && (
+              <>
+                <div className="th arrow-col"></div>
+                <div className="th player-col">
+                  <SuspectIcon />
+                  <span>Подозреваемый</span>
+                </div>
+              </>
+            )}
             <div className="th spacer-col"></div>
-            <div className="th kd-col">
-              <KdIcon />
-              <span>K/D</span>
-            </div>
+            {!isPlayerProfile && (
+              <div className="th kd-col">
+                <KdIcon />
+                <span>K/D</span>
+              </div>
+            )}
             <div className="th reports-col">
               <ReportsCountIcon />
               <span>Жалоб</span>
@@ -223,9 +241,11 @@ export default function Reports() {
                         <span className="date-time">{time}</span>
                       </div>
                     </div>
-                    <div className="td server-col">
-                      <span className="server-name">{report.serverName}</span>
-                    </div>
+                    {!isPlayerProfile && (
+                      <div className="td server-col">
+                        <span className="server-name">{report.serverName}</span>
+                      </div>
+                    )}
                     <div className="td player-col">
                       <div className="player-box">
                         <div className="player-avatar-wrap">
@@ -242,29 +262,35 @@ export default function Reports() {
                         </div>
                       </div>
                     </div>
-                    <div className="td arrow-cell arrow-col">
-                      <ArrowIcon />
-                    </div>
-                    <div className="td player-col">
-                      <div className="player-box target">
-                        <div className="player-avatar-wrap">
-                          <img 
-                            src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
-                            alt="" 
-                            className="player-avatar"
-                          />
-                          <div className="status-badge offline"></div>
+                    {!isPlayerProfile && (
+                      <>
+                        <div className="td arrow-cell arrow-col">
+                          <ArrowIcon />
                         </div>
-                        <div className="player-info">
-                          <span className="player-name">{report.target_name}</span>
-                          <span className="player-steamid">{report.target_steam_id}</span>
+                        <div className="td player-col">
+                          <div className="player-box target">
+                            <div className="player-avatar-wrap">
+                              <img 
+                                src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
+                                alt="" 
+                                className="player-avatar"
+                              />
+                              <div className="status-badge offline"></div>
+                            </div>
+                            <div className="player-info">
+                              <span className="player-name">{report.target_name}</span>
+                              <span className="player-steamid">{report.target_steam_id}</span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                    </div>
+                      </>
+                    )}
                     <div className="td spacer-col"></div>
-                    <div className="td kd-col">
-                      <span className="kd-value">{(report.target_kd || 0).toFixed(2)}</span>
-                    </div>
+                    {!isPlayerProfile && (
+                      <div className="td kd-col">
+                        <span className="kd-value">{(report.target_kd || 0).toFixed(2)}</span>
+                      </div>
+                    )}
                     <div className="td reports-col">
                       <span className="reports-count">{report.target_reports_count || 1} шт.</span>
                     </div>
@@ -294,8 +320,15 @@ export default function Reports() {
           width: calc(100vw - 260px);
           max-width: none;
         }
+        .reports-page.in-profile {
+          margin: 0;
+          width: 100%;
+        }
         .main-content.collapsed .reports-page {
           width: calc(100vw - 60px);
+        }
+        .main-content.collapsed .reports-page.in-profile {
+          width: 100%;
         }
         .reports-table-container {
           background: #151515;
@@ -305,6 +338,10 @@ export default function Reports() {
           border-bottom: 1px solid #262626;
           width: 100%;
           margin: 0;
+        }
+        .in-profile .reports-table-container {
+          background: transparent;
+          border-bottom: none;
         }
         .reports-table {
           width: 100%;
@@ -316,6 +353,10 @@ export default function Reports() {
           background: #151515;
           width: 100%;
           box-sizing: border-box;
+        }
+        .in-profile .table-header {
+          background: #1a1a1a;
+          border-bottom: 1px solid #333;
         }
         .th {
           padding: 14px 16px;
@@ -349,6 +390,9 @@ export default function Reports() {
           min-width: 200px;
           flex: 1 1 0;
         }
+        .in-profile .th.player-col {
+          min-width: 150px;
+        }
         .th.arrow-col {
           min-width: 30px;
           flex: 0 0 40px;
@@ -376,12 +420,18 @@ export default function Reports() {
         .table-body {
           background: #0f0f0f;
         }
+        .in-profile .table-body {
+          background: transparent;
+        }
         .table-row {
           display: flex;
           border-bottom: 1px solid #1a1a1a;
           transition: background 0.15s;
           width: 100%;
           box-sizing: border-box;
+        }
+        .in-profile .table-row {
+          border-bottom: 1px solid #1a1a1a;
         }
         .table-row:hover {
           background: #1a1a1a;
@@ -403,6 +453,9 @@ export default function Reports() {
         .td.player-col {
           min-width: 200px;
           flex: 1 1 0;
+        }
+        .in-profile .td.player-col {
+          min-width: 150px;
         }
         .td.arrow-col {
           min-width: 30px;

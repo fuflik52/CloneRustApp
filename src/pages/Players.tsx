@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import { useServer } from '../App'
+import Reports from './Reports'
 
 interface PlayerStats {
   kills: number
@@ -1252,7 +1253,11 @@ export default function Players() {
                   </div>
                 )}
 
-                {activeTab !== 'overview' && activeTab !== 'activity' && activeTab !== 'stats' && (
+                {activeTab === 'reports' && selectedPlayer && (
+                  <Reports targetSteamId={selectedPlayer.steam_id} isPlayerProfile={true} />
+                )}
+
+                {activeTab !== 'overview' && activeTab !== 'activity' && activeTab !== 'stats' && activeTab !== 'reports' && (
                   <div className="tab-placeholder">
                     <div className="placeholder-icon-box">
                       <BoxIcon />

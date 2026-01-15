@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { allItems } from '../data/menuItems'
 import { getIcon } from './icons/MenuIcons'
 
@@ -25,6 +25,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
   const [results, setResults] = useState<SearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const { serverSlug } = useParams()
 
   // Поиск по всему
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
       name: item.name,
       subtitle: 'Раздел',
       icon: item.icon,
-      url: `/${item.slug}`
+      url: serverSlug ? `/${serverSlug}/${item.slug}` : `/${item.slug}`
     }))
     combined.push(...pages)
 
@@ -67,7 +68,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
             subtitle: p.country ? `${p.country}` : 'Игрок',
             avatar: p.avatar,
             online: false,
-            url: `/players?player=${p.steam_id}`
+            url: serverSlug ? `/${serverSlug}/players?player=${p.steam_id}` : `/players?player=${p.steam_id}`
           }))
           setResults(prev => [...prev.filter(r => r.type === 'page'), ...filtered].slice(0, 10))
         }
@@ -77,7 +78,7 @@ export default function SearchModal({ open, onClose }: SearchModalProps) {
 
     const debounce = setTimeout(searchPlayers, 200)
     return () => clearTimeout(debounce)
-  }, [query])
+  }, [query, serverSlug])
 
   const handleSelect = useCallback((result: SearchResult) => {
     navigate(result.url)
