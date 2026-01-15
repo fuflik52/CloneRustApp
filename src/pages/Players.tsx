@@ -254,17 +254,15 @@ export default function Players() {
 
     if (action.confirmBefore && !confirmed) {
       setPendingAction(action)
-      // Используем setTimeout, чтобы избежать срабатывания клика на новой модалке в том же цикле событий
-      setTimeout(() => {
-        setShowActionConfirmModal(true)
-      }, 0)
+      setShowActionConfirmModal(true)
+      setContextMenu(null)
       return
     }
 
-    // Если подтверждено, закрываем модалку перед выполнением
     if (confirmed) {
       setShowActionConfirmModal(false)
-      setPendingAction(null)
+      // Даем время на анимацию закрытия если она есть, прежде чем очищать данные
+      setTimeout(() => setPendingAction(null), 200)
     }
 
     try {
@@ -556,6 +554,8 @@ export default function Players() {
     setSelectedPlayer(null)
     setSteamInfo(null)
     setPlayerStats(null)
+    setShowActionConfirmModal(false)
+    setPendingAction(null)
     // Убираем player из URL
     const url = new URL(window.location.href)
     url.searchParams.delete('player')
@@ -1272,11 +1272,11 @@ export default function Players() {
 
       {/* Action Confirmation Modal */}
       {showActionConfirmModal && pendingAction && selectedPlayer && (
-        <div className="action-modal-overlay" onClick={() => { setShowActionConfirmModal(false); setPendingAction(null); }}>
+        <div className="action-modal-overlay" onClick={() => { setShowActionConfirmModal(false); setTimeout(() => setPendingAction(null), 200); }}>
           <div className="action-modal confirm-modal" onClick={e => e.stopPropagation()}>
             <div className="action-modal-header">
               <span>Подтверждение действия</span>
-              <button className="action-modal-close" onClick={() => { setShowActionConfirmModal(false); setPendingAction(null); }}><CloseIcon /></button>
+              <button className="action-modal-close" onClick={() => { setShowActionConfirmModal(false); setTimeout(() => setPendingAction(null), 200); }}><CloseIcon /></button>
             </div>
             <div className="action-modal-content">
               <div className="action-modal-player">
@@ -1291,7 +1291,7 @@ export default function Players() {
               </div>
             </div>
             <div className="action-modal-footer">
-              <button className="btn-cancel" onClick={() => { setShowActionConfirmModal(false); setPendingAction(null); }}>Отмена</button>
+              <button className="btn-cancel" onClick={() => { setShowActionConfirmModal(false); setTimeout(() => setPendingAction(null), 200); }}>Отмена</button>
               <button 
                 className={`btn-action ${pendingAction.accessLevel === 'very-dangerous' || pendingAction.accessLevel === 'admin' ? 'destructive' : ''}`} 
                 onClick={() => executeCustomAction(pendingAction, true)}
