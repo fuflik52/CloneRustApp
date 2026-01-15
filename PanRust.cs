@@ -437,6 +437,18 @@ namespace Oxide.Plugins
         string GetIP(BasePlayer p) { var ip = p.Connection?.ipaddress; if (string.IsNullOrEmpty(ip)) return ""; var i = ip.IndexOf(':'); return i > 0 ? ip.Substring(0, i) : ip; }
         Dictionary<string, string> Headers() => new Dictionary<string, string> { ["Content-Type"] = "application/json", ["Authorization"] = $"Bearer {_meta.Key}" };
         
+        static string HexToRustFormat(string hex)
+        {
+            if (string.IsNullOrEmpty(hex)) return "1 1 1 1";
+            hex = hex.Replace("#", "");
+            if (hex.Length == 6) hex += "FF";
+            var r = int.Parse(hex.Substring(0, 2), System.Globalization.NumberStyles.HexNumber) / 255f;
+            var g = int.Parse(hex.Substring(2, 2), System.Globalization.NumberStyles.HexNumber) / 255f;
+            var b = int.Parse(hex.Substring(4, 2), System.Globalization.NumberStyles.HexNumber) / 255f;
+            var a = int.Parse(hex.Substring(6, 2), System.Globalization.NumberStyles.HexNumber) / 255f;
+            return $"{r} {g} {b} {a}";
+        }
+
         string GetTimeLeft(long ms)
         {
             if (ms <= 0) return "0 сек";
@@ -715,9 +727,8 @@ namespace Oxide.Plugins
             var size = (float)(700 - lineMargin * lineAmount) / lineAmount;
 
             var list = BasePlayer.activePlayerList.ToList();
-            var finalList = list.FindAll(v => v.displayName.ToLower().Contains(search.ToLower()) || v.UserIDString.Contains(search) || string.IsNullOrEmpty(search));
-
-            finalList = finalList.Skip(page * 18).Take(18).ToList();
+            var filteredList = list.FindAll(v => v.displayName.ToLower().Contains(search.ToLower()) || v.UserIDString.Contains(search) || string.IsNullOrEmpty(search));
+            var finalList = filteredList.Skip(page * 18).Take(18).ToList();
 
             if (finalList.Count == 0 && page > 0)
             {
@@ -739,7 +750,7 @@ namespace Oxide.Plugins
                 container.Add(new CuiButton()
                 {
                     RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1", OffsetMax = "0 0" },
-                    Button = { Color = "0.2 0.2 0.2 0.5", Sprite = "assets/content/ui/ui.background.transparent.radial.psd", Close = ReportLayer },
+                    Button = { Color = HexToRustFormat("#34343480"), Sprite = "assets/content/ui/ui.background.transparent.radial.psd", Close = ReportLayer },
                     Text = { Text = "" }
                 }, ReportLayer);
             }
@@ -754,60 +765,143 @@ namespace Oxide.Plugins
                 Image = { Color = "0 0 0 0" }
             }, ReportLayer, ReportLayer + ".C", ReportLayer + ".C");
 
+            // Navigation Panel (Right side)
+            container.Add(new CuiPanel
+            {
+                RectTransform = { AnchorMin = "1 0", AnchorMax = "1 1", OffsetMin = "-36 0", OffsetMax = "0 0" },
+                Image = { Color = "0 0 0 0" }
+            }, ReportLayer + ".C", ReportLayer + ".R");
+
+            // Up Button
+            container.Add(new CuiButton
+            {
+                RectTransform = { AnchorMin = "0 0.5", AnchorMax = "1 1", OffsetMin = "0 4", OffsetMax = "0 0" },
+                Button = { Color = HexToRustFormat(page == 0 ? "#D0C6BD33" : "#D0C6BD4D"), Command = page == 0 ? "" : $"panrust.page {page - 1} {search}" },
+                Text = { Text = "↑", Align = TextAnchor.MiddleCenter, Font = "robotocondensed-bold.ttf", FontSize = 24, Color = HexToRustFormat(page == 0 ? "#D0C6BD4D" : "#D0C6BD") }
+            }, ReportLayer + ".R");
+
+            // Down Button
+            var hasNext = filteredList.Count > (page + 1) * 18;
+            container.Add(new CuiButton
+            {
+                RectTransform = { AnchorMin = "0 0", AnchorMax = "1 0.5", OffsetMin = "0 0", OffsetMax = "0 -4" },
+                Button = { Color = HexToRustFormat(hasNext ? "#D0C6BD4D" : "#D0C6BD33"), Command = hasNext ? $"panrust.page {page + 1} {search}" : "" },
+                Text = { Text = "↓", Align = TextAnchor.MiddleCenter, Font = "robotocondensed-bold.ttf", FontSize = 24, Color = HexToRustFormat(hasNext ? "#D0C6BD" : "#D0C6BD4D") }
+            }, ReportLayer + ".R");
+
             // Header
             container.Add(new CuiLabel
             {
                 RectTransform = { AnchorMin = "0 1", AnchorMax = "1 1", OffsetMin = "0 7", OffsetMax = "0 47" },
-                Text = { Text = "Выберите игрока", Font = "robotocondensed-bold.ttf", Color = "0.8 0.8 0.8 1", FontSize = 24, Align = TextAnchor.MiddleLeft }
+                Text = { Text = "Выберите игрока", Font = "robotocondensed-bold.ttf", Color = HexToRustFormat("#D0C6BD"), FontSize = 24, Align = TextAnchor.MiddleLeft }
             }, ReportLayer + ".C");
 
-            // Players Grid
-            for (var i = 0; i < finalList.Count; i++)
+            // Search Input (Simpler than RustApp but functional)
+            container.Add(new CuiPanel
             {
-                var target = finalList[i];
+                RectTransform = { AnchorMin = "1 1", AnchorMax = "1 1", OffsetMin = "-250 8", OffsetMax = "0 43" },
+                Image = { Color = HexToRustFormat("#D0C6BD33") }
+            }, ReportLayer + ".C", ReportLayer + ".S");
+
+            container.Add(new CuiElement
+            {
+                Parent = ReportLayer + ".S",
+                Components = {
+                    new CuiInputFieldComponent { FontSize = 14, Font = "robotocondensed-regular.ttf", Color = HexToRustFormat("#D0C6BD80"), Align = TextAnchor.MiddleLeft, Command = "panrust.search ", NeedsKeyboard = true, Text = "Поиск..." },
+                    new CuiRectTransformComponent { AnchorMin = "0 0", AnchorMax = "1 1", OffsetMin = "10 0", OffsetMax = "-10 0" }
+                }
+            });
+
+            // Grid Container
+            container.Add(new CuiPanel
+            {
+                RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1", OffsetMin = "0 0", OffsetMax = "-40 0" },
+                Image = { Color = "0 0 0 0" }
+            }, ReportLayer + ".C", ReportLayer + ".L");
+
+            // Players Grid (Always 18 slots)
+            for (var i = 0; i < 18; i++)
+            {
                 var x = i % 6;
                 var y = i / 6;
 
                 var min = $"{x * size + lineMargin * x} -{(y + 1) * size + lineMargin * y}";
                 var max = $"{(x + 1) * size + lineMargin * x} -{y * size + lineMargin * y}";
 
-                var panelName = ReportLayer + $".{target.UserIDString}";
-                container.Add(new CuiPanel
+                var target = finalList.ElementAtOrDefault(i);
+                if (target != null)
                 {
-                    RectTransform = { AnchorMin = "0 1", AnchorMax = "0 1", OffsetMin = min, OffsetMax = max },
-                    Image = { Color = "0.8 0.8 0.8 0.2" }
-                }, ReportLayer + ".C", panelName);
+                    var panelName = ReportLayer + $".{target.UserIDString}";
+                    container.Add(new CuiPanel
+                    {
+                        RectTransform = { AnchorMin = "0 1", AnchorMax = "0 1", OffsetMin = min, OffsetMax = max },
+                        Image = { Color = HexToRustFormat("#D0C6BD33") }
+                    }, ReportLayer + ".L", panelName);
 
-                container.Add(new CuiElement
-                {
-                    Parent = panelName,
-                    Components = {
-                        new CuiRawImageComponent { SteamId = target.UserIDString, Sprite = "assets/icons/loading.png" },
-                        new CuiRectTransformComponent { AnchorMin = "0 0", AnchorMax = "1 1" }
-                    }
-                });
+                    container.Add(new CuiElement
+                    {
+                        Parent = panelName,
+                        Components = {
+                            new CuiRawImageComponent { SteamId = target.UserIDString, Sprite = "assets/icons/loading.png" },
+                            new CuiRectTransformComponent { AnchorMin = "0 0", AnchorMax = "1 1" }
+                        }
+                    });
 
-                container.Add(new CuiPanel
-                {
-                    RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1" },
-                    Image = { Sprite = "assets/content/ui/ui.background.transparent.linear.psd", Color = "0.15 0.15 0.15 0.95" }
-                }, panelName);
+                    container.Add(new CuiPanel
+                    {
+                        RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1" },
+                        Image = { Sprite = "assets/content/ui/ui.background.transparent.linear.psd", Color = HexToRustFormat("#282828F2") }
+                    }, panelName);
 
-                container.Add(new CuiLabel
-                {
-                    RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1", OffsetMin = "6 5", OffsetMax = "0 0" },
-                    Text = { Text = target.displayName.Length > 14 ? target.displayName.Substring(0, 12) + ".." : target.displayName, Align = TextAnchor.LowerLeft, Font = "robotocondensed-bold.ttf", FontSize = 12, Color = "0.8 0.8 0.8 1" }
-                }, panelName);
+                    container.Add(new CuiLabel
+                    {
+                        RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1", OffsetMin = "6 16", OffsetMax = "0 0" },
+                        Text = { Text = target.displayName.Length > 14 ? target.displayName.Substring(0, 12) + ".." : target.displayName, Align = TextAnchor.LowerLeft, Font = "robotocondensed-bold.ttf", FontSize = 13, Color = HexToRustFormat("#D0C6BD") }
+                    }, panelName);
 
-                container.Add(new CuiButton
+                    container.Add(new CuiLabel
+                    {
+                        RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1", OffsetMin = "6 5", OffsetMax = "0 0" },
+                        Text = { Text = target.UserIDString, Align = TextAnchor.LowerLeft, Font = "robotocondensed-regular.ttf", FontSize = 10, Color = HexToRustFormat("#D0C6BD80") }
+                    }, panelName);
+
+                    container.Add(new CuiButton
+                    {
+                        RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1" },
+                        Button = { Color = "0 0 0 0", Command = $"panrust.select {target.UserIDString} {min.Replace(' ', ',')} {max.Replace(' ', ',')} {x >= 3}" },
+                        Text = { Text = "" }
+                    }, panelName);
+                }
+                else
                 {
-                    RectTransform = { AnchorMin = "0 0", AnchorMax = "1 1" },
-                    Button = { Color = "0 0 0 0", Command = $"panrust.select {target.UserIDString} {min.Replace(' ', ',')} {max.Replace(' ', ',')} {x >= 3}" },
-                    Text = { Text = "" }
-                }, panelName);
+                    container.Add(new CuiPanel
+                    {
+                        RectTransform = { AnchorMin = "0 1", AnchorMax = "0 1", OffsetMin = min, OffsetMax = max },
+                        Image = { Color = HexToRustFormat("#D0C6BD33") }
+                    }, ReportLayer + ".L");
+                }
             }
 
             CuiHelper.AddUi(player, container);
+        }
+
+        [ConsoleCommand("panrust.page")]
+        void CmdPage(ConsoleSystem.Arg a)
+        {
+            var player = a.Player();
+            if (player == null || a.Args?.Length < 1) return;
+            var page = int.Parse(a.Args[0]);
+            var search = a.Args.Length > 1 ? a.Args[1] : "";
+            DrawReportInterface(player, page, search, true);
+        }
+
+        [ConsoleCommand("panrust.search")]
+        void CmdSearch(ConsoleSystem.Arg a)
+        {
+            var player = a.Player();
+            if (player == null) return;
+            var search = a.Args?.Length > 0 ? a.Args[0] : "";
+            DrawReportInterface(player, 0, search, true);
         }
 
         [ConsoleCommand("panrust.select")]
@@ -835,8 +929,17 @@ namespace Oxide.Plugins
             container.Add(new CuiPanel
             {
                 RectTransform = { AnchorMin = "0 1", AnchorMax = "0 1", OffsetMin = min, OffsetMax = max },
-                Image = { Color = "0 0 0 1" }
+                Image = { Color = "0.8 0.2 0.2 0.3" } // Reddish semi-transparent selection
             }, ReportLayer + ".C", ReportLayer + ".T");
+
+            container.Add(new CuiElement
+            {
+                Parent = ReportLayer + ".T",
+                Components = {
+                    new CuiOutlineComponent { Color = "0.8 0.2 0.2 1", Distance = "1 1" },
+                    new CuiRectTransformComponent { AnchorMin = "0 0", AnchorMax = "1 1" }
+                }
+            });
 
             container.Add(new CuiButton
             {
@@ -901,7 +1004,6 @@ namespace Oxide.Plugins
         #endregion
 
         double CurrentTime() => DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-        string GetTimeLeft(long ms) => ms <= 0 ? "0с" : ms < 60000 ? $"{ms / 1000}с" : ms < 3600000 ? $"{ms / 60000}м" : $"{ms / 3600000}ч";
 
         class Cmd 
         { 
