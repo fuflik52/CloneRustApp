@@ -616,6 +616,51 @@ app.get('/api/servers/:serverId/players/:steamId', async (req, res) => {
   });
 });
 
+// Global search players across all servers
+app.get('/api/players/search', (req, res) => {
+  const { q } = req.query;
+  if (!q) return res.json([]);
+  
+  const data = loadServers();
+  const servers = Object.values(data.servers);
+  const query = q.toLowerCase();
+  const allResults = [];
+  const seenIds = new Set();
+  
+  // Search across all servers
+  for (const server of servers) {
+    const db = loadServerPlayers(server.id);
+    const results = Object.values(db.players).filter(p => {
+      const steamName = (p.steam_name || '').toLowerCase();
+      const steamId = (p.steam_id || '').toLowerCase();
+      const name = (p.name || '').toLowerCase();
+      
+      if (steamName.includes(query)) return true;
+      if (steamId.includes(query)) return true;
+      if (name.includes(query)) return true;
+      if (p.names_history?.some(h => (h.name || '').toLowerCase().includes(query))) return true;
+      if (p.ips_history?.some(h => (h.ip || '').includes(query))) return true;
+      return false;
+    });
+    
+    // Add unique players (avoid duplicates across servers)
+    for (const player of results) {
+      if (!seenIds.has(player.steam_id)) {
+        seenIds.add(player.steam_id);
+        allResults.push({
+          steam_id: player.steam_id,
+          name: player.name || player.steam_name || '',
+          steam_name: player.steam_name || player.name || '',
+          avatar: player.avatar || '',
+          country: player.country || ''
+        });
+      }
+    }
+  }
+  
+  res.json(allResults.slice(0, 50));
+});
+
 // Search players in server
 app.get('/api/servers/:serverId/players/search', (req, res) => {
   const { q } = req.query;
