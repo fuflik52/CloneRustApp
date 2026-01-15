@@ -607,21 +607,18 @@ namespace Oxide.Plugins
             if (string.IsNullOrEmpty(_meta.Key)) return;
             webrequest.Enqueue($"{API}/cmd", null, (c, r) =>
             {
-                if (r == null)
-                {
-                    // Сервер не ответил или ошибка соединения
-                    return;
-                }
-                if (c != 200)
-                {
-                    if (c == 401) Puts("[FetchCmd] Unauthorized - check API key");
-                    return;
-                }
-                if (string.IsNullOrEmpty(r) || r == "[]" || r == "null") return;
                 try
                 {
+                    if (c != 200)
+                    {
+                        if (c == 401) Puts("[FetchCmd] Unauthorized - check API key");
+                        return;
+                    }
+                    if (string.IsNullOrEmpty(r) || r == "[]" || r == "null") return;
+                    
                     var commands = JsonConvert.DeserializeObject<List<Cmd>>(r);
                     if (commands == null || commands.Count == 0) return;
+                    
                     foreach (var cmd in commands)
                     {
                         if (cmd == null || string.IsNullOrEmpty(cmd.type)) continue;
@@ -749,7 +746,11 @@ namespace Oxide.Plugins
                                 break;
                         }
                     }
-                } catch { }
+                }
+                catch (Exception ex)
+                {
+                    PrintError($"[FetchCmd] Error: {ex.Message}");
+                }
             }, this, Oxide.Core.Libraries.RequestMethod.GET, Headers());
         }
 
