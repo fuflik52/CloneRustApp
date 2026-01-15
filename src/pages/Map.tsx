@@ -122,10 +122,10 @@ export default function Map() {
           
           const canvasX = (x + worldSize / 2) * mapScale
           const canvasY = (worldSize / 2 - z) * mapScale
-          const dotSize = 8
+          const dotSize = 5 // Уменьшенный размер точек
 
           ctx.beginPath()
-          ctx.arc(canvasX + 1, canvasY + 1, dotSize, 0, Math.PI * 2)
+          ctx.arc(canvasX + 0.5, canvasY + 0.5, dotSize, 0, Math.PI * 2)
           ctx.fillStyle = 'rgba(0, 0, 0, 0.3)'
           ctx.fill()
 
@@ -134,7 +134,7 @@ export default function Map() {
           ctx.fillStyle = '#f3c366'
           ctx.fill()
           ctx.strokeStyle = '#3b311f'
-          ctx.lineWidth = 2
+          ctx.lineWidth = 1.5
           ctx.stroke()
           
           ctx.beginPath()
@@ -144,12 +144,12 @@ export default function Map() {
 
           if (scale >= 0.6) {
             ctx.save()
-            ctx.font = 'bold 14px Arial'
+            ctx.font = 'bold 11px Arial'
             ctx.fillStyle = '#fff'
             ctx.strokeStyle = '#000'
-            ctx.lineWidth = 3
-            ctx.strokeText(player.name, canvasX + dotSize + 6, canvasY + 4)
-            ctx.fillText(player.name, canvasX + dotSize + 6, canvasY + 4)
+            ctx.lineWidth = 2.5
+            ctx.strokeText(player.name, canvasX + dotSize + 4, canvasY + 3)
+            ctx.fillText(player.name, canvasX + dotSize + 4, canvasY + 3)
             ctx.restore()
           }
         })
@@ -246,9 +246,21 @@ export default function Map() {
   }, [scale, offset])
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    setCopiedText(text)
-    setTimeout(() => setCopiedText(''), 2000)
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+      setCopiedText(text)
+      setTimeout(() => setCopiedText(''), 2000)
+    } else {
+      // Fallback для старых браузеров
+      const textarea = document.createElement('textarea')
+      textarea.value = text
+      document.body.appendChild(textarea)
+      textarea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textarea)
+      setCopiedText(text)
+      setTimeout(() => setCopiedText(''), 2000)
+    }
   }
 
   if (loading) {
