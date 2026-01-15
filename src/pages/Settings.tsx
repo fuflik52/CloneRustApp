@@ -318,26 +318,26 @@ function CreateActionModal({ onClose, onSave }: CreateActionModalProps) {
                       <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2ZM10 11C10 10.4477 10.4477 10 11 10H12C12.5523 10 13 10.4477 13 11V16C13 16.5523 12.5523 17 12 17C11.4477 17 11 16.5523 11 16V12C10.4477 12 10 11.5523 10 11ZM12 7C11.4477 7 11 7.44772 11 8C11 8.55228 11.4477 9 12 9C12.5523 9 13 8.55228 13 8C13 7.44772 12.5523 7 12 7Z"/>
                     </svg>
                   </div>
-                  <div className="select-wrapper" onClick={() => setShowAccessDropdown(!showAccessDropdown)}>
-                    <div className="select-activator">
-                      <div className="select-value">
-                        {currentLevel && <AccessIcon color={currentLevel.color} />}
-                        <span>{currentLevel?.label || 'Выберите уровень доступа'}</span>
-                      </div>
-                      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={`arrow ${showAccessDropdown ? 'open' : ''}`}>
-                        <path fillRule="evenodd" clipRule="evenodd" d="M9.29289 7.29289C9.68342 6.90237 10.3166 6.90237 10.7071 7.29289L14.1768 10.7626C14.8602 11.446 14.8602 12.554 14.1768 13.2374L10.7071 16.7071C10.3166 17.0976 9.68342 17.0976 9.29289 16.7071C8.90237 16.3166 8.90237 15.6834 9.29289 15.2929L12.5858 12L9.29289 8.70711C8.90237 8.31658 8.90237 7.68342 9.29289 7.29289Z"/>
-                      </svg>
+                  <div className="select-activator" onClick={() => setShowAccessDropdown(!showAccessDropdown)}>
+                    <div className="select-value">
+                      {currentLevel && <AccessIcon color={currentLevel.color} />}
+                      <span>{currentLevel?.label || 'Выберите уровень доступа'}</span>
                     </div>
-                    {showAccessDropdown && (
-                      <div className="select-options">
-                        {accessLevels.map(level => (
-                          <div key={level.value} className="select-option" onClick={() => { setAccessLevel(level.value as CustomAction['accessLevel']); setShowAccessDropdown(false) }}>
-                            <AccessIcon color={level.color} />
-                            <span>{level.label}</span>
-                          </div>
-                        ))}
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" className={`arrow ${showAccessDropdown ? 'open' : ''}`}>
+                      <path fillRule="evenodd" clipRule="evenodd" d="M9.29289 7.29289C9.68342 6.90237 10.3166 6.90237 10.7071 7.29289L14.1768 10.7626C14.8602 11.446 14.8602 12.554 14.1768 13.2374L10.7071 16.7071C10.3166 17.0976 9.68342 17.0976 9.29289 16.7071C8.90237 16.3166 8.90237 15.6834 9.29289 15.2929L12.5858 12L9.29289 8.70711C8.90237 8.31658 8.90237 7.68342 9.29289 7.29289Z"/>
+                    </svg>
+                  </div>
+                  <div className={`select-options ${showAccessDropdown ? 'open' : ''}`}>
+                    {accessLevels.map(level => (
+                      <div
+                        key={level.value}
+                        className={`select-option ${currentLevel?.value === level.value ? 'selected' : ''}`}
+                        onClick={() => { setAccessLevel(level.value as CustomAction['accessLevel']); setShowAccessDropdown(false) }}
+                      >
+                        <AccessIcon color={level.color} />
+                        <span>{level.label}</span>
                       </div>
-                    )}
+                    ))}
                   </div>
                 </div>
 

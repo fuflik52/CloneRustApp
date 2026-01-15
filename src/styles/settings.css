@@ -544,7 +544,21 @@
   overflow: hidden;
   z-index: 100;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  animation: slideDown 0.2s ease forwards;
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-6px);
+  visibility: hidden;
+  pointer-events: none;
+  transition: max-height 0.2s ease, opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0.2s;
+}
+
+.select-options.open {
+  max-height: 260px;
+  opacity: 1;
+  transform: translateY(0);
+  visibility: visible;
+  pointer-events: auto;
+  transition: max-height 0.2s ease, opacity 0.15s ease, transform 0.15s ease, visibility 0s linear 0s;
 }
 
 .select-option {
