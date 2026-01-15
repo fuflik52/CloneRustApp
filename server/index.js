@@ -367,6 +367,16 @@ app.post('/api/state', async (req, res) => {
   // Geolocation and avatars
   for (const p of players) {
     p.avatar = avatars[p.steam_id] || p.avatar || '';
+    
+    // Сохраняем позицию игрока если она есть
+    if (p.position) {
+      p.position = {
+        x: p.position.x || 0,
+        y: p.position.y || 0,
+        z: p.position.z || 0
+      };
+    }
+    
     if (p.ip && !p.country) {
       try {
         const geo = await fetch(`http://ip-api.com/json/${p.ip}?fields=country,city,isp,countryCode`);
@@ -1441,6 +1451,59 @@ app.get('/api/player/:steamId/stats', async (req, res) => {
   }
 
   res.json(bestPlayerInfo);
+});
+
+// === MAP API ===
+
+// Get map image URL and player positions for a server
+app.get('/api/servers/:serverId/map', (req, res) => {
+  const data = loadServers();
+  const server = data.servers[req.params.serverId];
+  
+  if (!server) {
+    return res.status(404).json({ error: 'Server not found' });
+  }
+  
+  // Get online players with their positions
+  const players = (server.players || []).map(p => ({
+    steam_id: p.steam_id,
+    name: p.name || p.steam_name,
+    avatar: p.avatar || '',
+    position: p.position || { x: 0, y: 0, z: 0 }, // Plugin должен отправлять позиции
+    team: p.team || null
+  }));
+  
+  res.json({
+    mapUrl: server.mapUrl || '', // URL карты из плагина MapImageUrl
+    worldSize: server.worldSize || 4000, // Размер карты (по умолчанию 4000)
+    players,
+    serverName: server.name,
+    online: server.online || 0
+  });
+});
+
+// Plugin sends map URL
+app.post('/api/map-url', (req, res) => {
+  const auth = req.headers.authorization;
+  if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
+  
+  const key = auth.slice(7);
+  const data = loadServers();
+  const server = Object.values(data.servers).find(s => s.secretKey === key);
+  if (!server) return res.status(401).json({ error: 'Invalid key' });
+  
+  const { mapUrl, worldSize } = req.body;
+  
+  if (mapUrl) {
+    server.mapUrl = mapUrl;
+  }
+  
+  if (worldSize) {
+    server.worldSize = worldSize;
+  }
+  
+  saveServers(data);
+  res.json({ success: true });
 });
 
 // SPA fallback
