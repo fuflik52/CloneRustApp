@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import { useServer } from '../App'
 
@@ -19,31 +19,6 @@ interface Report {
   message: string
   timestamp: number
   date: string
-}
-
-interface Player {
-  steam_id: string
-  name: string
-  avatar?: string
-  online: boolean
-  ip?: string
-  country?: string
-  countryCode?: string
-  city?: string
-  provider?: string
-  serverName?: string
-}
-
-interface SteamInfo {
-  personaName: string
-  avatar: string
-  privacy: string
-  isPrivate: boolean
-  accountCreated: string | null
-  rustHours: number | null
-  recentHours: number | null
-  vacBans: number
-  gameBans: number
 }
 
 function DateIcon() {
@@ -118,6 +93,7 @@ function TrashIcon() {
   )
 }
 
+
 interface ReportsProps {
   targetSteamId?: string
   isPlayerProfile?: boolean
@@ -128,113 +104,37 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { showToast } = useToast()
-  const { serverId } = useServer()
-  const [searchParams, setSearchParams] = useSearchParams()
-  
-  // Player modal state
-  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
-  const [steamInfo, setSteamInfo] = useState<SteamInfo | null>(null)
-  const [steamLoading, setSteamLoading] = useState(false)
+  const { serverId, serverSlug } = useServer()
+  const navigate = useNavigate()
 
-  // Handle URL parameter
-  useEffect(() => {
-    const playerId = searchParams.get('player')
-    if (playerId && !selectedPlayer) {
-      loadPlayer(playerId)
-    }
-  }, [searchParams])
-
-  const loadPlayer = async (steamId: string) => {
-    try {
-      const res = await fetch(`/api/player/${steamId}/stats`)
-      const data = await res.json()
-      if (data && !data.error) {
-        const player: Player = {
-          steam_id: data.steam_id || steamId,
-          name: data.steam_name || 'Unknown',
-          avatar: data.avatar || '',
-          online: false,
-          ip: data.ips_history?.[0]?.ip || '',
-          country: data.country || '',
-          countryCode: data.countryCode || '',
-          city: data.city || '',
-          provider: data.provider || '',
-          serverName: data.servers_played?.[0] || ''
-        }
-        openPlayerModal(player)
-      }
-    } catch {}
-  }
-
-  const openPlayerModal = async (player: Player) => {
-    setSelectedPlayer(player)
-    setSteamInfo(null)
-    setSteamLoading(true)
-    setSearchParams({ player: player.steam_id })
-    
-    try {
-      const res = await fetch(`/api/player/${player.steam_id}/steam`)
-      if (res.ok) {
-        const data = await res.json()
-        if (!data.error) setSteamInfo(data)
-      }
-    } catch {}
-    setSteamLoading(false)
-  }
-
-  const closePlayerModal = () => {
-    setSelectedPlayer(null)
-    setSteamInfo(null)
-    setSearchParams({})
-  }
-
-  const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-    showToast('Скопировано')
+  // Открыть профиль игрока на странице Players
+  const openPlayer = (steamId: string) => {
+    navigate(`/${serverSlug}/players?player=${steamId}`)
   }
 
   const fetchReports = async () => {
     if (!serverId && !targetSteamId) return
-    
     setLoading(true)
     setError(null)
-    
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 секунд таймаут
-    
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
     try {
-      // Всегда используем API сервера для фильтрации по текущему серверу
       const url = `/api/servers/${serverId}/reports`
-        
-      const res = await fetch(url, {
-        signal: controller.signal
-      })
-      
+      const res = await fetch(url, { signal: controller.signal })
       clearTimeout(timeoutId)
-      
-      if (!res.ok) {
-        throw new Error(`Ошибка ${res.status}: ${res.statusText}`)
-      }
-      
+      if (!res.ok) throw new Error(`Ошибка ${res.status}: ${res.statusText}`)
       let data = await res.json()
-      
-      // Если есть targetSteamId, фильтруем репорты по этому игроку
-      if (targetSteamId) {
-        data = data.filter((r: Report) => r.target_steam_id === targetSteamId)
-      }
-      
+      if (targetSteamId) data = data.filter((r: Report) => r.target_steam_id === targetSteamId)
       setReports(data)
       setError(null)
     } catch (err: any) {
       clearTimeout(timeoutId)
-      
       if (err.name === 'AbortError') {
-        setError('Таймаут: Превышено время ожидания ответа от сервера')
+        setError('Таймаут: Превышено время ожидания')
         showToast('Таймаут при загрузке репортов', 'error')
       } else {
-        const errorMessage = err.message || 'Неизвестная ошибка при загрузке репортов'
-        setError(errorMessage)
-        showToast(errorMessage, 'error')
+        setError(err.message || 'Ошибка загрузки')
+        showToast(err.message || 'Ошибка', 'error')
       }
     } finally {
       setLoading(false)
@@ -242,78 +142,46 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
   }
 
   useEffect(() => {
-    if (serverId || targetSteamId) {
-      fetchReports()
-    }
+    if (serverId || targetSteamId) fetchReports()
   }, [serverId, targetSteamId])
 
   const deleteReport = async (id: string) => {
     try {
       const res = await fetch(`/api/reports/${id}`, { method: 'DELETE' })
-      if (res.ok) {
-        showToast('Репорт удален')
-        fetchReports()
-      } else {
-        showToast('Ошибка при удалении репорта', 'error')
-      }
-    } catch {
-      showToast('Ошибка сети', 'error')
-    }
+      if (res.ok) { showToast('Репорт удален'); fetchReports() }
+      else showToast('Ошибка при удалении', 'error')
+    } catch { showToast('Ошибка сети', 'error') }
   }
 
   const formatDateParts = (timestamp: number) => {
     const date = new Date(timestamp)
-    const dateStr = date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' })
-    const timeStr = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
-    return { date: dateStr, time: timeStr }
+    return {
+      date: date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }),
+      time: date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+    }
   }
+
 
   return (
     <div className={`page reports-page ${isPlayerProfile ? 'in-profile' : ''}`}>
       <div className="reports-table-container">
         <div className="reports-table">
           <div className="table-header">
-            <div className="th date-col">
-              <DateIcon />
-              <span>Дата</span>
-            </div>
-            {!isPlayerProfile && (
-              <div className="th server-col">
-                <ServerIcon />
-                <span>Сервер</span>
-              </div>
-            )}
-            <div className="th player-col">
-              <ReporterIcon />
-              <span>Отправил жалобу</span>
-            </div>
+            <div className="th date-col"><DateIcon /><span>Дата</span></div>
+            {!isPlayerProfile && <div className="th server-col"><ServerIcon /><span>Сервер</span></div>}
+            <div className="th player-col"><ReporterIcon /><span>Отправил жалобу</span></div>
             {!isPlayerProfile && (
               <>
                 <div className="th arrow-col"></div>
-                <div className="th player-col">
-                  <SuspectIcon />
-                  <span>Подозреваемый</span>
-                </div>
+                <div className="th player-col"><SuspectIcon /><span>Подозреваемый</span></div>
               </>
             )}
             <div className="th spacer-col"></div>
-            {!isPlayerProfile && (
-              <div className="th kd-col">
-                <KdIcon />
-                <span>K/D</span>
-              </div>
-            )}
-            <div className="th reports-col">
-              <ReportsCountIcon />
-              <span>Жалоб</span>
-            </div>
-            <div className="th reason-col">
-              <ReasonIcon />
-              <span>Причина</span>
-            </div>
+            {!isPlayerProfile && <div className="th kd-col"><KdIcon /><span>K/D</span></div>}
+            <div className="th reports-col"><ReportsCountIcon /><span>Жалоб</span></div>
+            <div className="th reason-col"><ReasonIcon /><span>Причина</span></div>
             <div className="th actions-col"></div>
           </div>
-
           <div className="table-body">
             {loading ? null : error ? (
               <div className="table-empty table-error">
@@ -334,19 +202,11 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
                         <span className="date-time">{time}</span>
                       </div>
                     </div>
-                    {!isPlayerProfile && (
-                      <div className="td server-col">
-                        <span className="server-name">{report.serverName}</span>
-                      </div>
-                    )}
+                    {!isPlayerProfile && <div className="td server-col"><span className="server-name">{report.serverName}</span></div>}
                     <div className="td player-col">
-                      <div className="player-box">
+                      <div className="player-box clickable" onClick={() => openPlayer(report.initiator_steam_id)}>
                         <div className="player-avatar-wrap">
-                          <img 
-                            src={report.initiator_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
-                            alt="" 
-                            className="player-avatar"
-                          />
+                          <img src={report.initiator_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" className="player-avatar" />
                           <div className="status-badge offline"></div>
                         </div>
                         <div className="player-info">
@@ -357,22 +217,11 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
                     </div>
                     {!isPlayerProfile && (
                       <>
-                        <div className="td arrow-cell arrow-col">
-                          <ArrowIcon />
-                        </div>
+                        <div className="td arrow-cell arrow-col"><ArrowIcon /></div>
                         <div className="td player-col">
-                          <div className="player-box target clickable" onClick={() => openPlayerModal({
-                            steam_id: report.target_steam_id,
-                            name: report.target_name,
-                            avatar: report.target_avatar,
-                            online: false
-                          })}>
+                          <div className="player-box target clickable" onClick={() => openPlayer(report.target_steam_id)}>
                             <div className="player-avatar-wrap">
-                              <img 
-                                src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
-                                alt="" 
-                                className="player-avatar"
-                              />
+                              <img src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" className="player-avatar" />
                               <div className="status-badge offline"></div>
                             </div>
                             <div className="player-info">
@@ -384,21 +233,11 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
                       </>
                     )}
                     <div className="td spacer-col"></div>
-                    {!isPlayerProfile && (
-                      <div className="td kd-col">
-                        <span className="kd-value">{(report.target_kd || 0).toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="td reports-col">
-                      <span className="reports-count">{report.target_reports_count || 1} шт.</span>
-                    </div>
-                    <div className="td reason-col">
-                      <div className="reason-badge">{report.reason}</div>
-                    </div>
+                    {!isPlayerProfile && <div className="td kd-col"><span className="kd-value">{(report.target_kd || 0).toFixed(2)}</span></div>}
+                    <div className="td reports-col"><span className="reports-count">{report.target_reports_count || 1} шт.</span></div>
+                    <div className="td reason-col"><div className="reason-badge">{report.reason}</div></div>
                     <div className="td actions-cell actions-col">
-                      <button className="delete-btn" onClick={() => deleteReport(report.id)} title="Удалить">
-                        <TrashIcon />
-                      </button>
+                      <button className="delete-btn" onClick={() => deleteReport(report.id)} title="Удалить"><TrashIcon /></button>
                     </div>
                   </div>
                 )
@@ -407,484 +246,72 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
           </div>
         </div>
       </div>
-
-      {/* Player Modal */}
-      {selectedPlayer && (
-        <div className="player-modal-overlay" onClick={closePlayerModal}>
-          <div className="player-modal" onClick={e => e.stopPropagation()}>
-            <div className="player-modal-nav">
-              <div className="modal-nav-header">
-                <div className="modal-player-card">
-                  <div className="modal-player-avatar">
-                    <img src={steamInfo?.avatar || selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
-                    <div className={`modal-status-badge ${selectedPlayer.online ? 'online' : 'offline'}`} />
-                  </div>
-                  <div className="modal-player-info">
-                    <span className="modal-player-name">{steamInfo?.personaName || selectedPlayer.name}</span>
-                    <span className="modal-player-status">{selectedPlayer.online ? 'онлайн' : 'нет на месте'}</span>
-                  </div>
-                </div>
-                <div className="modal-action-btns">
-                  <a href={`https://rustcheatcheck.ru/panel/player/${selectedPlayer.steam_id}`} target="_blank" rel="noopener noreferrer" className="modal-action-btn">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                  </a>
-                  <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}/`} target="_blank" rel="noopener noreferrer" className="modal-action-btn">
-                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95 0-5.52-4.48-10-10-10z"/></svg>
-                  </a>
-                </div>
-              </div>
-              <div className="modal-menu-items">
-                <div className="modal-menu-item active">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
-                  Обзор
-                </div>
-                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> Команда</div>
-                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg> Репорты</div>
-                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg> Статистика</div>
-                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg> Лог активности</div>
-                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg> Оповещения</div>
-                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34c-.39-.39-1.02-.39-1.41 0L9 12.25 11.75 15l8.96-8.96c.39-.39.39-1.02 0-1.41z"/></svg> Рисунки</div>
-                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Проверки</div>
-                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg> Муты</div>
-                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/></svg> Блокировки</div>
-              </div>
-            </div>
-            <div className="player-modal-content">
-              <div className="modal-content-body">
-                <div className="modal-tags">
-                  <span className="modal-tag">👶 Соло</span>
-                  {selectedPlayer.countryCode && <span className="modal-tag">🌍 {selectedPlayer.countryCode.toUpperCase()}</span>}
-                </div>
-                <div className="modal-info-card">
-                  <div className="modal-card-title">Об игроке</div>
-                  <div className="modal-card-grid">
-                    <div className="modal-card-cell">
-                      <span className="cell-label">Играл на</span>
-                      <span className="cell-value">{selectedPlayer.serverName || 'N/A'}</span>
-                    </div>
-                    <div className="modal-card-cell">
-                      <span className="cell-label">SteamID</span>
-                      <div className="cell-value-actions">
-                        <span className="cell-value-white">{selectedPlayer.steam_id}</span>
-                        <button className="cell-action-btn" onClick={() => copyToClipboard(selectedPlayer.steam_id)}>
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                        </button>
-                        <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}/`} target="_blank" className="cell-action-btn">
-                          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
-                        </a>
-                      </div>
-                    </div>
-                    <div className="modal-card-cell">
-                      <span className="cell-label">IP адрес</span>
-                      <div className="cell-value-actions">
-                        <span className="cell-value-white">{selectedPlayer.ip || 'N/A'}</span>
-                        {selectedPlayer.ip && (
-                          <button className="cell-action-btn" onClick={() => copyToClipboard(selectedPlayer.ip || '')}>
-                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                    <div className="modal-card-cell">
-                      <span className="cell-label">Страна, город</span>
-                      <div className="cell-value-country">
-                        {selectedPlayer.countryCode && <img src={`https://hatscripts.github.io/circle-flags/flags/${selectedPlayer.countryCode.toLowerCase()}.svg`} alt="" />}
-                        <span>{selectedPlayer.country && selectedPlayer.city ? `${selectedPlayer.country}, ${selectedPlayer.city}` : selectedPlayer.country || 'N/A'}</span>
-                      </div>
-                    </div>
-                    <div className="modal-card-cell">
-                      <span className="cell-label">Провайдер</span>
-                      <span className="cell-value">{selectedPlayer.provider || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="modal-info-card">
-                  <div className="modal-card-title">Информация из Steam</div>
-                  {steamLoading ? (
-                    <div className="steam-loading"><div className="steam-spinner"></div><span>Загрузка...</span></div>
-                  ) : (
-                    <div className="modal-card-grid">
-                      <div className="modal-card-cell">
-                        <span className="cell-label">Приватность</span>
-                        <span className="cell-value">{steamInfo?.privacy || 'N/A'}</span>
-                      </div>
-                      <div className="modal-card-cell">
-                        <span className="cell-label">Аккаунт создан</span>
-                        <span className="cell-value">{steamInfo?.accountCreated ? new Date(steamInfo.accountCreated).toLocaleDateString('ru') : 'N/A'}</span>
-                      </div>
-                      <div className="modal-card-cell">
-                        <span className="cell-label">Часов в RUST</span>
-                        <span className="cell-value">{steamInfo?.rustHours ? `~${steamInfo.rustHours.toLocaleString()}` : 'N/A'}</span>
-                      </div>
-                      <div className="modal-card-cell">
-                        <span className="cell-label">Часов за 2 недели</span>
-                        <span className="cell-value">{steamInfo?.recentHours ?? 'N/A'}</span>
-                      </div>
-                      <div className="modal-card-cell">
-                        <span className="cell-label">Gamebans / VAC</span>
-                        <span className="cell-value" style={{ color: (steamInfo?.vacBans || 0) + (steamInfo?.gameBans || 0) > 0 ? '#ef4444' : undefined }}>
-                          {steamInfo ? (steamInfo.vacBans + steamInfo.gameBans > 0 ? `${steamInfo.gameBans} game / ${steamInfo.vacBans} VAC` : 'Банов нет') : 'N/A'}
-                        </span>
-                      </div>
-                      <div className="modal-card-cell">
-                        <span className="cell-label">Последнее обновление</span>
-                        <span className="cell-value">{new Date().toLocaleDateString('ru')}</span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       <style>{`
-        .reports-page {
-          margin-left: -40px;
-          margin-right: -40px;
-          margin-top: -40px;
-          margin-bottom: 0;
-          padding: 0;
-          width: calc(100vw - 260px);
-          max-width: none;
-        }
-        .reports-page.in-profile {
-          margin: 0;
-          width: 100%;
-        }
-        .main-content.collapsed .reports-page {
-          width: calc(100vw - 60px);
-        }
-        .main-content.collapsed .reports-page.in-profile {
-          width: 100%;
-        }
-        .reports-table-container {
-          background: #151515;
-          border-radius: 0;
-          overflow: hidden;
-          border: none;
-          border-bottom: 1px solid #262626;
-          width: 100%;
-          margin: 0;
-        }
-        .in-profile .reports-table-container {
-          background: transparent;
-          border-bottom: none;
-        }
-        .reports-table {
-          width: 100%;
-          overflow: hidden;
-        }
-        .table-header {
-          display: flex;
-          border-bottom: 1px solid #262626;
-          background: #151515;
-          width: 100%;
-          box-sizing: border-box;
-        }
-        .in-profile .table-header {
-          background: #1a1a1a;
-          border-bottom: 1px solid #333;
-        }
-        .th {
-          padding: 14px 16px;
-          color: #525252;
-          font-size: 12px;
-          font-weight: 500;
-          text-transform: uppercase;
-          white-space: nowrap;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-        .th svg {
-          width: 16px;
-          height: 16px;
-          fill: #525252;
-          flex-shrink: 0;
-        }
-        .th span {
-          flex-shrink: 0;
-        }
-        .th.date-col {
-          min-width: 120px;
-          flex: 0 0 140px;
-        }
-        .th.server-col {
-          min-width: 140px;
-          flex: 0 0 160px;
-        }
-        .th.player-col {
-          min-width: 200px;
-          flex: 1 1 0;
-        }
-        .in-profile .th.player-col {
-          min-width: 150px;
-        }
-        .th.arrow-col {
-          min-width: 30px;
-          flex: 0 0 40px;
-        }
-        .th.spacer-col {
-          min-width: 10px;
-          flex: 0 0 20px;
-        }
-        .th.kd-col {
-          min-width: 70px;
-          flex: 0 0 90px;
-        }
-        .th.reports-col {
-          min-width: 80px;
-          flex: 0 0 100px;
-        }
-        .th.reason-col {
-          min-width: 120px;
-          flex: 0 0 150px;
-        }
-        .th.actions-col {
-          min-width: 50px;
-          flex: 1 0 70px;
-        }
-        .table-body {
-          background: #0f0f0f;
-        }
-        .in-profile .table-body {
-          background: transparent;
-        }
-        .table-row {
-          display: flex;
-          border-bottom: 1px solid #1a1a1a;
-          transition: background 0.15s;
-          width: 100%;
-          box-sizing: border-box;
-        }
-        .in-profile .table-row {
-          border-bottom: 1px solid #1a1a1a;
-        }
-        .table-row:hover {
-          background: #1a1a1a;
-        }
-        .td {
-          padding: 12px 16px;
-          display: flex;
-          align-items: center;
-          min-width: 0;
-        }
-        .td.date-col {
-          min-width: 120px;
-          flex: 0 0 140px;
-        }
-        .td.server-col {
-          min-width: 140px;
-          flex: 0 0 160px;
-        }
-        .td.player-col {
-          min-width: 200px;
-          flex: 1 1 0;
-        }
-        .in-profile .td.player-col {
-          min-width: 150px;
-        }
-        .td.arrow-col {
-          min-width: 30px;
-          flex: 0 0 40px;
-        }
-        .td.spacer-col {
-          min-width: 10px;
-          flex: 0 0 20px;
-        }
-        .td.kd-col {
-          min-width: 70px;
-          flex: 0 0 90px;
-        }
-        .td.reports-col {
-          min-width: 80px;
-          flex: 0 0 100px;
-        }
-        .td.reason-col {
-          min-width: 120px;
-          flex: 0 0 150px;
-        }
-        .td.actions-col {
-          min-width: 50px;
-          flex: 1 0 70px;
-        }
-        .date-cell {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-        }
-        .date-main {
-          color: #a3a3a3;
-          font-size: 13px;
-          font-weight: 500;
-        }
-        .date-time {
-          color: #525252;
-          font-size: 12px;
-        }
-        .server-name {
-          color: #525252;
-          font-size: 13px;
-          font-weight: 500;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .player-box {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          min-width: 0;
-          width: 100%;
-        }
-        .player-box.clickable {
-          cursor: pointer;
-          border-radius: 8px;
-          padding: 4px;
-          margin: -4px;
-          transition: background 0.15s;
-        }
-        .player-box.clickable:hover {
-          background: #262626;
-        }
-        .player-avatar-wrap {
-          position: relative;
-          width: 36px;
-          height: 36px;
-        }
-        .player-avatar {
-          width: 36px;
-          height: 36px;
-          border-radius: 50%;
-          background: #262626;
-        }
-        .status-badge {
-          position: absolute;
-          bottom: -2px;
-          right: -2px;
-          width: 12px;
-          height: 12px;
-          border-radius: 50%;
-          border: 2px solid #0f0f0f;
-        }
-        .status-badge.offline {
-          background: #525252;
-        }
-        .status-badge.online {
-          background: #22c55e;
-        }
-        .player-info {
-          display: flex;
-          flex-direction: column;
-          gap: 2px;
-          min-width: 0;
-        }
-        .player-name {
-          color: #e5e5e5;
-          font-size: 13px;
-          font-weight: 500;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .player-steamid {
-          color: #525252;
-          font-size: 11px;
-          font-family: monospace;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-        .arrow-cell {
-          justify-content: center;
-        }
-        .kd-value {
-          color: #a3a3a3;
-          font-size: 13px;
-          font-weight: 500;
-          font-variant-numeric: tabular-nums;
-          text-decoration: underline;
-          text-decoration-style: dashed;
-          text-underline-offset: 4px;
-          text-decoration-color: #404040;
-          cursor: help;
-        }
-        .reports-count {
-          color: #a3a3a3;
-          font-size: 13px;
-          font-weight: 500;
-        }
-        .reason-badge {
-          background: #262626;
-          color: #a3a3a3;
-          padding: 6px 12px;
-          border-radius: 6px;
-          font-size: 12px;
-          font-weight: 500;
-          border: 1px solid #333;
-        }
-        .actions-cell {
-          justify-content: flex-end;
-        }
-        .delete-btn {
-          background: transparent;
-          border: 1px solid #333;
-          color: #525252;
-          cursor: pointer;
-          padding: 6px 8px;
-          border-radius: 6px;
-          transition: all 0.15s;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .delete-btn:hover {
-          background: #1a1a1a;
-          border-color: #404040;
-          color: #a3a3a3;
-        }
-        .table-empty {
-          padding: 60px 20px;
-          text-align: center;
-          color: #525252;
-          font-size: 14px;
-        }
-        .table-error {
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 16px;
-          padding: 40px 20px;
-        }
-        .error-title {
-          color: #ef4444;
-          font-size: 16px;
-          font-weight: 600;
-        }
-        .error-message {
-          color: #a3a3a3;
-          font-size: 14px;
-          max-width: 600px;
-          line-height: 1.5;
-        }
-        .retry-btn {
-          background: #262626;
-          border: 1px solid #404040;
-          color: #e5e5e5;
-          padding: 10px 20px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 14px;
-          font-weight: 500;
-          transition: all 0.15s;
-          margin-top: 8px;
-        }
-        .retry-btn:hover {
-          background: #333;
-          border-color: #525252;
-        }
+
+        .reports-page { margin: -40px; padding: 0; width: calc(100vw - 260px); max-width: none; }
+        .reports-page.in-profile { margin: 0; width: 100%; }
+        .main-content.collapsed .reports-page { width: calc(100vw - 60px); }
+        .main-content.collapsed .reports-page.in-profile { width: 100%; }
+        .reports-table-container { background: #151515; border-bottom: 1px solid #262626; width: 100%; }
+        .in-profile .reports-table-container { background: transparent; border-bottom: none; }
+        .reports-table { width: 100%; overflow: hidden; }
+        .table-header { display: flex; border-bottom: 1px solid #262626; background: #151515; }
+        .in-profile .table-header { background: #1a1a1a; border-bottom: 1px solid #333; }
+        .th { padding: 14px 16px; color: #525252; font-size: 12px; font-weight: 500; text-transform: uppercase; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+        .th svg { width: 16px; height: 16px; fill: #525252; flex-shrink: 0; }
+        .th.date-col { min-width: 120px; flex: 0 0 140px; }
+        .th.server-col { min-width: 140px; flex: 0 0 160px; }
+        .th.player-col { min-width: 200px; flex: 1 1 0; }
+        .in-profile .th.player-col { min-width: 150px; }
+        .th.arrow-col { min-width: 30px; flex: 0 0 40px; }
+        .th.spacer-col { min-width: 10px; flex: 0 0 20px; }
+        .th.kd-col { min-width: 70px; flex: 0 0 90px; }
+        .th.reports-col { min-width: 80px; flex: 0 0 100px; }
+        .th.reason-col { min-width: 120px; flex: 0 0 150px; }
+        .th.actions-col { min-width: 50px; flex: 1 0 70px; }
+        .table-body { background: #0f0f0f; }
+        .in-profile .table-body { background: transparent; }
+        .table-row { display: flex; border-bottom: 1px solid #1a1a1a; transition: background 0.15s; }
+        .table-row:hover { background: #1a1a1a; }
+        .td { padding: 12px 16px; display: flex; align-items: center; min-width: 0; }
+        .td.date-col { min-width: 120px; flex: 0 0 140px; }
+        .td.server-col { min-width: 140px; flex: 0 0 160px; }
+        .td.player-col { min-width: 200px; flex: 1 1 0; }
+        .in-profile .td.player-col { min-width: 150px; }
+        .td.arrow-col { min-width: 30px; flex: 0 0 40px; }
+        .td.spacer-col { min-width: 10px; flex: 0 0 20px; }
+        .td.kd-col { min-width: 70px; flex: 0 0 90px; }
+        .td.reports-col { min-width: 80px; flex: 0 0 100px; }
+        .td.reason-col { min-width: 120px; flex: 0 0 150px; }
+        .td.actions-col { min-width: 50px; flex: 1 0 70px; }
+        .date-cell { display: flex; flex-direction: column; gap: 2px; }
+        .date-main { color: #a3a3a3; font-size: 13px; font-weight: 500; }
+        .date-time { color: #525252; font-size: 12px; }
+        .server-name { color: #525252; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-box { display: flex; align-items: center; gap: 10px; min-width: 0; width: 100%; }
+        .player-box.clickable { cursor: pointer; border-radius: 8px; padding: 4px; margin: -4px; transition: background 0.15s; }
+        .player-box.clickable:hover { background: #262626; }
+        .player-avatar-wrap { position: relative; width: 36px; height: 36px; }
+        .player-avatar { width: 36px; height: 36px; border-radius: 50%; background: #262626; }
+        .status-badge { position: absolute; bottom: -2px; right: -2px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #0f0f0f; }
+        .status-badge.offline { background: #525252; }
+        .status-badge.online { background: #22c55e; }
+        .player-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+        .player-name { color: #e5e5e5; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .player-steamid { color: #525252; font-size: 11px; font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .arrow-cell { justify-content: center; }
+        .kd-value { color: #a3a3a3; font-size: 13px; font-weight: 500; font-variant-numeric: tabular-nums; text-decoration: underline; text-decoration-style: dashed; text-underline-offset: 4px; text-decoration-color: #404040; cursor: help; }
+        .reports-count { color: #a3a3a3; font-size: 13px; font-weight: 500; }
+        .reason-badge { background: #262626; color: #a3a3a3; padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 500; border: 1px solid #333; }
+        .actions-cell { justify-content: flex-end; }
+        .delete-btn { background: transparent; border: 1px solid #333; color: #525252; cursor: pointer; padding: 6px 8px; border-radius: 6px; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
+        .delete-btn:hover { background: #1a1a1a; border-color: #404040; color: #a3a3a3; }
+        .table-empty { padding: 60px 20px; text-align: center; color: #525252; font-size: 14px; }
+        .table-error { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 40px 20px; }
+        .error-title { color: #ef4444; font-size: 16px; font-weight: 600; }
+        .error-message { color: #a3a3a3; font-size: 14px; max-width: 600px; line-height: 1.5; }
+        .retry-btn { background: #262626; border: 1px solid #404040; color: #e5e5e5; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.15s; margin-top: 8px; }
+        .retry-btn:hover { background: #333; border-color: #525252; }
       `}</style>
     </div>
   )
