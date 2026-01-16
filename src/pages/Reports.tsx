@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import { useServer } from '../App'
 
@@ -19,6 +19,31 @@ interface Report {
   message: string
   timestamp: number
   date: string
+}
+
+interface Player {
+  steam_id: string
+  name: string
+  avatar?: string
+  online: boolean
+  ip?: string
+  country?: string
+  countryCode?: string
+  city?: string
+  provider?: string
+  serverName?: string
+}
+
+interface SteamInfo {
+  personaName: string
+  avatar: string
+  privacy: string
+  isPrivate: boolean
+  accountCreated: string | null
+  rustHours: number | null
+  recentHours: number | null
+  vacBans: number
+  gameBans: number
 }
 
 function DateIcon() {
@@ -103,11 +128,69 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { showToast } = useToast()
-  const { serverId, serverSlug } = useServer()
-  const navigate = useNavigate()
+  const { serverId } = useServer()
+  const [searchParams, setSearchParams] = useSearchParams()
+  
+  // Player modal state
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  const [steamInfo, setSteamInfo] = useState<SteamInfo | null>(null)
+  const [steamLoading, setSteamLoading] = useState(false)
 
-  const openPlayerModal = (steamId: string) => {
-    navigate(`/${serverSlug}/players?player=${steamId}`)
+  // Handle URL parameter
+  useEffect(() => {
+    const playerId = searchParams.get('player')
+    if (playerId && !selectedPlayer) {
+      loadPlayer(playerId)
+    }
+  }, [searchParams])
+
+  const loadPlayer = async (steamId: string) => {
+    try {
+      const res = await fetch(`/api/player/${steamId}/stats`)
+      const data = await res.json()
+      if (data && !data.error) {
+        const player: Player = {
+          steam_id: data.steam_id || steamId,
+          name: data.steam_name || 'Unknown',
+          avatar: data.avatar || '',
+          online: false,
+          ip: data.ips_history?.[0]?.ip || '',
+          country: data.country || '',
+          countryCode: data.countryCode || '',
+          city: data.city || '',
+          provider: data.provider || '',
+          serverName: data.servers_played?.[0] || ''
+        }
+        openPlayerModal(player)
+      }
+    } catch {}
+  }
+
+  const openPlayerModal = async (player: Player) => {
+    setSelectedPlayer(player)
+    setSteamInfo(null)
+    setSteamLoading(true)
+    setSearchParams({ player: player.steam_id })
+    
+    try {
+      const res = await fetch(`/api/player/${player.steam_id}/steam`)
+      if (res.ok) {
+        const data = await res.json()
+        if (!data.error) setSteamInfo(data)
+      }
+    } catch {}
+    setSteamLoading(false)
+  }
+
+  const closePlayerModal = () => {
+    setSelectedPlayer(null)
+    setSteamInfo(null)
+    setSearchParams({})
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    showToast('Скопировано')
   }
 
   const fetchReports = async () => {
@@ -278,7 +361,12 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
                           <ArrowIcon />
                         </div>
                         <div className="td player-col">
-                          <div className="player-box target clickable" onClick={() => openPlayerModal(report.target_steam_id)}>
+                          <div className="player-box target clickable" onClick={() => openPlayerModal({
+                            steam_id: report.target_steam_id,
+                            name: report.target_name,
+                            avatar: report.target_avatar,
+                            online: false
+                          })}>
                             <div className="player-avatar-wrap">
                               <img 
                                 src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
@@ -319,6 +407,137 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
           </div>
         </div>
       </div>
+
+      {/* Player Modal */}
+      {selectedPlayer && (
+        <div className="player-modal-overlay" onClick={closePlayerModal}>
+          <div className="player-modal" onClick={e => e.stopPropagation()}>
+            <div className="player-modal-nav">
+              <div className="modal-nav-header">
+                <div className="modal-player-card">
+                  <div className="modal-player-avatar">
+                    <img src={steamInfo?.avatar || selectedPlayer.avatar || 'https://avatars.cloudflare.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                    <div className={`modal-status-badge ${selectedPlayer.online ? 'online' : 'offline'}`} />
+                  </div>
+                  <div className="modal-player-info">
+                    <span className="modal-player-name">{steamInfo?.personaName || selectedPlayer.name}</span>
+                    <span className="modal-player-status">{selectedPlayer.online ? 'онлайн' : 'нет на месте'}</span>
+                  </div>
+                </div>
+                <div className="modal-action-btns">
+                  <a href={`https://rustcheatcheck.ru/panel/player/${selectedPlayer.steam_id}`} target="_blank" rel="noopener noreferrer" className="modal-action-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                  </a>
+                  <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}/`} target="_blank" rel="noopener noreferrer" className="modal-action-btn">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95 0-5.52-4.48-10-10-10z"/></svg>
+                  </a>
+                </div>
+              </div>
+              <div className="modal-menu-items">
+                <div className="modal-menu-item active">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/></svg>
+                  Обзор
+                </div>
+                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg> Команда</div>
+                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg> Репорты</div>
+                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg> Статистика</div>
+                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M13 3c-4.97 0-9 4.03-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42C8.27 19.99 10.51 21 13 21c4.97 0 9-4.03 9-9s-4.03-9-9-9zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg> Лог активности</div>
+                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/></svg> Оповещения</div>
+                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M7 14c-1.66 0-3 1.34-3 3 0 1.31-1.16 2-2 2 .92 1.22 2.49 2 4 2 2.21 0 4-1.79 4-4 0-1.66-1.34-3-3-3zm13.71-9.37l-1.34-1.34c-.39-.39-1.02-.39-1.41 0L9 12.25 11.75 15l8.96-8.96c.39-.39.39-1.02 0-1.41z"/></svg> Рисунки</div>
+                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg> Проверки</div>
+                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg> Муты</div>
+                <div className="modal-menu-item"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9C4.63 15.55 4 13.85 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1C19.37 8.45 20 10.15 20 12c0 4.42-3.58 8-8 8z"/></svg> Блокировки</div>
+              </div>
+            </div>
+            <div className="player-modal-content">
+              <div className="modal-content-body">
+                <div className="modal-tags">
+                  <span className="modal-tag">👶 Соло</span>
+                  {selectedPlayer.countryCode && <span className="modal-tag">🌍 {selectedPlayer.countryCode.toUpperCase()}</span>}
+                </div>
+                <div className="modal-info-card">
+                  <div className="modal-card-title">Об игроке</div>
+                  <div className="modal-card-grid">
+                    <div className="modal-card-cell">
+                      <span className="cell-label">Играл на</span>
+                      <span className="cell-value">{selectedPlayer.serverName || 'N/A'}</span>
+                    </div>
+                    <div className="modal-card-cell">
+                      <span className="cell-label">SteamID</span>
+                      <div className="cell-value-actions">
+                        <span className="cell-value-white">{selectedPlayer.steam_id}</span>
+                        <button className="cell-action-btn" onClick={() => copyToClipboard(selectedPlayer.steam_id)}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        </button>
+                        <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}/`} target="_blank" className="cell-action-btn">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>
+                        </a>
+                      </div>
+                    </div>
+                    <div className="modal-card-cell">
+                      <span className="cell-label">IP адрес</span>
+                      <div className="cell-value-actions">
+                        <span className="cell-value-white">{selectedPlayer.ip || 'N/A'}</span>
+                        {selectedPlayer.ip && (
+                          <button className="cell-action-btn" onClick={() => copyToClipboard(selectedPlayer.ip || '')}>
+                            <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="modal-card-cell">
+                      <span className="cell-label">Страна, город</span>
+                      <div className="cell-value-country">
+                        {selectedPlayer.countryCode && <img src={`https://hatscripts.github.io/circle-flags/flags/${selectedPlayer.countryCode.toLowerCase()}.svg`} alt="" />}
+                        <span>{selectedPlayer.country && selectedPlayer.city ? `${selectedPlayer.country}, ${selectedPlayer.city}` : selectedPlayer.country || 'N/A'}</span>
+                      </div>
+                    </div>
+                    <div className="modal-card-cell">
+                      <span className="cell-label">Провайдер</span>
+                      <span className="cell-value">{selectedPlayer.provider || 'N/A'}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="modal-info-card">
+                  <div className="modal-card-title">Информация из Steam</div>
+                  {steamLoading ? (
+                    <div className="steam-loading"><div className="steam-spinner"></div><span>Загрузка...</span></div>
+                  ) : (
+                    <div className="modal-card-grid">
+                      <div className="modal-card-cell">
+                        <span className="cell-label">Приватность</span>
+                        <span className="cell-value">{steamInfo?.privacy || 'N/A'}</span>
+                      </div>
+                      <div className="modal-card-cell">
+                        <span className="cell-label">Аккаунт создан</span>
+                        <span className="cell-value">{steamInfo?.accountCreated ? new Date(steamInfo.accountCreated).toLocaleDateString('ru') : 'N/A'}</span>
+                      </div>
+                      <div className="modal-card-cell">
+                        <span className="cell-label">Часов в RUST</span>
+                        <span className="cell-value">{steamInfo?.rustHours ? `~${steamInfo.rustHours.toLocaleString()}` : 'N/A'}</span>
+                      </div>
+                      <div className="modal-card-cell">
+                        <span className="cell-label">Часов за 2 недели</span>
+                        <span className="cell-value">{steamInfo?.recentHours ?? 'N/A'}</span>
+                      </div>
+                      <div className="modal-card-cell">
+                        <span className="cell-label">Gamebans / VAC</span>
+                        <span className="cell-value" style={{ color: (steamInfo?.vacBans || 0) + (steamInfo?.gameBans || 0) > 0 ? '#ef4444' : undefined }}>
+                          {steamInfo ? (steamInfo.vacBans + steamInfo.gameBans > 0 ? `${steamInfo.gameBans} game / ${steamInfo.vacBans} VAC` : 'Банов нет') : 'N/A'}
+                        </span>
+                      </div>
+                      <div className="modal-card-cell">
+                        <span className="cell-label">Последнее обновление</span>
+                        <span className="cell-value">{new Date().toLocaleDateString('ru')}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .reports-page {
