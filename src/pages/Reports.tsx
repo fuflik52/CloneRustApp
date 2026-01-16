@@ -274,7 +274,7 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
                           <ArrowIcon />
                         </div>
                         <div className="td player-col">
-                          <div className="player-box target clickable" onClick={() => navigate(`/players/${report.target_steam_id}`)}>
+                          <div className="player-box target clickable" onClick={() => navigate(`players?player=${report.target_steam_id}`)}>
                             <div className="player-avatar-wrap">
                               <img 
                                 src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
