@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useSearchParams } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import { useServer } from '../App'
 
@@ -93,6 +93,31 @@ function TrashIcon() {
   )
 }
 
+interface Player {
+  steam_id: string
+  name: string
+  avatar?: string
+  online: boolean
+  ip?: string
+  country?: string
+  countryCode?: string
+  city?: string
+  provider?: string
+  serverName?: string
+}
+
+interface SteamInfo {
+  personaName: string
+  avatar: string
+  privacy: string
+  isPrivate: boolean
+  accountCreated: string | null
+  rustHours: number | null
+  recentHours: number | null
+  vacBans: number
+  gameBans: number
+}
+
 interface ReportsProps {
   targetSteamId?: string
   isPlayerProfile?: boolean
@@ -104,7 +129,72 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
   const [error, setError] = useState<string | null>(null)
   const { showToast } = useToast()
   const { serverId } = useServer()
-  const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
+  
+  // Player modal state
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
+  const [steamInfo, setSteamInfo] = useState<SteamInfo | null>(null)
+  const [steamLoading, setSteamLoading] = useState(false)
+
+  // Handle ?player= URL parameter
+  useEffect(() => {
+    const playerId = searchParams.get('player')
+    if (playerId && !selectedPlayer) {
+      // Load player data
+      fetch(`/api/player/${playerId}/stats`)
+        .then(res => res.json())
+        .then(data => {
+          if (data && !data.error) {
+            const playerObj: Player = {
+              steam_id: data.steam_id || playerId,
+              name: data.steam_name || data.name || 'Unknown',
+              avatar: data.avatar || '',
+              online: false,
+              ip: data.ips_history?.[0]?.ip || '',
+              country: data.country || '',
+              countryCode: data.countryCode || '',
+              city: data.city || '',
+              provider: data.provider || '',
+              serverName: data.servers_played?.[0] || ''
+            }
+            openPlayerModal(playerObj)
+          }
+        })
+        .catch(err => console.error('Error fetching player:', err))
+    }
+  }, [searchParams])
+
+  const openPlayerModal = async (player: Player) => {
+    setSelectedPlayer(player)
+    setSteamInfo(null)
+    setSteamLoading(true)
+    
+    // Update URL
+    setSearchParams({ player: player.steam_id })
+    
+    // Load Steam info
+    try {
+      const res = await fetch(`/api/player/${player.steam_id}/steam`)
+      if (res.ok) {
+        const data = await res.json()
+        if (!data.error) {
+          setSteamInfo(data)
+        }
+      }
+    } catch {}
+    setSteamLoading(false)
+  }
+
+  const closePlayerModal = () => {
+    setSelectedPlayer(null)
+    setSteamInfo(null)
+    setSearchParams({})
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+    showToast('Скопировано')
+  }
 
   const fetchReports = async () => {
     if (!serverId && !targetSteamId) return
@@ -274,7 +364,12 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
                           <ArrowIcon />
                         </div>
                         <div className="td player-col">
-                          <div className="player-box target clickable" onClick={() => navigate(`players?player=${report.target_steam_id}`)}>
+                          <div className="player-box target clickable" onClick={() => openPlayerModal({
+                            steam_id: report.target_steam_id,
+                            name: report.target_name,
+                            avatar: report.target_avatar,
+                            online: false
+                          })}>
                             <div className="player-avatar-wrap">
                               <img 
                                 src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
@@ -315,6 +410,92 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
           </div>
         </div>
       </div>
+
+      {/* Player Modal */}
+      {selectedPlayer && (
+        <div className="player-modal-overlay" onClick={closePlayerModal}>
+          <div className="player-modal" onClick={e => e.stopPropagation()}>
+            <button className="modal-close-btn" onClick={closePlayerModal}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor">
+                <path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/>
+              </svg>
+            </button>
+            <div className="modal-header">
+              <div className="modal-player-avatar">
+                <img src={steamInfo?.avatar || selectedPlayer.avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} alt="" />
+                <div className={`modal-status-badge ${selectedPlayer.online ? 'online' : 'offline'}`} />
+              </div>
+              <div className="modal-player-info">
+                <span className="modal-player-name">{steamInfo?.personaName || selectedPlayer.name}</span>
+                <span className="modal-player-status">{selectedPlayer.online ? 'онлайн' : 'оффлайн'}</span>
+              </div>
+              <div className="modal-action-btns">
+                <a href={`https://rustcheatcheck.ru/panel/player/${selectedPlayer.steam_id}`} target="_blank" rel="noopener noreferrer" className="modal-action-btn" title="RustCheatCheck">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                </a>
+                <a href={`https://steamcommunity.com/profiles/${selectedPlayer.steam_id}/`} target="_blank" rel="noopener noreferrer" className="modal-action-btn" title="Steam">
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.44 8.87 8 9.8V15H8v-3h2V9.5C10 7.57 11.57 6 13.5 6H16v3h-2c-.55 0-1 .45-1 1v2h3v3h-3v6.95c5.05-.5 9-4.76 9-9.95 0-5.52-4.48-10-10-10z"/></svg>
+                </a>
+              </div>
+            </div>
+            <div className="modal-content">
+              <div className="modal-info-card">
+                <div className="modal-card-title">Об игроке</div>
+                <div className="modal-card-grid">
+                  <div className="modal-card-cell">
+                    <span className="cell-label">SteamID</span>
+                    <div className="cell-value-row">
+                      <span className="cell-value">{selectedPlayer.steam_id}</span>
+                      <button className="cell-copy-btn" onClick={() => copyToClipboard(selectedPlayer.steam_id)}>
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div className="modal-card-cell">
+                    <span className="cell-label">Страна</span>
+                    <span className="cell-value">{selectedPlayer.country || 'N/A'}</span>
+                  </div>
+                  <div className="modal-card-cell">
+                    <span className="cell-label">Город</span>
+                    <span className="cell-value">{selectedPlayer.city || 'N/A'}</span>
+                  </div>
+                  <div className="modal-card-cell">
+                    <span className="cell-label">Провайдер</span>
+                    <span className="cell-value">{selectedPlayer.provider || 'N/A'}</span>
+                  </div>
+                </div>
+              </div>
+              <div className="modal-info-card">
+                <div className="modal-card-title">Steam информация</div>
+                {steamLoading ? (
+                  <div className="steam-loading">Загрузка...</div>
+                ) : (
+                  <div className="modal-card-grid">
+                    <div className="modal-card-cell">
+                      <span className="cell-label">Приватность</span>
+                      <span className="cell-value">{steamInfo?.privacy || 'N/A'}</span>
+                    </div>
+                    <div className="modal-card-cell">
+                      <span className="cell-label">Часов в Rust</span>
+                      <span className="cell-value">{steamInfo?.rustHours ? `~${steamInfo.rustHours}` : steamInfo?.isPrivate ? 'Скрыто' : 'N/A'}</span>
+                    </div>
+                    <div className="modal-card-cell">
+                      <span className="cell-label">VAC / Game баны</span>
+                      <span className="cell-value" style={{ color: (steamInfo?.vacBans || 0) + (steamInfo?.gameBans || 0) > 0 ? '#ef4444' : undefined }}>
+                        {steamInfo ? `${steamInfo.vacBans} / ${steamInfo.gameBans}` : 'N/A'}
+                      </span>
+                    </div>
+                    <div className="modal-card-cell">
+                      <span className="cell-label">Аккаунт создан</span>
+                      <span className="cell-value">{steamInfo?.accountCreated ? new Date(steamInfo.accountCreated).toLocaleDateString('ru') : steamInfo?.isPrivate ? 'Скрыто' : 'N/A'}</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`
         .reports-page {
@@ -661,6 +842,180 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
         .retry-btn:hover {
           background: #333;
           border-color: #525252;
+        }
+        
+        /* Player Modal Styles */
+        .player-modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(0, 0, 0, 0.8);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          z-index: 1000;
+          padding: 20px;
+        }
+        .player-modal {
+          background: #1a1a1a;
+          border-radius: 12px;
+          width: 100%;
+          max-width: 500px;
+          max-height: 90vh;
+          overflow-y: auto;
+          position: relative;
+          border: 1px solid #333;
+        }
+        .modal-close-btn {
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          background: transparent;
+          border: none;
+          color: #525252;
+          cursor: pointer;
+          padding: 4px;
+          border-radius: 4px;
+          transition: all 0.15s;
+        }
+        .modal-close-btn:hover {
+          color: #a3a3a3;
+          background: #262626;
+        }
+        .modal-header {
+          display: flex;
+          align-items: center;
+          gap: 16px;
+          padding: 24px;
+          border-bottom: 1px solid #262626;
+        }
+        .modal-player-avatar {
+          position: relative;
+          width: 56px;
+          height: 56px;
+          flex-shrink: 0;
+        }
+        .modal-player-avatar img {
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: #262626;
+        }
+        .modal-status-badge {
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          border: 2px solid #1a1a1a;
+        }
+        .modal-status-badge.online {
+          background: #22c55e;
+        }
+        .modal-status-badge.offline {
+          background: #525252;
+        }
+        .modal-player-info {
+          flex: 1;
+          min-width: 0;
+        }
+        .modal-player-name {
+          display: block;
+          color: #e5e5e5;
+          font-size: 18px;
+          font-weight: 600;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .modal-player-status {
+          display: block;
+          color: #525252;
+          font-size: 13px;
+          margin-top: 2px;
+        }
+        .modal-action-btns {
+          display: flex;
+          gap: 8px;
+        }
+        .modal-action-btn {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          width: 36px;
+          height: 36px;
+          background: #262626;
+          border: 1px solid #333;
+          border-radius: 8px;
+          color: #a3a3a3;
+          text-decoration: none;
+          transition: all 0.15s;
+        }
+        .modal-action-btn:hover {
+          background: #333;
+          border-color: #404040;
+          color: #e5e5e5;
+        }
+        .modal-content {
+          padding: 24px;
+          display: flex;
+          flex-direction: column;
+          gap: 20px;
+        }
+        .modal-info-card {
+          background: #151515;
+          border: 1px solid #262626;
+          border-radius: 8px;
+          padding: 16px;
+        }
+        .modal-card-title {
+          color: #a3a3a3;
+          font-size: 14px;
+          font-weight: 600;
+          margin-bottom: 16px;
+        }
+        .modal-card-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        .modal-card-cell {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .cell-label {
+          color: #525252;
+          font-size: 12px;
+        }
+        .cell-value {
+          color: #a3a3a3;
+          font-size: 13px;
+        }
+        .cell-value-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+        .cell-copy-btn {
+          background: transparent;
+          border: none;
+          color: #525252;
+          cursor: pointer;
+          padding: 2px;
+          transition: color 0.15s;
+        }
+        .cell-copy-btn:hover {
+          color: #a3a3a3;
+        }
+        .steam-loading {
+          color: #525252;
+          font-size: 13px;
+          text-align: center;
+          padding: 20px;
         }
       `}</style>
     </div>
