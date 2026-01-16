@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import { useServer } from '../App'
 
@@ -19,11 +18,6 @@ interface Report {
   message: string
   timestamp: number
   date: string
-}
-
-interface OnlinePlayer {
-  steam_id: string
-  online: boolean
 }
 
 function DateIcon() {
