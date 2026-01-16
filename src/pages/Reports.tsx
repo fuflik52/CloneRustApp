@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useToast } from '../components/Toast'
 import { useServer } from '../App'
 
@@ -103,6 +104,7 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
   const [error, setError] = useState<string | null>(null)
   const { showToast } = useToast()
   const { serverId } = useServer()
+  const navigate = useNavigate()
 
   const fetchReports = async () => {
     if (!serverId && !targetSteamId) return
@@ -272,7 +274,7 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
                           <ArrowIcon />
                         </div>
                         <div className="td player-col">
-                          <div className="player-box target">
+                          <div className="player-box target clickable" onClick={() => navigate(`/players/${report.target_steam_id}`)}>
                             <div className="player-avatar-wrap">
                               <img 
                                 src={report.target_avatar || 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'} 
@@ -513,6 +515,16 @@ export default function Reports({ targetSteamId, isPlayerProfile }: ReportsProps
           gap: 10px;
           min-width: 0;
           width: 100%;
+        }
+        .player-box.clickable {
+          cursor: pointer;
+          border-radius: 8px;
+          padding: 4px;
+          margin: -4px;
+          transition: background 0.15s;
+        }
+        .player-box.clickable:hover {
+          background: #262626;
         }
         .player-avatar-wrap {
           position: relative;
